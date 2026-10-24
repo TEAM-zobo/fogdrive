@@ -18,8 +18,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Draws the fog of war on top of the map. The fog is painted into a quarter-resolution mask
- * where explored cells are punched out, then scaled up with filtering for soft edges.
+ * Draws the fog of war on top of the map. The fog is painted into a reduced-resolution mask
+ * where each explored cell is punched out as a slightly oversized circle (neighbours merge into
+ * smooth strips instead of a staircase), then scaled up with filtering for soft edges.
  * At low zoom it switches to coarser parent tiles so the cost stays bounded.
  * Map rotation/tilt are disabled, so tile coordinates map linearly to the screen.
  */
@@ -83,13 +84,11 @@ class FogOverlayView(context: Context) : View(context) {
         val lx1 = floor(x1 / scale).toInt() + 1
         val ly0 = floor(y0 / scale).toInt() - 1
         val ly1 = floor(y1 / scale).toInt() + 1
-        val pad = cellMaskPx * 0.35f
-        val r = RectF()
+        val radius = max(1.2f, cellMaskPx * 1.05f)
         fun punch(cx: Int, cy: Int) {
-            val left = ((cx * scale - x0) * pxPerCell / MASK_DIV).toFloat()
-            val top = ((cy * scale - y0) * pxPerCell / MASK_DIV).toFloat()
-            r.set(left - pad, top - pad, left + cellMaskPx + pad, top + cellMaskPx + pad)
-            maskCanvas.drawRoundRect(r, pad * 2, pad * 2, clearPaint)
+            val centerX = (((cx + 0.5) * scale - x0) * pxPerCell / MASK_DIV).toFloat()
+            val centerY = (((cy + 0.5) * scale - y0) * pxPerCell / MASK_DIV).toFloat()
+            maskCanvas.drawCircle(centerX, centerY, radius, clearPaint)
         }
         val explored = cellsAtLevel(dz)
         val visibleTiles = (lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1)
@@ -129,7 +128,7 @@ class FogOverlayView(context: Context) : View(context) {
     }
 
     private companion object {
-        const val MASK_DIV = 4
+        const val MASK_DIV = 3
         const val MAX_DZ = 10
         val FOG_COLOR = Color.argb(236, 20, 27, 38)
     }

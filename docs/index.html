@@ -189,7 +189,7 @@
       <table>
         <thead><tr><th>평가 항목</th><th>보는 것</th><th>안개지도의 답</th></tr></thead>
         <tbody>
-          <tr><td>차량특화성</td><td>모바일 대비 차량만의 가치, 주행·정차 맥락과 결합</td><td>시동과 함께 끊김 없는 기록, P단+도어로 "머문 곳" 구분, 주행 중엔 기록만·화면은 정차 중</td></tr>
+          <tr><td>차량특화성</td><td>모바일 대비 차량만의 가치, 주행·정차 맥락과 결합</td><td>시동과 함께 끊김 없는 기록, P단+도어로 "머문 곳" 구분, 주행 중엔 간결한 주행 모드(지도·위치·숫자만), 게임 요소는 정차 중에만</td></tr>
           <tr><td>창의성</td><td>독창성, 운전자·동승자 Pain Point 정의</td><td>이동 기록을 정복 게임으로, 와이퍼·전조등·좌석·충전 상황 스탬프</td></tr>
           <tr><td>기술 활용성</td><td>Pleos SDK·API를 핵심 기능에 적절히 활용</td><td>Vehicle(도어·좌석·와이퍼·전조등·주행거리·EV) · NaviHelper(최근 목적지·즐겨찾기·목적지·경유지) · FusedLocation</td></tr>
           <tr><td>사업성</td><td>타깃, 예상 MAU, Retention, 확대 계획</td><td>가족·드라이브 애호가·출퇴근 3개 세그먼트, 월간 시즌 챌린지, 지자체·관광 제휴 (수치 근거 보완 필요)</td></tr>
@@ -251,7 +251,7 @@
           <tr><td>탐험 우회 경로 → 경유지 추가</td><td>NaviHelper getDestinationInfo · addWaypoint</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>상황 스탬프(빗속·야간·가족·충전)</td><td>Vehicle Wiper · Light · Seat · EvBattery</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>개척 지표(새 길 비율), 레벨, 시즌 챌린지</td><td>앱 내부 계산 (Odometer 연결됨)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>주행 중 화면 제한</td><td>AAOS 비-DO 액티비티(주행 중 시스템이 차단), 기록은 포그라운드 서비스</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>주행 모드</td><td>distraction-optimized 액티비티 + CarUxRestrictions: 주행 중 지도·현재 위치·짧은 숫자만, 탭·우회 제안·기록·도감은 정차 중에만. 기록은 포그라운드 서비스</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>행정구역 정복률·지역 도감</td><td>행정구역 경계 공공데이터</td><td><span class="tag todo">예정</span></td></tr>
           <tr><td>음성 효과</td><td>TextToSpeech SDK (준비 중)</td><td><span class="tag todo">로드맵</span></td></tr>
         </tbody>

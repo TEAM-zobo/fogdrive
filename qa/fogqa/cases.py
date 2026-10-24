@@ -276,41 +276,30 @@ def tc_stamp_charge(ctx):
     ctx.check(stamps.get("충전소 깃발", 0) >= 1, "충전소 깃발 획득")
 
 
-@case("TC-11", "주행 중 화면 제한", "차가 움직이면 시스템이 앱 화면을 막고, 멈추면 다시 보인다",
-      "앱 실행 중",
-      ["기어 D, 차속 40km/h", "화면 확인", "차속 0, 기어 P"],
-      ["'주행 중에는 사용할 수 없습니다' 차단 화면", "정차 후 앱 화면 복귀"])
-def tc_ux_restriction(ctx):
+@case("TC-11", "주행 모드", "주행 중에는 주행 모드(지도·현재 위치·짧은 숫자)만 보이고, 정차하면 전체 화면으로 돌아온다",
+      "앱 실행 중 (distraction-optimized 액티비티)",
+      ["기어 D, 차속 40km/h", "위치 10개 지점 주입", "화면 확인", "차속 0, 기어 P"],
+      ["'주행 모드' 표시, 기록·도감·설정 탭 숨김", "시스템 차단 화면 없음(앱 지도가 계속 보임)", "정차 후 탭 복귀"])
+def tc_driving_mode(ctx):
     fresh(ctx)
-    # Pleos draws the "주행 중에는 사용할 수 없습니다" block as an overlay layer that neither the window
-    # list nor UIAutomator exposes, so judge it from pixels: the app is a dark map, the block is flat light gray.
-    def wait_brightness(pred, timeout=12):
-        end = time.time() + timeout
-        while time.time() < end:
-            mean, spread = ctx.dev.region_brightness(*APP_AREA)
-            if pred(mean, spread):
-                return True, mean, spread
-            time.sleep(0.5)
-        return False, mean, spread
-
-    dark, parked_mean, _ = wait_brightness(lambda m, s: m < 120)
-    v = ctx.vc.state()
-    ctx.log(f"정차 중 앱 영역 밝기 {parked_mean:.0f} · 기어 {v['gear']['actual']['value']} · 차속 {v['controls']['speed_kph']}")
-    ctx.check(dark, "정차 중 앱(어두운 지도) 화면")
     ctx.vc.gear("Drive")
     ctx.vc.speed(40)
     try:
-        blocked, mean, spread = wait_brightness(lambda m, s: m > 180 and s < 25)
-        ctx.shot("driving_blocked")
+        ctx.check(ctx.dev.wait_text("주행 모드", timeout=10, exact=True), "주행 모드 표시")
+        drive(ctx, ROUTE[:10])
+        texts = ctx.dev.texts()
+        hidden = [t for t in ("기록", "도감", "설정") if t in texts]
+        ctx.shot("driving_mode")
+        ctx.check(not hidden, f"주행 중 탭 숨김 {hidden}")
+        # The system block screen is flat light gray; the app's dark map means we are not blocked.
+        mean, spread = ctx.dev.region_brightness(*APP_AREA)
         ctx.log(f"주행 중 앱 영역 밝기 {mean:.0f} (편차 {spread:.0f})")
-        ctx.check(blocked, "차단 화면 표시")
+        ctx.check(not (mean > 180 and spread < 25), "시스템 차단 화면 없음")
     finally:
         ctx.vc.speed(0)
         ctx.vc.gear("Park")
-    restored, mean, _ = wait_brightness(lambda m, s: m < 120)
-    ctx.log(f"정차 후 앱 영역 밝기 {mean:.0f}")
-    ctx.shot("parked_restored")
-    ctx.check(restored, "정차 후 앱 화면 복귀")
+    ctx.check(ctx.dev.wait_text("기록", timeout=10, exact=True), "정차 후 탭 복귀")
+    ctx.check(ctx.dev.find("주행 모드") is None, "정차 후 주행 모드 해제")
 
 
 @case("TC-12", "탐험 우회 경로", "출발 전 목적지가 있으면 우회 제안 카드가 뜨고, 주행이 시작되면 숨겨진다",
@@ -322,13 +311,21 @@ def tc_detour(ctx):
     ctx.dev.tap_text("설정")
     ctx.dev.tap_text("시연 시작")
     ctx.dev.tap_text("지도")
-    ctx.check(ctx.dev.wait_text("탐험 우회 경로", timeout=5), "출발 전 우회 카드 표시")
-    ctx.check(ctx.dev.find("경유지 추가") is not None, "경유지 추가 버튼")
+    # The demo stays parked for only ~6 s, so card and button are checked from one UI dump.
+    end = time.time() + 6
+    nodes = []
+    while time.time() < end:
+        nodes = ctx.dev.ui_nodes()
+        if ctx.dev.find("탐험 우회 경로", nodes=nodes):
+            break
+        time.sleep(0.3)
     ctx.shot("detour_parked")
+    ctx.check(ctx.dev.find("탐험 우회 경로", nodes=nodes) is not None, "출발 전 우회 카드 표시")
+    ctx.check(ctx.dev.find("경유지 추가", nodes=nodes) is not None, "경유지 추가 버튼")
     ctx.check(ctx.dev.wait_text("탐험 우회 경로", timeout=15, present=False), "주행 중 카드 숨김")
     ctx.shot("detour_driving")
-    ctx.dev.tap_text("설정")
-    ctx.dev.tap_text("시연 중지")
+    # The demo is now driving, so the driving view hides the settings tab; stopping the app ends the demo.
+    ctx.dev.app_stop()
 
 
 @case("TC-13", "시연 모드", "시연 모드가 출발→주행→상륙까지 끝까지 재생된다",

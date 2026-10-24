@@ -42,13 +42,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FogDrive">
 
-        <!-- Not distraction-optimized on purpose: AAOS blocks this screen while driving,
-             so the map/game UI is only usable when parked. Recording runs in the service. -->
+        <!-- Distraction-optimized: while CarUxRestrictions require it, the activity swaps to a
+             driving view (glanceable map, fog and position only). Records, collection, settings and
+             the detour suggestion stay parked-only. -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|density|uiMode">
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

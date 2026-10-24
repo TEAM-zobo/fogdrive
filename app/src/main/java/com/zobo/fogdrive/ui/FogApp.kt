@@ -20,6 +20,7 @@ import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,8 +45,15 @@ fun FogApp(
     onRequestBackground: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val vehicle by viewModel.vehicle.collectAsState()
     // Back from a sub tab returns to the map instead of closing the app.
-    BackHandler(enabled = tab != 0) { tab = 0 }
+    BackHandler(enabled = tab != 0 && vehicle.drivingRestricted != true) { tab = 0 }
+
+    // While the car requires distraction optimization only the driving view is shown.
+    if (vehicle.drivingRestricted == true) {
+        DrivingScreen(viewModel)
+        return
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = FogColors.Bg) {
         Row(Modifier.fillMaxSize()) {

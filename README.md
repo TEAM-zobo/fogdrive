@@ -22,7 +22,7 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 | 상황 스탬프 | 빗속·야간·가족 탐험·충전소 깃발 | Pleos Vehicle Wiper, Light, Seat, EvBattery |
 | 기록·도감 | 개척 칸·면적·새 길 비율, 레벨, 월간 시즌 챌린지 | 앱 내부 계산 |
 
-주행 중에는 화면을 띄우지 않고 포그라운드 서비스로 기록만 합니다. 지도·게임 화면은 일부러 distraction-optimized로 선언하지 않아서, 주행 중에는 AAOS가 차단하고 정차 중에만 열립니다. 위치 기록은 기기 내부(Room DB)에만 저장하고 서버로 보내지 않습니다.
+기록은 포그라운드 서비스가 맡아서 화면이 꺼져 있어도 계속됩니다. 액티비티는 distraction-optimized로 선언했고, 주행 중(CarUxRestrictions)에는 **주행 모드**로 바뀌어 지도·현재 위치·레벨·이번 주행 새 칸 수만 보여줍니다. 탭, 기록, 도감, 설정, 탐험 우회 제안은 정차 중에만 열립니다. 지도는 OpenFreeMap Positron 스타일에 한국어 라벨(`name:ko`)을 적용했습니다. 위치 기록은 기기 내부(Room DB)에만 저장하고 서버로 보내지 않습니다.
 
 ## 테스트 환경
 

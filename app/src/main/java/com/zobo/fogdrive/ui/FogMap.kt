@@ -19,13 +19,27 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 
-private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+// Clean, low-clutter light basemap: explored areas read clearly against the dark fog.
+private const val STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
 
 /** Holds the MapView + overlay so Compose state changes can push data into them. */
 class FogMapHolder(val mapView: MapView, val overlay: FogOverlayView) {
     var map: MapLibreMap? = null
-    var userMovedCamera = false
+}
+
+/** OpenMapTiles carries `name:ko`; prefer it over the local/English name on every label layer. */
+private fun useKoreanLabels(style: Style) {
+    val korean = Expression.coalesce(Expression.get("name:ko"), Expression.get("name"))
+    for (layer in style.layers) {
+        if (layer is SymbolLayer && layer.textField.value != null) {
+            layer.setProperties(PropertyFactory.textField(korean))
+        }
+    }
 }
 
 @Composable
@@ -38,6 +52,8 @@ fun FogMap(
     follow: Boolean,
     recenterSignal: Int,
     onUserMoved: () -> Unit,
+    /** Driving: no gestures, camera locked on the car without animation. */
+    driving: Boolean = false,
 ) {
     val context = LocalContext.current
     val holder = remember {
@@ -74,7 +90,10 @@ fun FogMap(
                 .target(LatLng(current?.first ?: 37.5446, current?.second ?: 127.0559))
                 .zoom(14.0)
                 .build()
-            map.setStyle(STYLE_URL) { holder.overlay.invalidate() }
+            map.setStyle(STYLE_URL) { style ->
+                useKoreanLabels(style)
+                holder.overlay.invalidate()
+            }
             map.addOnCameraMoveListener { holder.overlay.invalidate() }
             map.addOnCameraIdleListener { holder.overlay.invalidate() }
             map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
@@ -97,10 +116,21 @@ fun FogMap(
         holder.overlay.detour = detour
         holder.overlay.invalidate()
     }
-    LaunchedEffect(current, follow) {
+    LaunchedEffect(driving, holder.map) {
+        holder.map?.uiSettings?.setAllGesturesEnabled(!driving)
+        if (!driving) {
+            holder.map?.uiSettings?.isRotateGesturesEnabled = false
+            holder.map?.uiSettings?.isTiltGesturesEnabled = false
+        }
+    }
+    LaunchedEffect(current, follow, driving) {
         val map = holder.map ?: return@LaunchedEffect
-        if (follow && current != null) {
-            map.animateCamera(CameraUpdateFactory.newLatLng(LatLng(current.first, current.second)), 600)
+        if (current == null) return@LaunchedEffect
+        val target = LatLng(current.first, current.second)
+        when {
+            // Moving map without animation while driving (Pleos: minimise motion on screen).
+            driving -> map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, 16.0))
+            follow -> map.animateCamera(CameraUpdateFactory.newLatLng(target), 600)
         }
     }
     LaunchedEffect(recenterSignal) {
