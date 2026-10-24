@@ -58,6 +58,13 @@ private const val RECENTER_AT_PX = PAN_MARGIN_PX * 0.6f
 private const val MIN_STEP_PX = 0.5f
 /** A fix this far from the shown position is a jump (demo start, GPS reset): snap instead of gliding. */
 private const val SNAP_METERS = 500.0
+/** Fixes kept for replay, and the replay delay range (one fix interval and a bit, see shownAt). */
+private const val FIX_HISTORY = 8
+private const val MIN_LAG_MS = 400
+private const val MAX_LAG_MS = 2_500
+private const val LAG_EASE_MS = 2_000.0
+/** Replay delay after a snap, before the fix rate is known: about one 1 Hz interval. */
+private const val START_LAG_MS = 1_200.0
 private const val ZOOM_ANIM_MS = 250
 /** Margin around a region framed from the dex. */
 private const val FOCUS_PADDING_PX = 120
@@ -190,8 +197,8 @@ private class CarMarkerView(context: Context) : View(context) {
  * Driving keeps the car at the screen centre without re-rendering the map every fix:
  * the map is rendered larger than the screen, and each display frame the whole pan layer
  * (map + fog) is slid by the car's offset from the rendered centre — a cheap compositor move.
- * Between 1 Hz fixes the shown position glides linearly from where it was to the new fix, so the
- * motion is continuous. Only when the slide nears the margin is the map re-rendered around the car,
+ * The shown position replays the recent fixes a little behind real time (see [shownAt]), so the
+ * motion is continuous and at the speed the fixes were actually covered. Only when the slide nears the margin is the map re-rendered around the car,
  * and the slide and fog are swapped to the new centre on the frame that render finishes.
  */
 class FogMapHolder(context: Context) : Choreographer.FrameCallback {
@@ -221,15 +228,17 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     var driving = false
         private set
 
-    // Glide between fixes.
-    private var fromLat = 0.0
-    private var fromLng = 0.0
-    private var toLat = 0.0
-    private var toLng = 0.0
-    private var segStart = 0L
-    private var segDuration = 1L
-    private var lastFixAt = 0L
-    private var hasFix = false
+    // Recent fixes (arrival time, position), replayed [lag] ms behind real time.
+    private val fixAt = LongArray(FIX_HISTORY)
+    private val fixLat = DoubleArray(FIX_HISTORY)
+    private val fixLng = DoubleArray(FIX_HISTORY)
+    /** Heading of the segment ending at each fix (NaN when too short to tell), shown while that segment plays. */
+    private val fixBearing = FloatArray(FIX_HISTORY)
+    private var fixCount = 0
+    private var lag = START_LAG_MS
+    private var lagTarget = START_LAG_MS
+    private var lagEasedAt = 0L
+    private val hasFix get() = fixCount > 0
 
     // Rendered camera centre and its pixel scale (pixels per zoom-20 tile unit).
     private var camX = 0.0
@@ -328,7 +337,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             startTicking()
         } else {
             stopTicking()
-            hasFix = false
+            fixCount = 0
             camReady = false
             recenterPending = false
             overlay.freezeTransform = false
@@ -350,39 +359,89 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         }
     }
 
-    /** New location while driving: glide from the shown position to it over one fix interval. */
+    /**
+     * New location while driving. Gliding from the shown position to each new fix over the last
+     * interval changed speed at every fix whenever fixes came unevenly (demo corners, late
+     * recompositions): at high speed each fix is ~100 m apart, so the map visibly surged and braked.
+     * Instead the fixes are replayed along their own timeline, a little more than one interval late,
+     * so between fixes the car moves at the speed the fixes were actually covered.
+     */
     fun onFix(lat: Double, lng: Double) {
         if (!driving) return
         val now = SystemClock.uptimeMillis()
-        val (shownLat, shownLng) = shownAt(now)
-        val jump = !hasFix || Tiles.distanceMeters(shownLat, shownLng, lat, lng) > SNAP_METERS
+        val last = fixCount - 1
+        if (last >= 0 && fixLat[last] == lat && fixLng[last] == lng) return  // same fix, re-delivered
+        val jump = last < 0 || Tiles.distanceMeters(fixLat[last], fixLng[last], lat, lng) > SNAP_METERS
+        var bearing = Float.NaN
         if (jump) {
-            fromLat = lat
-            fromLng = lng
-            segDuration = 1
-            recenter(lat, lng)
+            fixCount = 0
+            lag = START_LAG_MS
         } else {
-            fromLat = shownLat
-            fromLng = shownLng
-            segDuration = (now - lastFixAt).coerceIn(250L, 2_000L)
-            if (Tiles.distanceMeters(shownLat, shownLng, lat, lng) >= 3.0) {
-                val east = Tiles.lngToX(lng) - Tiles.lngToX(shownLng)
-                val north = Tiles.latToY(shownLat) - Tiles.latToY(lat)
-                car.bearing = Math.toDegrees(kotlin.math.atan2(east, north)).toFloat()
+            shownAt(now)  // bring the lag easing up to now before the history changes
+            if (now - fixAt[last] > MAX_LAG_MS) {
+                // Moving again after a stop or a feed gap: playback has long reached the last fix, so
+                // start the new segment from it now instead of stretching it over the whole pause
+                // (which would jump most of the segment at once and push the lag to its maximum).
+                fixAt[0] = now - lag.toLong()
+                fixLat[0] = fixLat[last]
+                fixLng[0] = fixLng[last]
+                fixBearing[0] = Float.NaN
+                fixCount = 1
+            }
+            val prev = fixCount - 1
+            if (Tiles.distanceMeters(fixLat[prev], fixLng[prev], lat, lng) >= 3.0) {
+                val east = Tiles.lngToX(lng) - Tiles.lngToX(fixLng[prev])
+                val north = Tiles.latToY(fixLat[prev]) - Tiles.latToY(lat)
+                bearing = Math.toDegrees(kotlin.math.atan2(east, north)).toFloat()
             }
         }
-        toLat = lat
-        toLng = lng
-        segStart = now
-        lastFixAt = now
-        hasFix = true
+        if (fixCount == FIX_HISTORY) {
+            System.arraycopy(fixAt, 1, fixAt, 0, FIX_HISTORY - 1)
+            System.arraycopy(fixLat, 1, fixLat, 0, FIX_HISTORY - 1)
+            System.arraycopy(fixLng, 1, fixLng, 0, FIX_HISTORY - 1)
+            System.arraycopy(fixBearing, 1, fixBearing, 0, FIX_HISTORY - 1)
+            fixCount--
+        }
+        fixAt[fixCount] = now
+        fixLat[fixCount] = lat
+        fixLng[fixCount] = lng
+        fixBearing[fixCount] = bearing
+        fixCount++
+        lagTarget = targetLag()
+        if (jump) {
+            lagEasedAt = now
+            recenter(lat, lng)
+        }
         startTicking()
     }
 
+    /** Replay delay that covers the longest recent gap between fixes, so playback never runs dry. */
+    private fun targetLag(): Double {
+        var gap = 0L
+        for (i in 1 until fixCount) gap = maxOf(gap, fixAt[i] - fixAt[i - 1])
+        return (gap * 1.5).coerceIn(MIN_LAG_MS.toDouble(), MAX_LAG_MS.toDouble())
+    }
+
+    /**
+     * Where the car is shown at [now]: the fix track sampled at `now - lag`. The lag eases toward
+     * [targetLag] over a couple of seconds, so a change in the fix rate bends the speed by a few
+     * percent instead of jumping.
+     */
     private fun shownAt(now: Long): Pair<Double, Double> {
-        if (!hasFix) return toLat to toLng
-        val t = ((now - segStart).toDouble() / segDuration).coerceIn(0.0, 1.0)
-        return (fromLat + (toLat - fromLat) * t) to (fromLng + (toLng - fromLng) * t)
+        val n = fixCount
+        if (n == 0) return 0.0 to 0.0
+        val dt = (now - lagEasedAt).coerceAtLeast(0L)
+        lagEasedAt = now
+        // Growing the lag faster than real time would run the replay backwards: keep it at ≥ half speed.
+        lag += ((lagTarget - lag) * (dt / LAG_EASE_MS).coerceAtMost(1.0)).coerceAtMost(dt * 0.5)
+        val t = now - lag
+        if (n == 1 || t <= fixAt[0]) return fixLat[0] to fixLng[0]
+        if (t >= fixAt[n - 1]) return fixLat[n - 1] to fixLng[n - 1]
+        var i = 1
+        while (fixAt[i] < t) i++
+        if (!fixBearing[i].isNaN()) car.bearing = fixBearing[i]
+        val f = (t - fixAt[i - 1]) / (fixAt[i] - fixAt[i - 1])
+        return (fixLat[i - 1] + (fixLat[i] - fixLat[i - 1]) * f) to (fixLng[i - 1] + (fixLng[i] - fixLng[i - 1]) * f)
     }
 
     private fun recenter(lat: Double, lng: Double) {
@@ -424,10 +483,26 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         overlay.captureTransform()
         overlay.freezeTransform = true
         overlay.invalidate()
-        doFrame(System.nanoTime())
+        // Not doFrame(): that also re-posts the frame callback, and each re-base then added one more
+        // callback chain that ran every vsync for the rest of the drive (dozens per frame after a
+        // few minutes at high speed).
+        step()
     }
 
     override fun doFrame(frameTimeNanos: Long) {
+        step()
+        // Keep ticking only while the glide is running or a re-base is due; at a standstill (no new
+        // fixes) the loop sleeps until the next fix instead of waking the main thread every vsync.
+        val gliding = hasFix && SystemClock.uptimeMillis() - lag < fixAt[fixCount - 1]
+        if (ticking && driving && (gliding || recenterPending || forceStep)) {
+            Choreographer.getInstance().postFrameCallback(this)
+        } else {
+            ticking = false
+        }
+    }
+
+    /** Slides the pan layer to the shown position, and re-renders around the car near the margin. */
+    private fun step() {
         if (driving && hasFix && camReady) {
             val (lat, lng) = shownAt(SystemClock.uptimeMillis())
             val dx = ((Tiles.lngToX(lng) - camX) * pxPerX).toFloat()
@@ -437,14 +512,6 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
                 mapFrame.slide(-dx, -dy)
             }
             if (!recenterPending && (abs(dx) > RECENTER_AT_PX || abs(dy) > RECENTER_AT_PX)) recenter(lat, lng)
-        }
-        // Keep ticking only while the glide is running or a re-base is due; at a standstill (no new
-        // fixes) the loop sleeps until the next fix instead of waking the main thread every vsync.
-        val gliding = hasFix && SystemClock.uptimeMillis() < segStart + segDuration
-        if (ticking && driving && (gliding || recenterPending || forceStep)) {
-            Choreographer.getInstance().postFrameCallback(this)
-        } else {
-            ticking = false
         }
     }
 
