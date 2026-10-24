@@ -108,7 +108,7 @@ class VConsole:
         return self.put("/vehicle/controls", speed=str(kph), accelerator="10" if kph else "0", brake="0", steering="0")
 
     def reset(self):
-        """Parked, doors/frunk/trunk closed, wipers/lights off, no passengers, 80% battery, standing still."""
+        """Parked, doors/frunk/trunk/charge port closed, wipers/lights off, no passengers, 80% battery, standing still."""
         self.speed(0)
         self.gear("Park")
         for area in DOORS:
@@ -120,3 +120,5 @@ class VConsole:
         for area in ("passenger", "rear_left", "rear_right"):
             self.seat(area, False)
         self.soc(80)
+        # Also boots with the charge port open (cluster icon).
+        self.put("/vehicle/ev-battery", field="charge_port_open", value="false")

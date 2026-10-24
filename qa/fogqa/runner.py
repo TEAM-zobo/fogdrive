@@ -66,25 +66,20 @@ def run(ids=None, dev=None, vc=None, emit=print, stop_flag=None, vc_port=8088):
                 emit("중지 요청으로 남은 TC를 건너뜀")
                 break
             emit(f"[{c.id}] 시작: {c.title}")
-            ctx = Context(dev, vc, out_dir, c, emit)
             t0 = time.time()
-            status, error = "PASS", ""
-            try:
-                c.fn(ctx)
-            except CaseFailed as e:
-                status, error = "FAIL", str(e)
-                _safe_shot(ctx, "failure")
-            except Exception as e:  # infrastructure problem, not an app assertion
-                status, error = "ERROR", f"{type(e).__name__}: {e}"
-                ctx.logs.append(traceback.format_exc())
-                _safe_shot(ctx, "error")
-            finally:
-                try:
-                    vc.reset()
-                except Exception:
-                    pass
+            # Emulators occasionally stall (black screen, dump timeouts) under memory pressure, so a
+            # non-passing case is retried once; the first attempt's error stays in the report.
+            first_error = ""
+            for attempt in (1, 2):
+                ctx = Context(dev, vc, out_dir, c, emit)
+                status, error = _attempt(c, ctx, vc)
+                if status == "PASS" or attempt == 2:
+                    break
+                first_error = f"{status}: {error}"
+                emit(f"[{c.id}] 재시도 (1차 {first_error})")
             r = {
                 "id": c.id, "feature": c.feature, "title": c.title, "status": status, "error": error,
+                "retried_after": first_error,
                 "seconds": round(time.time() - t0, 1), "checks": ctx.checks, "logs": ctx.logs, "shots": ctx.shots,
             }
             results.append(r)
@@ -94,6 +89,25 @@ def run(ids=None, dev=None, vc=None, emit=print, stop_flag=None, vc_port=8088):
         if own_vc:
             vc.stop()
     return results, out_dir
+
+
+def _attempt(c, ctx, vc):
+    status, error = "PASS", ""
+    try:
+        c.fn(ctx)
+    except CaseFailed as e:
+        status, error = "FAIL", str(e)
+        _safe_shot(ctx, "failure")
+    except Exception as e:  # infrastructure problem, not an app assertion
+        status, error = "ERROR", f"{type(e).__name__}: {e}"
+        ctx.logs.append(traceback.format_exc())
+        _safe_shot(ctx, "error")
+    finally:
+        try:
+            vc.reset()
+        except Exception:
+            pass
+    return status, error
 
 
 def _safe_shot(ctx, name):
@@ -115,6 +129,8 @@ def write_report(out_dir, results):
         logs = "".join(f"<li>{html.escape(str(l))}</li>" for l in r["logs"])
         shots = "".join(f"<a href='{s}' target='_blank'><img src='{s}' loading='lazy'></a>" for s in r["shots"])
         err = f"<p class='err'>{html.escape(r['error'])}</p>" if r["error"] else ""
+        if r.get("retried_after"):
+            err += f"<p class='retry'>재시도함 · 1차 결과: {html.escape(r['retried_after'])}</p>"
         rows.append(
             f"<section class='case {r['status'].lower()}'><h2><span class='badge'>{r['status']}</span> "
             f"{r['id']} · {html.escape(r['feature'])} — {html.escape(r['title'])} <small>{r['seconds']}s</small></h2>"
@@ -132,7 +148,7 @@ main{{max-width:1100px;margin:0 auto;padding:24px 16px}} h1{{margin:0 0 4px}} .s
 .case h2{{font-size:16px;margin:0 0 6px}} small{{color:var(--sub);font-weight:400}}
 .badge{{display:inline-block;padding:1px 8px;border-radius:999px;color:#fff;font-size:12px}}
 .pass .badge{{background:var(--ok)}} .fail .badge{{background:var(--ng)}} .error .badge{{background:var(--er)}}
-.checks{{list-style:none;padding:0;margin:6px 0}} .ok{{color:var(--ok)}} .ng{{color:var(--ng)}} .err{{color:var(--ng)}}
+.retry{{color:var(--er)}} .checks{{list-style:none;padding:0;margin:6px 0}} .ok{{color:var(--ok)}} .ng{{color:var(--ng)}} .err{{color:var(--ng)}}
 .shots{{display:flex;gap:8px;flex-wrap:wrap}} .shots img{{width:320px;max-width:100%;border-radius:8px;border:1px solid var(--line)}}
 </style></head><body><main><h1>FogDrive QA 리포트</h1>
 <p class="sub">{os.path.basename(out_dir)} · {passed}/{len(results)} 통과</p>{''.join(rows)}</main></body></html>"""

@@ -235,8 +235,8 @@
     <p>Pleos Connect Emulator v2.1.0에서 Vehicle SDK, AAOS 기어, NaviHelper, FusedLocation이 모두 연결되는 것을 확인했습니다. 단위 테스트 17개 통과.</p>
     <div class="shots">
       <figure><img src="images/01-detour.jpg" alt="출발 전 탐험 우회 경로 제안"><figcaption>출발 전(P단): 탐험 우회 경로 제안</figcaption></figure>
-      <figure><img src="images/02-driving.jpg" alt="주행 중 안개가 걷히는 지도"><figcaption>주행: 지나간 칸의 안개가 걷히고 빗속 개척 스탬프</figcaption></figure>
-      <figure><img src="images/03-landing.jpg" alt="도착 후 상륙 지점"><figcaption>도착(P단+도어): 상륙 지점, 구역 정복률</figcaption></figure>
+      <figure><img src="images/02-driving.jpg" alt="주행 모드"><figcaption>주행 모드: 차는 중앙 고정·진행 방향 화살표, 도로 양쪽만 걷힘</figcaption></figure>
+      <figure><img src="images/03-landing.jpg" alt="정차 중 지도"><figcaption>정차 중 지도: 전용 스타일·구름 안개·경계 빛</figcaption></figure>
       <figure><img src="images/04-record.jpg" alt="개척 기록"><figcaption>기록: 개척 칸·면적·새 길 비율</figcaption></figure>
       <figure><img src="images/05-dex.jpg" alt="시즌 챌린지와 상황 스탬프"><figcaption>도감: 시즌 챌린지, 상황 스탬프</figcaption></figure>
       <figure><img src="images/settings.jpg" alt="연결 상태"><figcaption>설정: SDK 연결 상태, 시연 모드</figcaption></figure>
@@ -251,7 +251,7 @@
           <tr><td>탐험 우회 경로 → 경유지 추가</td><td>NaviHelper getDestinationInfo · addWaypoint</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>상황 스탬프(빗속·야간·가족·충전)</td><td>Vehicle Wiper · Light · Seat · EvBattery</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>개척 지표(새 길 비율), 레벨, 시즌 챌린지</td><td>앱 내부 계산 (Odometer 연결됨)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>주행 모드</td><td>distraction-optimized 액티비티 + CarUxRestrictions: 주행 중 지도·현재 위치·짧은 숫자만, 탭·우회 제안·기록·도감은 정차 중에만. 기록은 포그라운드 서비스</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>주행 모드</td><td>distraction-optimized 액티비티 + CarUxRestrictions: 주행 중 지도·현재 위치·짧은 숫자만, 탭·우회 제안·기록·도감은 정차 중에만. 차는 화면 중앙 고정, 미리 그린 지도를 밀어서 이동(보간). 주행 중 CPU 3.1%(40km/h)·5.8%(100km/h), PSS 약 160MB (Pleos 기준: 지도 앱 15%, RAM 400MB)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>행정구역 정복률·지역 도감</td><td>행정구역 경계 공공데이터</td><td><span class="tag todo">예정</span></td></tr>
           <tr><td>음성 효과</td><td>TextToSpeech SDK (준비 중)</td><td><span class="tag todo">로드맵</span></td></tr>
         </tbody>

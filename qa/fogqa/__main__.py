@@ -20,6 +20,9 @@ def main():
     r.add_argument("--install", help="실행 전에 설치할 APK 경로")
     r.add_argument("--shutdown", action="store_true", help="--headless 실행 후 QA 에뮬레이터 종료")
     sub.add_parser("list", help="TC 목록")
+    pf = sub.add_parser("perf", help="주행 모드 CPU·메모리 측정")
+    pf.add_argument("--kmh", type=int, nargs="*", default=[40, 100])
+    pf.add_argument("--headless", action="store_true")
     sub.add_parser("tc-doc", help="docs/test-cases.html 생성")
     a = p.parse_args()
 
@@ -47,6 +50,20 @@ def main():
         failed = [r for r in results if r["status"] != "PASS"]
         print(f"\n{len(results) - len(failed)}/{len(results)} 통과 · 리포트: {os.path.join(out, 'index.html')}")
         sys.exit(1 if failed else 0)
+    elif a.cmd == "perf":
+        from .device import Device, boot_headless
+        from .perf import driving_benchmark
+        from .vconsole import VConsole
+        dev = boot_headless() if a.headless else Device()
+        port = 18088 if a.headless else 8088
+        dev.forward(port, 8088)
+        vc = VConsole(base=f"http://127.0.0.1:{port}")
+        vc.start()
+        try:
+            for kmh in a.kmh:
+                driving_benchmark(dev, vc, kmh)
+        finally:
+            vc.stop()
     elif a.cmd == "list":
         from .cases import CASES
         for c in CASES:

@@ -101,12 +101,20 @@ class Device:
             f.write(data)
         return path
 
-    def ui_nodes(self):
-        self.shell("uiautomator", "dump", "/sdcard/fogqa_ui.xml")
-        raw = self.shell("cat", "/sdcard/fogqa_ui.xml")
+    def ui_nodes(self, attempts=3):
+        """Current UI tree. The old dump is deleted first: a failed dump (e.g. "could not get idle
+        state" while something animates) must not be read back as the current screen."""
+        raw = ""
+        for _ in range(attempts):
+            self.shell("rm", "-f", "/sdcard/fogqa_ui.xml")
+            self.shell("uiautomator", "dump", "/sdcard/fogqa_ui.xml")
+            raw = self.shell("cat", "/sdcard/fogqa_ui.xml")
+            if "<?xml" in raw:
+                break
+            time.sleep(0.5)
         start = raw.find("<?xml")
         if start < 0:
-            return []
+            raise RuntimeError("UI 트리를 읽지 못함 (uiautomator dump 실패)")
         nodes = []
         try:
             root = ET.fromstring(raw[start:])

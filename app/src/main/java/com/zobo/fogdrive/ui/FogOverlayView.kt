@@ -2,6 +2,8 @@ package com.zobo.fogdrive.ui
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
+import android.graphics.Shader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -18,9 +20,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Draws the fog of war on top of the map. The fog is painted into a reduced-resolution mask
- * where each explored cell is punched out as a slightly oversized circle (neighbours merge into
- * smooth strips instead of a staircase), then scaled up with filtering for soft edges.
+ * Draws the fog of war on top of the map. The fog is painted into a reduced-resolution mask with a
+ * tileable cloud texture, explored cells get a soft mint rim, and each explored cell is punched out
+ * as a slightly oversized circle (neighbours merge into smooth strips instead of a staircase).
+ * The mask is then scaled up with filtering, which softens edges and clouds alike. The fog is
+ * slightly translucent so major roads show faintly through it.
  * At low zoom it switches to coarser parent tiles so the cost stays bounded.
  * Map rotation/tilt are disabled, so tile coordinates map linearly to the screen.
  */
@@ -30,6 +34,41 @@ class FogOverlayView(context: Context) : View(context) {
     var current: Pair<Double, Double>? = null
     var landings: List<Pair<Double, Double>> = emptyList()
     var detour: Pair<Double, Double>? = null
+    /** Draw the car dot here (parked). While driving a fixed centre marker is used instead. */
+    var showCurrent = true
+    /** Keep drawing with the transform from [captureTransform] (driving: fog moves with the slid map). */
+    var freezeTransform = false
+    /** Night palette (darker fog) to match the night map style. */
+    var night = false
+        set(value) {
+            if (field != value) {
+                field = value
+                fogPaint.shader = null
+                invalidate()
+            }
+        }
+
+    // Screen <-> zoom-20 tile transform: top-left and bottom-right of the view in tile units.
+    private var tx0 = 0.0
+    private var ty0 = 0.0
+    private var tx1 = 0.0
+    private var ty1 = 0.0
+    private var hasTransform = false
+
+    /** Snapshot of the map projection, taken on the frame a re-render lands. */
+    fun captureTransform(): Boolean {
+        val m = map ?: return false
+        if (width == 0 || height == 0) return false
+        val proj = m.projection
+        val tl = proj.fromScreenLocation(PointF(0f, 0f))
+        val br = proj.fromScreenLocation(PointF(width.toFloat(), height.toFloat()))
+        tx0 = Tiles.lngToX(tl.longitude)
+        ty0 = Tiles.latToY(tl.latitude)
+        tx1 = Tiles.lngToX(br.longitude)
+        ty1 = Tiles.latToY(br.latitude)
+        hasTransform = true
+        return true
+    }
 
     private var mask: Bitmap? = null
     private val maskCanvas = Canvas()
@@ -38,6 +77,9 @@ class FogOverlayView(context: Context) : View(context) {
         isAntiAlias = true
     }
     private val maskPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val fogPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x5E, 0xE6, 0xB8) }
+    private var centres = FloatArray(512)
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5EE6B8") }
     private val dotRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -54,17 +96,17 @@ class FogOverlayView(context: Context) : View(context) {
     private val dst = RectF()
 
     override fun onDraw(canvas: Canvas) {
-        val m = map ?: return
+        if (map == null) return
         val w = width
         val h = height
         if (w == 0 || h == 0) return
-        val proj = m.projection
-        val tl = proj.fromScreenLocation(PointF(0f, 0f))
-        val br = proj.fromScreenLocation(PointF(w.toFloat(), h.toFloat()))
-        val x0 = Tiles.lngToX(tl.longitude)
-        val y0 = Tiles.latToY(tl.latitude)
-        val x1 = Tiles.lngToX(br.longitude)
-        val y1 = Tiles.latToY(br.latitude)
+        if (!freezeTransform || !hasTransform) {
+            if (!captureTransform()) return
+        }
+        val x0 = tx0
+        val y0 = ty0
+        val x1 = tx1
+        val y1 = ty1
         if (x1 <= x0 || y1 <= y0) return
         val pxPerCell = w / (x1 - x0)
 
@@ -73,7 +115,11 @@ class FogOverlayView(context: Context) : View(context) {
         val bmp = mask?.takeIf { it.width == mw && it.height == mh }
             ?: Bitmap.createBitmap(mw, mh, Bitmap.Config.ARGB_8888).also { mask = it }
         maskCanvas.setBitmap(bmp)
-        bmp.eraseColor(FOG_COLOR)
+        bmp.eraseColor(Color.TRANSPARENT)
+        if (fogPaint.shader == null) {
+            fogPaint.shader = BitmapShader(cloudTexture(night), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+        }
+        maskCanvas.drawPaint(fogPaint)
 
         // Pick a level so one drawn tile covers at least ~1.5 mask pixels.
         var dz = 0
@@ -85,10 +131,11 @@ class FogOverlayView(context: Context) : View(context) {
         val ly0 = floor(y0 / scale).toInt() - 1
         val ly1 = floor(y1 / scale).toInt() + 1
         val radius = max(1.2f, cellMaskPx * 1.05f)
+        var n = 0
         fun punch(cx: Int, cy: Int) {
-            val centerX = (((cx + 0.5) * scale - x0) * pxPerCell / MASK_DIV).toFloat()
-            val centerY = (((cy + 0.5) * scale - y0) * pxPerCell / MASK_DIV).toFloat()
-            maskCanvas.drawCircle(centerX, centerY, radius, clearPaint)
+            if (n + 2 > centres.size) centres = centres.copyOf(centres.size * 2)
+            centres[n++] = (((cx + 0.5) * scale - x0) * pxPerCell / MASK_DIV).toFloat()
+            centres[n++] = (((cy + 0.5) * scale - y0) * pxPerCell / MASK_DIV).toFloat()
         }
         val explored = cellsAtLevel(dz)
         val visibleTiles = (lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1)
@@ -102,6 +149,18 @@ class FogOverlayView(context: Context) : View(context) {
                 if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
                 punch(cx, cy)
             }
+        }
+        // Rim first (larger circles over the fog), then punch the holes: only a soft edge remains.
+        val rim = radius + max(1f, radius * 0.3f)
+        var i = 0
+        while (i < n) {
+            maskCanvas.drawCircle(centres[i], centres[i + 1], rim, rimPaint)
+            i += 2
+        }
+        i = 0
+        while (i < n) {
+            maskCanvas.drawCircle(centres[i], centres[i + 1], radius, clearPaint)
+            i += 2
         }
         src.set(0, 0, mw, mh)
         dst.set(0f, 0f, w.toFloat(), h.toFloat())
@@ -120,7 +179,7 @@ class FogOverlayView(context: Context) : View(context) {
             val p = toScreen(lat, lng)
             canvas.drawCircle(p.x, p.y, min(160f, max(48f, pxPerCell.toFloat() * 3)), detourPaint)
         }
-        current?.let { (lat, lng) ->
+        current?.takeIf { showCurrent }?.let { (lat, lng) ->
             val p = toScreen(lat, lng)
             canvas.drawCircle(p.x, p.y, 16f, dotPaint)
             canvas.drawCircle(p.x, p.y, 16f, dotRing)
@@ -130,6 +189,46 @@ class FogOverlayView(context: Context) : View(context) {
     private companion object {
         const val MASK_DIV = 3
         const val MAX_DZ = 10
-        val FOG_COLOR = Color.argb(236, 20, 27, 38)
+        private var cachedTexture: Bitmap? = null
+        private var cachedNight = false
+
+        /**
+         * Tileable cloud texture (two octaves of smoothed value noise) in the fog colour, built once.
+         * Translucent enough (~89-96 %) for major roads to show faintly through the fog.
+         */
+        fun cloudTexture(night: Boolean): Bitmap {
+            cachedTexture?.takeIf { cachedNight == night }?.let { return it }
+            val size = 128
+            val base = if (night) intArrayOf(9, 13, 20) else intArrayOf(28, 37, 51)
+            val rnd = java.util.Random(19)
+            fun grid(n: Int) = Array(n) { FloatArray(n) { rnd.nextFloat() } }
+            val coarse = grid(8)
+            val fine = grid(32)
+            fun sample(g: Array<FloatArray>, x: Float, y: Float): Float {
+                val n = g.size
+                val gx = x * n / size
+                val gy = y * n / size
+                val ix = gx.toInt()
+                val iy = gy.toInt()
+                val fx = (gx - ix).let { it * it * (3 - 2 * it) }
+                val fy = (gy - iy).let { it * it * (3 - 2 * it) }
+                val a = g[iy % n][ix % n]
+                val b = g[iy % n][(ix + 1) % n]
+                val c = g[(iy + 1) % n][ix % n]
+                val d = g[(iy + 1) % n][(ix + 1) % n]
+                return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy
+            }
+            val pixels = IntArray(size * size)
+            for (y in 0 until size) for (x in 0 until size) {
+                val v = 0.7f * sample(coarse, x.toFloat(), y.toFloat()) + 0.3f * sample(fine, x.toFloat(), y.toFloat())
+                val lift = (v * 26).toInt()            // lighter wisps
+                val alpha = (226 + v * 20).toInt()     // 89-96 % opaque
+                pixels[y * size + x] = Color.argb(alpha, base[0] + lift, base[1] + lift, base[2] + lift)
+            }
+            return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888).also {
+                cachedTexture = it
+                cachedNight = night
+            }
+        }
     }
 }
