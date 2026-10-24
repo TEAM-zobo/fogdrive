@@ -10,3 +10,9 @@ build/
 *.jks
 *.keystore
 keystore.properties
+
+# QA tools
+qa/reports/
+qa/.qa_password
+qa/logs/
+__pycache__/

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안개지도 QA</title>
+<script src="https://cdn.jsdelivr.net/npm/jmuxer@2.0.5/dist/jmuxer.min.js"></script>
+<style>
+  :root {
+    --bg: #0e1218; --surface: #161c25; --surface-2: #1f2733; --line: #2a3340;
+    --text: #eef2f6; --sub: #9aa6b5; --accent: #5ee6b8; --accent-ink: #00281c;
+    --amber: #ffb547; --red: #ff8a7a; --blue: #7fb2ff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4f6f9; --surface: #ffffff; --surface-2: #eef1f5; --line: #dde2e9;
+      --text: #151a21; --sub: #5b6676; --accent: #0a9b72; --accent-ink: #ffffff;
+      --amber: #b4610a; --red: #c0392b; --blue: #2f6fd6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--sub); font-size: 12px; white-space: nowrap; }
+  .pill.on { color: var(--accent); }
+  .pill.off { color: var(--red); }
+  .pill.busy { color: var(--amber); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; padding: 16px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .screen-wrap { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; touch-action: none; }
+  .screen-wrap video, .screen-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .screen-wrap .hint { position: absolute; inset: 0; display: grid; place-items: center; color: #9aa6b5; font-size: 14px; pointer-events: none; }
+  [hidden], .screen-wrap .hint[hidden] { display: none; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  .row label { color: var(--sub); min-width: 74px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: 10px; padding: 7px 12px; cursor: pointer; min-height: 36px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  button.active { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  input[type=range] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+  input[type=number], input[type=text] { font: inherit; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; width: 120px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { flex: 1; }
+  .panel { display: none; }
+  .panel.show { display: block; }
+  h3 { font-size: 13px; color: var(--sub); margin: 14px 0 4px; font-weight: 600; }
+  .cases { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .case { display: grid; grid-template-columns: 22px 54px 1fr auto; gap: 6px; align-items: start; padding: 7px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .case:last-child { border-bottom: none; }
+  .case .feat { color: var(--sub); font-size: 12px; }
+  .st { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--sub); }
+  .st.PASS { color: var(--accent); } .st.FAIL { color: var(--red); } .st.ERROR { color: var(--amber); }
+  pre.log { background: var(--surface-2); border-radius: 10px; padding: 10px; height: 220px; overflow: auto; margin: 8px 0 0; font: 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  .vstate { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin-top: 10px; }
+  .vstate div { background: var(--surface-2); border-radius: 10px; padding: 6px 10px; }
+  .vstate b { display: block; font-size: 15px; }
+  .vstate span { color: var(--sub); font-size: 12px; }
+  a { color: var(--blue); }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--surface-2); border: 1px solid var(--line); padding: 8px 14px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>안개지도 QA 대시보드</h1>
+  <div class="pills" id="pills"></div>
+</header>
+<main>
+  <section>
+    <div class="screen-wrap" id="screen">
+      <video id="video" muted autoplay playsinline></video>
+      <img id="snap" alt="" hidden>
+      <div class="hint" id="hint">화면 연결 중…</div>
+    </div>
+    <div class="row">
+      <button data-key="back">뒤로</button>
+      <button data-key="home">홈</button>
+      <button id="modeBtn">스냅샷 모드</button>
+      <span class="pill">화면을 클릭하면 탭, 드래그하면 스와이프</span>
+    </div>
+    <div class="card vstate" id="vstate"></div>
+  </section>
+
+  <aside class="card">
+    <div class="tabs">
+      <button class="active" data-tab="vehicle">차량</button>
+      <button data-tab="location">위치</button>
+      <button data-tab="app">앱</button>
+      <button data-tab="tc">TC 실행</button>
+    </div>
+
+    <div class="panel show" id="tab-vehicle">
+      <h3>기어</h3>
+      <div class="row" data-group="gear">
+        <button data-v="gear" data-value="Park">P</button><button data-v="gear" data-value="Reverse">R</button>
+        <button data-v="gear" data-value="Neutral">N</button><button data-v="gear" data-value="Drive">D</button>
+      </div>
+      <h3>도어 (탭하면 열림/닫힘)</h3>
+      <div class="row">
+        <button data-door="front_left">운전석</button><button data-door="front_right">조수석</button>
+        <button data-door="rear_left">뒷좌석 좌</button><button data-door="rear_right">뒷좌석 우</button>
+      </div>
+      <h3>와이퍼 · 전조등</h3>
+      <div class="row">
+        <button data-v="wiper" data-value="Off">와이퍼 끔</button><button data-v="wiper" data-value="Low">와이퍼 Low</button>
+        <button data-v="wiper" data-value="High">High</button>
+      </div>
+      <div class="row">
+        <button data-v="headlamp" data-value="Off">전조등 끔</button><button data-v="headlamp" data-value="LowBeam">로우빔</button>
+      </div>
+      <h3>좌석 탑승 (탭하면 전환)</h3>
+      <div class="row">
+        <button data-seat="passenger">조수석</button><button data-seat="rear_left">뒷좌석 좌</button><button data-seat="rear_right">뒷좌석 우</button>
+      </div>
+      <h3>배터리 · 차속</h3>
+      <div class="row"><label>배터리 <b id="socVal">-</b>%</label><input type="range" id="soc" min="0" max="100" step="1"></div>
+      <div class="row"><label>차속 <b id="spdVal">0</b>km/h</label><input type="range" id="speed" min="0" max="120" step="5" value="0"></div>
+      <div class="row"><button id="vreset">차량 상태 초기화</button></div>
+    </div>
+
+    <div class="panel" id="tab-location">
+      <h3>시연 경로 재생 (성수역 → 서울숲 → 뚝섬한강공원, 실제 도로)</h3>
+      <div class="row"><label>속도</label><input type="number" id="routeSpeed" value="60" min="10" max="200"> km/h</div>
+      <div class="row"><button class="primary" id="routeStart">재생</button><button id="routeStop">정지</button><span id="routeProg" class="pill"></span></div>
+      <p class="pill">재생 전에 기어를 D로 두면 안개가 걷힙니다. P단이면 위치만 바뀝니다.</p>
+      <h3>위치 직접 지정</h3>
+      <div class="row"><input type="text" id="lat" value="37.5446"><input type="text" id="lng" value="127.0559"><button id="geoBtn">이동</button></div>
+      <div class="row">
+        <button data-geo="37.5446,127.0559">성수역</button><button data-geo="37.5296,127.0669">뚝섬한강공원</button>
+        <button data-geo="37.5219,126.9245">여의도</button><button data-geo="37.4979,127.0276">강남역</button>
+      </div>
+    </div>
+
+    <div class="panel" id="tab-app">
+      <h3>앱</h3>
+      <div class="row"><button data-app="start">실행</button><button data-app="stop">종료</button><button data-app="reset">데이터 초기화 후 실행</button></div>
+      <div class="row"><button id="buildBtn">최신 코드 빌드·설치</button></div>
+      <h3>에뮬레이터</h3>
+      <div class="row"><button id="emuBtn">에뮬레이터 시작</button></div>
+      <p class="pill">시연 모드는 화면에서 설정 → 시연 시작을 누르세요.</p>
+    </div>
+
+    <div class="panel" id="tab-tc">
+      <div class="row">
+        <button class="primary" id="runSel">선택 실행</button><button id="runAll">전체 실행</button>
+        <button id="runStop">중지</button><a href="#" id="reportLink" target="_blank" hidden>리포트 열기</a>
+      </div>
+      <div class="cases" id="cases"></div>
+      <h3>최근 리포트</h3>
+      <div id="reports" class="row"></div>
+    </div>
+    <pre class="log" id="log"></pre>
+  </aside>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+let screenSize = [2560, 1440];
+let vstate = null;
+let logNext = 0;
+let lastResults = {};
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+async function post(path, body = {}) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.ok === false) toast(j.error || `실패 (${r.status})`);
+  else if (j.message) toast(j.message);
+  return j;
+}
+
+// ---------- live screen ----------
+let useSnap = false, jmuxer = null, streamAbort = null;
+async function startStream() {
+  stopStream();
+  const video = $("#video");
+  jmuxer = new JMuxer({ node: video, mode: "video", flushingTime: 0, fps: 30, debug: false });
+  streamAbort = new AbortController();
+  $("#hint").hidden = false;
+  try {
+    const r = await fetch("/stream.h264", { signal: streamAbort.signal });
+    const reader = r.body.getReader();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      $("#hint").hidden = true;
+      jmuxer.feed({ video: value });
+      // Stay at the live edge.
+      if (video.buffered.length) {
+        const end = video.buffered.end(video.buffered.length - 1);
+        if (end - video.currentTime > 0.6) video.currentTime = end - 0.05;
+      }
+    }
+  } catch (e) { if (e.name === "AbortError") return; }
+  if (!useSnap) setTimeout(startStream, 500);  // screenrecord stops after 3 minutes
+}
+function stopStream() {
+  if (streamAbort) streamAbort.abort();
+  if (jmuxer) { try { jmuxer.destroy(); } catch (e) {} }
+  jmuxer = null; streamAbort = null;
+}
+let snapTimer = null;
+function startSnap() {
+  const img = $("#snap");
+  const tick = () => { img.src = "/screen.png?t=" + Date.now(); };
+  img.onload = () => { $("#hint").hidden = true; snapTimer = setTimeout(tick, 400); };
+  img.onerror = () => { snapTimer = setTimeout(tick, 1500); };
+  tick();
+}
+$("#modeBtn").onclick = () => {
+  useSnap = !useSnap;
+  $("#modeBtn").textContent = useSnap ? "영상 모드" : "스냅샷 모드";
+  $("#video").hidden = useSnap; $("#snap").hidden = !useSnap;
+  if (useSnap) { stopStream(); startSnap(); } else { clearTimeout(snapTimer); startStream(); }
+};
+
+// Click → tap, drag → swipe, in device coordinates (object-fit: contain letterboxing aware).
+function toDevice(ev) {
+  const rect = $("#screen").getBoundingClientRect();
+  const scale = Math.min(rect.width / screenSize[0], rect.height / screenSize[1]);
+  const w = screenSize[0] * scale, h = screenSize[1] * scale;
+  const x = (ev.clientX - rect.left - (rect.width - w) / 2) / scale;
+  const y = (ev.clientY - rect.top - (rect.height - h) / 2) / scale;
+  return [Math.round(x), Math.round(y)];
+}
+let down = null;
+$("#screen").addEventListener("pointerdown", (e) => { down = { p: toDevice(e), t: Date.now() }; });
+$("#screen").addEventListener("pointerup", (e) => {
+  if (!down) return;
+  const [x1, y1] = down.p, [x2, y2] = toDevice(e);
+  const ms = Math.max(120, Date.now() - down.t);
+  down = null;
+  if (Math.hypot(x2 - x1, y2 - y1) < 20) post("/api/tap", { x: x1, y: y1 });
+  else post("/api/swipe", { x1, y1, x2, y2, ms });
+});
+$$("[data-key]").forEach((b) => b.onclick = () => post("/api/key", { name: b.dataset.key }));
+
+// ---------- vehicle ----------
+$$("[data-v]").forEach((b) => b.onclick = () => post("/api/vehicle", { op: b.dataset.v, value: b.dataset.value }).then(refresh));
+$$("[data-door]").forEach((b) => b.onclick = () => {
+  const open = !(vstate && vstate.doors && vstate.doors[b.dataset.door]);
+  post("/api/vehicle", { op: "door", area: b.dataset.door, opened: open }).then(refresh);
+});
+$$("[data-seat]").forEach((b) => b.onclick = () => {
+  const occ = !(vstate && vstate.seats && vstate.seats[b.dataset.seat]);
+  post("/api/vehicle", { op: "seat", area: b.dataset.seat, occupied: occ }).then(refresh);
+});
+$("#soc").oninput = () => $("#socVal").textContent = $("#soc").value;
+$("#soc").onchange = () => post("/api/vehicle", { op: "soc", value: +$("#soc").value }).then(refresh);
+$("#speed").oninput = () => $("#spdVal").textContent = $("#speed").value;
+$("#speed").onchange = () => post("/api/vehicle", { op: "speed", value: +$("#speed").value }).then(refresh);
+$("#vreset").onclick = () => post("/api/vehicle", { op: "reset" }).then(refresh);
+
+// ---------- location ----------
+$("#routeStart").onclick = () => post("/api/route", { action: "start", speed: +$("#routeSpeed").value });
+$("#routeStop").onclick = () => post("/api/route", { action: "stop" });
+$("#geoBtn").onclick = () => post("/api/geo", { lat: +$("#lat").value, lng: +$("#lng").value });
+$$("[data-geo]").forEach((b) => b.onclick = () => {
+  const [lat, lng] = b.dataset.geo.split(",").map(Number);
+  $("#lat").value = lat; $("#lng").value = lng;
+  post("/api/geo", { lat, lng });
+});
+
+// ---------- app ----------
+$$("[data-app]").forEach((b) => b.onclick = () => post("/api/app", { action: b.dataset.app }));
+$("#buildBtn").onclick = () => post("/api/build");
+$("#emuBtn").onclick = () => post("/api/emulator");
+
+// ---------- tabs ----------
+$$("[data-tab]").forEach((b) => b.onclick = () => {
+  $$("[data-tab]").forEach((x) => x.classList.toggle("active", x === b));
+  $$(".panel").forEach((p) => p.classList.toggle("show", p.id === "tab-" + b.dataset.tab));
+});
+
+// ---------- TC ----------
+async function loadCases() {
+  const cases = await (await fetch("/api/cases")).json();
+  $("#cases").innerHTML = cases.map((c) => `
+    <label class="case" title="${c.steps.join(" → ")}">
+      <input type="checkbox" value="${c.id}">
+      <b>${c.id}</b>
+      <span>${c.title}<br><span class="feat">${c.feature} · 기대: ${c.expected.join(", ")}</span></span>
+      <span class="st" id="st-${c.id}">-</span>
+    </label>`).join("");
+}
+$("#runSel").onclick = () => {
+  const ids = $$("#cases input:checked").map((i) => i.value);
+  if (!ids.length) return toast("TC를 선택하세요");
+  post("/api/run", { ids });
+};
+$("#runAll").onclick = () => post("/api/run", { ids: [] });
+$("#runStop").onclick = () => post("/api/job/stop");
+async function loadReports() {
+  const rs = await (await fetch("/api/reports")).json();
+  $("#reports").innerHTML = rs.slice(0, 6).map((r) =>
+    `<a class="pill" target="_blank" href="/reports/${r.dir}/index.html">${r.dir.slice(4, 8)} ${r.dir.slice(9, 13)} · ${r.passed}/${r.total}</a>`).join("") || '<span class="pill">없음</span>';
+}
+
+// ---------- polling ----------
+function pill(text, cls) { return `<span class="pill ${cls}">${text}</span>`; }
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    if (s.screen) screenSize = s.screen;
+    vstate = s.vehicle;
+    $("#pills").innerHTML =
+      pill(s.emulator ? "에뮬레이터 연결" : "에뮬레이터 꺼짐", s.emulator ? "on" : "off") +
+      pill(s.vconsole ? "Virtual Console" : "Virtual Console 없음", s.vconsole ? "on" : "off") +
+      pill(s.app ? "앱 설치됨" : "앱 없음", s.app ? "on" : "off") +
+      (s.job ? pill(s.job + " 중", "busy") : "") + (s.route ? pill("경로 재생 " + s.route, "busy") : "");
+    $("#routeProg").textContent = s.route || "";
+    const v = s.vehicle;
+    if (v) {
+      const doors = Object.entries(v.doors || {}).filter(([, o]) => o).map(([k]) => k).length;
+      const seats = Object.entries(v.seats || {}).filter(([, o]) => o).map(([k]) => k);
+      $("#vstate").innerHTML = [
+        ["기어", v.gear], ["차속", v.speed + " km/h"], ["열린 도어", doors ? doors + "개" : "없음"],
+        ["와이퍼", v.wiper], ["전조등", v.headlamp], ["탑승", seats.join(", ") || "없음"], ["배터리", Math.round(v.soc) + "%"],
+      ].map(([k, val]) => `<div><span>${k}</span><b>${val}</b></div>`).join("");
+      $$("[data-v=gear]").forEach((b) => b.classList.toggle("active", b.dataset.value === v.gear));
+      $$("[data-v=wiper]").forEach((b) => b.classList.toggle("active", b.dataset.value === v.wiper));
+      $$("[data-v=headlamp]").forEach((b) => b.classList.toggle("active", b.dataset.value === v.headlamp));
+      $$("[data-door]").forEach((b) => b.classList.toggle("active", !!(v.doors || {})[b.dataset.door]));
+      $$("[data-seat]").forEach((b) => b.classList.toggle("active", !!(v.seats || {})[b.dataset.seat]));
+      if (document.activeElement !== $("#soc")) { $("#soc").value = Math.round(v.soc); $("#socVal").textContent = Math.round(v.soc); }
+    }
+  } catch (e) {}
+}
+async function pollJob() {
+  try {
+    const j = await (await fetch("/api/job?since=" + logNext)).json();
+    if (j.log.length) {
+      const el = $("#log");
+      el.textContent += j.log.join("\n") + "\n";
+      el.scrollTop = el.scrollHeight;
+      logNext = j.next;
+      for (const line of j.log) {
+        const m = line.match(/\[(TC-\d+)\] (PASS|FAIL|ERROR)/);
+        if (m) { const st = $("#st-" + m[1]); if (st) { st.textContent = m[2]; st.className = "st " + m[2]; } }
+        const s = line.match(/\[(TC-\d+)\] 시작/);
+        if (s) { const st = $("#st-" + s[1]); if (st) { st.textContent = "실행"; st.className = "st"; } }
+      }
+    }
+    if (j.report) { const a = $("#reportLink"); a.hidden = false; a.href = `/reports/${j.report}/index.html`; }
+    if (!j.job && pollJob.wasBusy) loadReports();
+    pollJob.wasBusy = !!j.job;
+  } catch (e) {}
+}
+
+loadCases(); loadReports(); refresh(); startStream();
+setInterval(refresh, 2000);
+setInterval(pollJob, 1000);
+</script>
+</body>
+</html>

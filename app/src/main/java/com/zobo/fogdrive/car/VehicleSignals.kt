@@ -107,7 +107,9 @@ class VehicleSignals(private val context: Context) {
         }
         guard("seat") {
             val seat = v.getSeat()
-            for (value in listOf(SeatValue.ROW_1_RIGHT, SeatValue.ROW_2_LEFT, SeatValue.ROW_2_CENTER, SeatValue.ROW_2_RIGHT)) {
+            // Rear outboard seats only: child seats (ISOFIX) sit there, and the center seat cannot be
+            // driven from the emulator's Virtual Console.
+            for (value in listOf(SeatValue.ROW_1_RIGHT, SeatValue.ROW_2_LEFT, SeatValue.ROW_2_RIGHT)) {
                 val area = SeatArea(value)
                 val name = value.name
                 val listener = object : SeatOccupancyListener {
@@ -198,8 +200,10 @@ class VehicleSignals(private val context: Context) {
     private fun setDoor(name: String, open: Boolean) =
         edit { it.copy(doorsOpen = if (open) it.doorsOpen + name else it.doorsOpen - name) }
 
-    private fun setSeat(name: String, occupied: Boolean) =
+    private fun setSeat(name: String, occupied: Boolean) {
+        Log.d(TAG, "seat $name occupied=$occupied")
         edit { it.copy(occupiedSeats = if (occupied) it.occupiedSeats + name else it.occupiedSeats - name) }
+    }
 
     private inline fun guard(what: String, block: () -> Unit) {
         try {
