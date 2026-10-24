@@ -57,7 +57,8 @@ fun DrivingScreen(viewModel: MainViewModel) {
     val here by viewModel.here.collectAsState()
     val tripNewDongs by viewModel.tripNewDongs.collectAsState()
     val showWornRoads by viewModel.showWornRoads.collectAsState()
-    val current = live.location?.let { it.lat to it.lng }
+    val location = live.location
+    val current = location?.let { it.lat to it.lng }
     val pins = remember(landings) { landings.map { it.lat to it.lng } }
 
     Box(Modifier.fillMaxSize().background(FogColors.Bg)) {
@@ -65,6 +66,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
             modifier = Modifier.fillMaxSize(),
             version = version,
             current = current,
+            fixTimeMs = location?.timeMs,
             landings = pins,
             detour = null,
             follow = true,

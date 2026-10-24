@@ -1,5 +1,6 @@
 package com.zobo.fogdrive.demo
 
+import android.os.SystemClock
 import com.zobo.fogdrive.car.Arrival
 import com.zobo.fogdrive.car.ArrivalKind
 import com.zobo.fogdrive.car.Fix
@@ -83,13 +84,24 @@ class DemoDrive(
         // a real car reports 1 a second. Fixes are sent at most every MIN_FIX_INTERVAL_MS (plus every
         // route corner, so the cleared path never cuts across a block); the recorder joins the cells
         // in between, so the same road is cleared either way.
+        // Each fix is sent when the car reaches it, on a running clock. Sending first and then waiting
+        // for the stretch just driven put that wait before the *next* fix instead: a corner 15 m on
+        // came a whole interval late and the fix after it almost at once, so the driving map crawled
+        // and then jumped at every corner.
         var pendingMs = 0.0
+        var due = SystemClock.uptimeMillis().toDouble()
         for ((i, p) in points.withIndex()) {
             if (!isActive) return null
             val mps = speedKmh().coerceIn(MIN_KMH, MAX_KMH) / 3.6
-            pendingMs += STEP_M / mps * 1000 / speedUp
+            val stepMs = STEP_M / mps * 1000 / speedUp
+            pendingMs += stepMs
+            due += stepMs
             val last = i == points.lastIndex
             if (pendingMs < MIN_FIX_INTERVAL_MS && !p.corner && !last) continue
+            val now = SystemClock.uptimeMillis()
+            // Running late (a busy main thread): carry on from now rather than bursting to catch up.
+            if (now - due > MAX_LATE_MS) due = now.toDouble()
+            delay((due - now).toLong())
             val progress = i.toDouble() / points.size
             onGuidance(guidanceAt(course, p.along))
             val wiper = course.rain?.contains(progress) == true
@@ -97,8 +109,9 @@ class DemoDrive(
                 vehicle = vehicle.copy(wiperOn = wiper)
                 onVehicle(vehicle)
             }
-            onFix(fix(p.latLng))
-            delay(pendingMs.toLong().coerceAtLeast(40))
+            // Stamp the fix with when the car reached it (its due time), not when it was sent, so a
+            // late send does not show up as uneven driving on the map's fix timeline.
+            onFix(fix(p.latLng, System.currentTimeMillis() + (due.toLong() - SystemClock.uptimeMillis())))
             pendingMs = 0.0
         }
         onGuidance(null)
@@ -118,7 +131,8 @@ class DemoDrive(
         job = null
     }
 
-    private fun fix(p: Pair<Double, Double>) = Fix(p.first, p.second, System.currentTimeMillis(), 5f, LocationFeed.SOURCE_DEMO)
+    private fun fix(p: Pair<Double, Double>, timeMs: Long = System.currentTimeMillis()) =
+        Fix(p.first, p.second, timeMs, 5f, LocationFeed.SOURCE_DEMO)
 
     /** [corner]: an original route vertex (always sent as a fix), not a point filled in between. */
     private class RoutePoint(val latLng: Pair<Double, Double>, val along: Double, val corner: Boolean = false)
@@ -153,6 +167,7 @@ class DemoDrive(
         const val DEFAULT_KMH = 60
         private const val STEP_M = 15.0
         private const val MIN_FIX_INTERVAL_MS = 200.0
+        private const val MAX_LATE_MS = 500
         /** Demo time runs this much faster than the set speed (a 16 km course takes ~1.6 min at 60 km/h). */
         const val SPEED_UP = 10.0
     }

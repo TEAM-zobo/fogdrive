@@ -228,8 +228,12 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     var driving = false
         private set
 
-    // Recent fixes (arrival time, position), replayed [lag] ms behind real time.
+    // Recent fixes (when taken, on the uptime clock; position), replayed [lag] ms behind real time.
     private val fixAt = LongArray(FIX_HISTORY)
+    /** How late each fix reached the map (delivery through the recorder and recomposition). */
+    private val fixDelay = LongArray(FIX_HISTORY)
+    /** Fix clock to uptime: the smallest arrival-minus-fix-time seen, i.e. the fastest delivery. */
+    private var clockOffset = Long.MAX_VALUE
     private val fixLat = DoubleArray(FIX_HISTORY)
     private val fixLng = DoubleArray(FIX_HISTORY)
     /** Heading of the segment ending at each fix (NaN when too short to tell), shown while that segment plays. */
@@ -364,9 +368,11 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
      * interval changed speed at every fix whenever fixes came unevenly (demo corners, late
      * recompositions): at high speed each fix is ~100 m apart, so the map visibly surged and braked.
      * Instead the fixes are replayed along their own timeline, a little more than one interval late,
-     * so between fixes the car moves at the speed the fixes were actually covered.
+     * so between fixes the car moves at the speed the fixes were actually covered. The timeline is
+     * when each fix was taken ([timeMs]), not when it arrived: delivery sometimes lags ~200 ms, and
+     * replaying by arrival slowed the car before such a fix and rushed it after.
      */
-    fun onFix(lat: Double, lng: Double) {
+    fun onFix(lat: Double, lng: Double, timeMs: Long? = null) {
         if (!driving) return
         val now = SystemClock.uptimeMillis()
         val last = fixCount - 1
@@ -376,6 +382,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         if (jump) {
             fixCount = 0
             lag = START_LAG_MS
+            clockOffset = Long.MAX_VALUE
         } else {
             shownAt(now)  // bring the lag easing up to now before the history changes
             if (now - fixAt[last] > MAX_LAG_MS) {
@@ -386,6 +393,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
                 fixLat[0] = fixLat[last]
                 fixLng[0] = fixLng[last]
                 fixBearing[0] = Float.NaN
+                fixDelay[0] = 0
                 fixCount = 1
             }
             val prev = fixCount - 1
@@ -400,9 +408,21 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             System.arraycopy(fixLat, 1, fixLat, 0, FIX_HISTORY - 1)
             System.arraycopy(fixLng, 1, fixLng, 0, FIX_HISTORY - 1)
             System.arraycopy(fixBearing, 1, fixBearing, 0, FIX_HISTORY - 1)
+            System.arraycopy(fixDelay, 1, fixDelay, 0, FIX_HISTORY - 1)
             fixCount--
         }
-        fixAt[fixCount] = now
+        var at = now
+        if (timeMs != null) {
+            val offset = now - timeMs
+            // A fix that seems to have taken longer than the whole replay delay to arrive means the fix
+            // clock stepped back (time sync, a feed switching sources): re-base on it instead of keeping
+            // every later fix "late", which would pin the lag at its maximum and squash the timeline.
+            clockOffset = if (offset - clockOffset > MAX_LAG_MS) offset else minOf(clockOffset, offset)
+            at = timeMs + clockOffset
+        }
+        if (fixCount > 0) at = at.coerceAtLeast(fixAt[fixCount - 1] + 1)
+        fixAt[fixCount] = at
+        fixDelay[fixCount] = (now - at).coerceAtLeast(0L)
         fixLat[fixCount] = lat
         fixLng[fixCount] = lng
         fixBearing[fixCount] = bearing
@@ -415,11 +435,18 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         startTicking()
     }
 
-    /** Replay delay that covers the longest recent gap between fixes, so playback never runs dry. */
+    /**
+     * Replay delay that covers the longest recent gap between fixes plus the slowest recent
+     * delivery, so playback never runs past the newest fix before the next one arrives.
+     */
     private fun targetLag(): Double {
         var gap = 0L
-        for (i in 1 until fixCount) gap = maxOf(gap, fixAt[i] - fixAt[i - 1])
-        return (gap * 1.5).coerceIn(MIN_LAG_MS.toDouble(), MAX_LAG_MS.toDouble())
+        var delay = 0L
+        for (i in 0 until fixCount) {
+            if (i > 0) gap = maxOf(gap, fixAt[i] - fixAt[i - 1])
+            delay = maxOf(delay, fixDelay[i])
+        }
+        return ((gap + delay) * 1.25).coerceIn(MIN_LAG_MS.toDouble(), MAX_LAG_MS.toDouble())
     }
 
     /**
@@ -532,6 +559,8 @@ fun FogMap(
     modifier: Modifier,
     version: Int,
     current: Pair<Double, Double>?,
+    /** When [current] was taken (Fix.timeMs); paces the driving glide. */
+    fixTimeMs: Long? = null,
     landings: List<Pair<Double, Double>>,
     detour: Pair<Double, Double>?,
     follow: Boolean,
@@ -600,7 +629,7 @@ fun FogMap(
                 override fun onMoveEnd(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
             })
             holder.setDriving(driving)
-            current?.let { holder.onFix(it.first, it.second) }
+            current?.let { holder.onFix(it.first, it.second, fixTimeMs) }
             if (holder.showFocus(animate = false)) onFocusShown()
         }
         onDispose {
@@ -636,7 +665,7 @@ fun FogMap(
         val map = holder.map ?: return@LaunchedEffect
         if (current == null) return@LaunchedEffect
         if (driving) {
-            holder.onFix(current.first, current.second)
+            holder.onFix(current.first, current.second, fixTimeMs)
         } else if (follow) {
             map.animateCamera(CameraUpdateFactory.newLatLng(LatLng(current.first, current.second)), 600)
         }
