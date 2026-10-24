@@ -1,6 +1,7 @@
 package com.zobo.fogdrive.record
 
 import com.zobo.fogdrive.car.ArrivalKind
+import com.zobo.fogdrive.car.DriveMode
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.Gear
 import com.zobo.fogdrive.car.VehicleState
@@ -42,6 +43,11 @@ enum class StampCode(val title: String, val description: String) {
     DONG_HOPPER("동네 순례", "한 번의 주행으로 새 읍·면·동을 5곳 넘게 지났어요"),
     PROVINCE_CROSS("경계 넘어", "한 번의 주행으로 시·도 경계를 넘었어요"),
     NEW_PROVINCE("새 땅 밟기", "처음 가 보는 시·도에 들어섰어요"),
+    OPEN_AIR("바람길 개척", "창문을 열고 새 길을 달렸어요"),
+    SUNROOF("하늘 열고 개척", "선루프를 열고 새 길을 달렸어요"),
+    ECO("에코 탐험가", "에코 모드로 새 길을 달렸어요"),
+    SPORT("스포츠 개척", "스포츠 모드로 새 길을 달렸어요"),
+    CREW_MISSION("함께한 미션", "동승자와 이번 주행 미션을 끝냈어요"),
 }
 
 sealed interface RecorderEvent {
@@ -64,7 +70,8 @@ data class TripStats(
  * - while not parked, each fix reveals the cells along the path plus a 1-cell margin (~90 m swath:
  *   the road and what is visible from it);
  * - P + a door opening = a landing that reveals a 7x7 block (~210 m, a walk around) and ends the trip;
- * - new cells revealed under rain / headlights / rear passengers earn situation stamps;
+ * - new cells revealed under rain / headlights / passengers / open windows / eco or sport mode earn
+ *   situation stamps;
  * - a navigation arrival reveals the block around the car (wider for the fog detour) and earns a stamp.
  */
 class TripRecorder(private val sink: ExploreSink) {
@@ -167,6 +174,13 @@ class TripRecorder(private val sink: ExploreSink) {
             // Two or more besides the driver, at least one of them in the back.
             if (vehicle.occupiedSeats.count { it != DRIVER_SEAT } >= 2 && vehicle.rearOccupied) award(StampCode.FULL_HOUSE, fix, events)
             if ((vehicle.evSocPercent ?: 100) <= LOW_BATTERY_PERCENT) award(StampCode.LOW_BATTERY, fix, events)
+            if (vehicle.windowsOpen.isNotEmpty()) award(StampCode.OPEN_AIR, fix, events)
+            if (vehicle.sunroofOpen) award(StampCode.SUNROOF, fix, events)
+            when (vehicle.drivingMode) {
+                DriveMode.ECO -> award(StampCode.ECO, fix, events)
+                DriveMode.SPORT -> award(StampCode.SPORT, fix, events)
+                else -> Unit
+            }
             // Time-of-day / day-of-week stamps, from the fix's local time.
             val time = Calendar.getInstance().apply { timeInMillis = fix.timeMs }
             val day = time.get(Calendar.DAY_OF_WEEK)

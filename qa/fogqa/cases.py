@@ -92,15 +92,39 @@ def read_record(ctx):
     }
 
 
+def tap_scrolling(ctx, text, swipes=8):
+    """Taps [text] on a scrolled screen (Settings, dex): swipes up until it is on screen."""
+    x = (APP_AREA[0] + APP_AREA[2]) // 2
+    for _ in range(swipes):
+        if ctx.dev.find(text) is not None:
+            ctx.dev.tap_text(text)
+            return
+        ctx.dev.swipe(x, APP_AREA[3] - 100, x, APP_AREA[1] + 100, 400)
+        time.sleep(0.8)
+    raise CaseFailed(f"'{text}'을(를) 찾지 못함")
+
+
+STAMP_NAMES = ("빗속 개척", "야간 개척", "가족 탐험", "충전소 깃발", "바람길 개척", "함께한 미션")
+
+
 def read_stamps(ctx):
+    """Stamp counts from the dex. The stamps sit below the region grid and the challenges, and
+    off-screen nodes are not in the UI dump, so the dex is scrolled down until all were read."""
     ctx.dev.tap_text("도감")
     time.sleep(1.2)
-    t = ctx.dev.texts()
     out = {}
-    for name in ("빗속 개척", "야간 개척", "가족 탐험", "충전소 깃발"):
-        if name in t:
-            i = t.index(name)
-            out[name] = 0 if "아직" in t[i + 2] else int(number(t[i + 2]) or 0)
+    for _ in range(8):
+        t = ctx.dev.texts()
+        for name in STAMP_NAMES:
+            if name in t and name not in out:
+                i = t.index(name)
+                if i + 2 < len(t):
+                    out[name] = 0 if "아직" in t[i + 2] else int(number(t[i + 2]) or 0)
+        if len(out) == len(STAMP_NAMES):
+            break
+        x = (APP_AREA[0] + APP_AREA[2]) // 2
+        ctx.dev.swipe(x, APP_AREA[3] - 100, x, APP_AREA[1] + 100, 400)
+        time.sleep(0.8)
     return out
 
 
@@ -342,14 +366,14 @@ def tc_detour(ctx):
 
 @case("TC-13", "시연 모드", "시연 모드가 출발→주행→하차까지 끝까지 재생된다",
       "앱 초기화",
-      ["설정 → 시연 시작 → 지도", "완료 메시지까지 대기(약 2분)", "기록·도감 확인", "시연 중지"],
+      ["설정 → 시연 시작 → 지도", "완료 메시지까지 대기(성수 코스 36 km, 기본 60 km/h·10배속으로 약 4분)", "기록·도감 확인", "시연 중지"],
       ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "빗속 개척·가족 탐험 획득"])
 def tc_demo(ctx):
     fresh(ctx)
     ctx.dev.tap_text("설정")
     ctx.dev.tap_text("시연 시작")
     ctx.dev.tap_text("지도")
-    ctx.check(ctx.dev.wait_text("시연 주행 완료", timeout=180), "시연 완료")
+    ctx.check(ctx.dev.wait_text("시연 주행 완료", timeout=330), "시연 완료")
     ctx.shot("demo_done")
     r = read_record(ctx)
     s = read_stamps(ctx)
@@ -370,7 +394,7 @@ def tc_reset(ctx):
     drive(ctx, ROUTE[:10])
     park(ctx)
     ctx.dev.tap_text("설정")
-    ctx.dev.tap_text("기록 전체 삭제")
+    tap_scrolling(ctx, "기록 전체 삭제")
     ctx.dev.tap_text("정말 삭제")
     time.sleep(2)
     r = read_record(ctx)
@@ -390,3 +414,119 @@ def tc_back(ctx):
     ctx.dev.key("back")
     ctx.check(ctx.dev.wait_text("Lv.", timeout=5), "지도 화면 복귀")
     ctx.check("com.zobo.fogdrive" in ctx.dev.top_activity(), "앱 포그라운드 유지")
+
+
+@case("TC-16", "튜토리얼", "첫 실행 때 튜토리얼이 뜨고, 끝내면 다시 뜨지 않으며, 설정에서 다시 볼 수 있다",
+      "앱 데이터 초기화, 튜토리얼 건너뛰기 없이 실행",
+      ["앱 첫 실행", "다음 4번 → 시작하기", "앱 재시작", "설정 → 튜토리얼 다시 보기 → 건너뛰기"],
+      ["'안개지도 둘러보기 1/5' 표시", "시작하기 후 닫힘", "재시작해도 다시 뜨지 않음", "설정에서 다시 열리고 건너뛰기로 닫힘"])
+def tc_tutorial(ctx):
+    ctx.vc.reset()
+    ctx.dev.app_stop()
+    ctx.dev.app_reset()
+    ctx.dev.geo(*START)
+    ctx.dev.app_start(tutorial=True)
+    ctx.check(ctx.dev.wait_text("안개지도 둘러보기 1/5", timeout=10, exact=True), "튜토리얼 1/5 표시")
+    ctx.shot("tutorial")
+    for _ in range(4):
+        ctx.dev.tap_text("다음")
+        time.sleep(0.5)
+    ctx.check(ctx.dev.find("안개지도 둘러보기 5/5") is not None, "마지막 장")
+    ctx.dev.tap_text("시작하기")
+    ctx.check(ctx.dev.wait_text("안개지도 둘러보기", timeout=5, present=False), "시작하기 후 닫힘")
+    ctx.dev.app_stop()
+    ctx.dev.app_start(tutorial=True)
+    time.sleep(2)
+    ctx.check(ctx.dev.find("안개지도 둘러보기 1/5") is None, "재시작해도 다시 뜨지 않음")
+    ctx.dev.tap_text("설정")
+    tap_scrolling(ctx, "다시 보기")
+    ctx.check(ctx.dev.wait_text("안개지도 둘러보기 1/5", timeout=5, exact=True), "설정에서 다시 열림")
+    ctx.dev.tap_text("건너뛰기")
+    ctx.check(ctx.dev.wait_text("안개지도 둘러보기", timeout=5, present=False), "건너뛰기로 닫힘")
+
+
+@case("TC-17", "상황 스탬프", "창문을 열고 새 길을 달리면 '바람길 개척'을 얻는다",
+      "앱 초기화",
+      ["운전석 창문 50% 열기", "기어 D로 12개 지점 주행", "도감 탭 확인"],
+      ["바람길 개척 1회 획득", "다른 스탬프 없음"])
+def tc_stamp_window(ctx):
+    _stamp_case(ctx, lambda: ctx.vc.window("front_left", 50), "바람길 개척")
+
+
+@case("TC-18", "주행 요약", "하차하면 지도에 이번 주행 요약 카드가 뜨고, 닫으면 사라진다",
+      "앱 초기화",
+      ["기어 D로 20개 지점 주행", "기어 P", "운전석 도어 열기", "요약 카드 확인 후 닫기"],
+      ["'이번 주행 요약' 카드와 밝힌 면적·거리 표시", "처음 가 본 동네 표시", "닫기 후 카드 사라짐"])
+def tc_trip_summary(ctx):
+    fresh(ctx)
+    ctx.vc.gear("Drive")
+    drive(ctx, ROUTE[:20])
+    park(ctx)
+    ctx.vc.door("front_left", True)
+    ctx.check(ctx.dev.wait_text("이번 주행 요약", timeout=8, exact=True), "요약 카드 표시")
+    ctx.vc.door("front_left", False)
+    t = ctx.dev.texts()
+    ctx.shot("trip_summary")
+    ctx.check(any(x.startswith("+") and "km" in x for x in t), "면적·거리 줄 표시")
+    ctx.check(any(x.startswith("처음 가 본 동네") for x in t), "처음 가 본 동네 표시")
+    ctx.dev.tap_text("닫기")
+    ctx.check(ctx.dev.wait_text("이번 주행 요약", timeout=5, present=False), "닫기 후 사라짐")
+
+
+@case("TC-19", "동승자 미션", "동승자가 타면 주행 미션이 생기고, 주행 요약에 결과가 나온다",
+      "앱 초기화",
+      ["조수석 탑승", "기어 D로 20개 지점 주행", "기어 P, 도어 열기", "요약 카드 확인"],
+      ["주행 요약에 '동승자 미션' 줄 표시"])
+def tc_crew_mission(ctx):
+    fresh(ctx)
+    ctx.vc.seat("passenger", True)
+    ctx.vc.gear("Drive")
+    drive(ctx, ROUTE[:20])
+    park(ctx)
+    ctx.vc.door("front_left", True)
+    ctx.check(ctx.dev.wait_text("이번 주행 요약", timeout=8, exact=True), "요약 카드 표시")
+    ctx.vc.door("front_left", False)
+    t = ctx.dev.texts()
+    ctx.shot("crew_mission")
+    line = next((x for x in t if x.startswith("동승자 미션")), None)
+    ctx.log(f"미션: {line}")
+    ctx.check(line is not None, "동승자 미션 결과 표시")
+
+
+@case("TC-20", "차량 신호", "창문·주행 가능 거리 신호가 연결 상태에 그대로 보인다",
+      "앱 초기화, P단",
+      ["주행 가능 거리 250 km 설정", "운전석 창문 60% 열기", "설정 → 연결 상태 확인"],
+      ["차량 상태에 '창문 열림', '주행 가능 250 km' 표시"])
+def tc_vehicle_extras(ctx):
+    fresh(ctx)
+    ctx.vc.range_km(250)
+    ctx.vc.window("front_left", 60)
+    time.sleep(2)
+    s = read_settings(ctx)
+    ctx.shot("vehicle_extras")
+    state = s["차량 상태"] or ""
+    ctx.log(f"차량 상태: {state}")
+    ctx.check("창문 열림" in state, "창문 열림 표시")
+    ctx.check("주행 가능 250 km" in state, "주행 가능 거리 250 km")
+
+
+@case("TC-21", "공유 카드", "기록 탭에서 '내 안개지도 카드'를 만들면 이미지가 저장되고 미리보기가 뜬다",
+      "앱 초기화 후 한 번 주행",
+      ["기어 D로 10개 지점 주행 후 P", "기록 탭 → 내 안개지도 카드", "미리보기 확인 후 닫기"],
+      ["미리보기 대화상자와 '이미지로 저장했어요' 표시", "앱 저장소에 PNG 파일 생성"])
+def tc_share_card(ctx):
+    fresh(ctx)
+    ctx.vc.gear("Drive")
+    drive(ctx, ROUTE[:10])
+    park(ctx)
+    ctx.dev.tap_text("기록")
+    ctx.dev.shell("logcat", "-c")
+    ctx.dev.tap_text("내 안개지도 카드")
+    ctx.check(ctx.dev.wait_text("이미지로 저장했어요", timeout=10), "저장 안내 표시")
+    ctx.shot("share_card")
+    # The driver profile's app folder isn't readable over adb; the app logs what it saved.
+    saved = ctx.dev.shell("logcat", "-d", "-s", "FogShare:I")
+    m = re.search(r"card saved (\S+fogdrive-card-\S+\.png) \((\d+) bytes\)", saved)
+    ctx.log(f"저장: {m.group(1) if m else saved.strip()[-200:]}")
+    ctx.check(m is not None and int(m.group(2)) > 10_000, "PNG 파일 생성")
+    ctx.dev.tap_text("닫기")

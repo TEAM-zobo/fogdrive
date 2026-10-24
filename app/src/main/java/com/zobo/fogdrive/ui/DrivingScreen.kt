@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,18 +92,49 @@ fun DrivingScreen(viewModel: MainViewModel) {
         ) {
             Text("주행 모드", style = MaterialTheme.typography.titleMedium, color = FogColors.TextSub)
             Text("Lv.${summary.level}", color = FogColors.Accent, style = MaterialTheme.typography.displaySmall)
-            Text("+${Area.formatCells(live.trip.newCells, live.location?.lat ?: 37.5)}", color = FogColors.Amber, style = MaterialTheme.typography.displaySmall)
+            Text(
+                "+${Area.formatCells(live.trip.newCells, live.location?.lat ?: 37.5)}",
+                color = FogColors.Amber,
+                style = MaterialTheme.typography.displaySmall.tabular(),
+                modifier = Modifier.widthIn(min = 220.dp),
+            )
             if (tripNewDongs > 0) {
                 Text("새 동 +$tripNewDongs", color = FogColors.Blue, style = MaterialTheme.typography.displaySmall)
             }
             here?.let { h ->
-                Column {
+                Column(Modifier.widthIn(min = 140.dp)) {
                     Text(h.dong.name, style = MaterialTheme.typography.titleLarge, color = FogColors.TextMain)
-                    Text(formatRate(h.dong.rate), style = MaterialTheme.typography.titleMedium, color = FogColors.Accent)
+                    Text(formatRate(h.dong.rate), style = MaterialTheme.typography.titleMedium.tabular(), color = FogColors.Accent)
                 }
             }
         }
         GuidancePanel(guidance, Modifier.align(Alignment.TopEnd).padding(28.dp))
+        // Passenger mission: one line with its progress, nothing to touch (the passengers follow
+        // it; the driver hears when it is done).
+        live.mission?.let { m ->
+            val done = live.missionProgress >= m.target
+            Row(
+                Modifier
+                    .clearAndSetSemantics { contentDescription = "동승자 미션" }
+                    // Centred: the bottom-left corner keeps the map credit visible.
+                    .align(Alignment.BottomCenter)
+                    .padding(28.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(FogColors.Surface.copy(alpha = 0.94f))
+                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("동승자 미션", style = MaterialTheme.typography.titleMedium, color = FogColors.TextSub)
+                Text(m.title(), style = MaterialTheme.typography.titleLarge, color = FogColors.TextMain)
+                Text(
+                    if (done) "성공!" else m.progressLabel(live.missionProgress),
+                    style = MaterialTheme.typography.titleLarge.tabular(),
+                    modifier = Modifier.widthIn(min = 240.dp),
+                    color = if (done) FogColors.Accent else FogColors.Amber,
+                )
+            }
+        }
         Column(
             Modifier.align(Alignment.BottomEnd).padding(28.dp),
             horizontalAlignment = Alignment.End,
@@ -141,7 +174,12 @@ private fun TurnCard(turn: TurnHint) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(turnIcon(turn.kind), contentDescription = null, tint = FogColors.Accent, modifier = Modifier.size(64.dp))
-        Text(distanceLabel(turn.distanceM), color = FogColors.TextMain, style = MaterialTheme.typography.displaySmall)
+        Text(
+            distanceLabel(turn.distanceM),
+            color = FogColors.TextMain,
+            style = MaterialTheme.typography.displaySmall.tabular(),
+            modifier = Modifier.widthIn(min = 150.dp),
+        )
     }
 }
 
@@ -160,6 +198,13 @@ private fun SpeedLimitSign(kmh: Int) {
 }
 
 private val SignRed = Color(0xFFD62B2B)
+
+/**
+ * Same-width digits, used with a minimum width on the numbers that change every fix: the panels then
+ * keep their size, so a new value redraws the text without re-laying out the panel (and without an
+ * accessibility layout event per fix, which also kept UI tools from ever seeing the screen idle).
+ */
+private fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum")
 
 private fun turnIcon(kind: TurnKind): ImageVector = when (kind) {
     TurnKind.STRAIGHT -> Icons.Filled.Straight

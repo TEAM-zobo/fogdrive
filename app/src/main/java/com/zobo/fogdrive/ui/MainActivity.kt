@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import com.zobo.fogdrive.FogRuntime
 import com.zobo.fogdrive.record.RecordingService
 
 class MainActivity : ComponentActivity() {
@@ -19,6 +20,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // QA starts most cases with the tutorial already seen (its own case starts without it).
+        if (intent?.getBooleanExtra(EXTRA_SKIP_ONBOARDING, false) == true) FogRuntime.mapPrefs.setOnboardingDone(true)
         setContent {
             FogTheme {
                 FogApp(
@@ -44,6 +47,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
+        const val EXTRA_SKIP_ONBOARDING = "skip_onboarding"
         val RUNTIME_PERMISSIONS = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,

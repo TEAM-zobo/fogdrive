@@ -17,6 +17,7 @@ import com.zobo.fogdrive.explore.PeriodStats
 import com.zobo.fogdrive.geo.Area
 import com.zobo.fogdrive.geo.TileBox
 import com.zobo.fogdrive.geo.Tiles
+import com.zobo.fogdrive.explore.Story
 import com.zobo.fogdrive.record.StampCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,7 +49,15 @@ data class Summary(
 data class TripRoute(val trip: TripEntity, val points: List<Pair<Double, Double>>, val isTrack: Boolean)
 
 /** Where the car is in the region dex, with each level's achievement rate. */
-data class RegionHere(val province: NamedRate, val district: NamedRate, val dong: NamedRate)
+data class RegionHere(
+    val province: NamedRate,
+    val district: NamedRate,
+    val dong: NamedRate,
+    /** The 동's code and label point, for its "동네 이야기". */
+    val dongCode: String,
+    val dongLat: Double,
+    val dongLng: Double,
+)
 
 data class NamedRate(val name: String, val rate: Double)
 
@@ -61,6 +71,7 @@ data class ExploreSuggestion(
     val bounds: TileBox,
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class MainViewModel : ViewModel() {
     private val repo = FogRuntime.repo
     val live = FogRuntime.live
@@ -154,8 +165,19 @@ class MainViewModel : ViewModel() {
             NamedRate(atlas.provinces[p].name, n.provinceRate(p)),
             NamedRate(atlas.districts[d].name, n.districtRate(d)),
             NamedRate(dong.name, n.dongRate(i)),
+            dong.code,
+            Tiles.yToLat(dong.outline.labelY + 0.5),
+            Tiles.xToLng(dong.outline.labelX + 0.5),
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Landmark line for the 동 under the car (only for 동 already entered, and while stories are on). */
+    val hereStory: StateFlow<Story?> = combine(
+        here.map { h -> h?.takeIf { it.dong.rate > 0 } }.distinctUntilChangedBy { it?.dongCode },
+        FogRuntime.mapPrefs.stories,
+    ) { h, on -> if (h != null && on) h else null }
+        .mapLatest { h -> h?.let { FogRuntime.stories.storyFor(it.dongCode, it.dongLat, it.dongLng) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val suggestionSkip = MutableStateFlow(0)
 
@@ -242,13 +264,20 @@ class MainViewModel : ViewModel() {
     val dexProvince = MutableStateFlow<String?>(null)
     val dexDistrict = MutableStateFlow<String?>(null)
 
+    /**
+     * Detour toward fog on the way to the destination. With the car's remaining range known, a
+     * detour the range can't comfortably cover (round trip home included) is not offered.
+     */
     val detour: StateFlow<DetourPlanner.Suggestion?> = combine(
         live.map { it.location?.let { f -> f.lat to f.lng } }.distinctUntilChanged(),
         navi.destination,
         version,
-    ) { origin, dest, _ ->
-        if (origin == null || dest == null) null
-        else DetourPlanner.plan(origin.first, origin.second, dest.lat, dest.lng, repo::isExplored)
+        vehicle.map { it.rangeKm?.let { km -> (km / 10).toInt() * 10 } }.distinctUntilChanged(),
+    ) { origin, dest, _, rangeKm ->
+        if (origin == null || dest == null) return@combine null
+        val s = DetourPlanner.plan(origin.first, origin.second, dest.lat, dest.lng, repo::isExplored) ?: return@combine null
+        val direct = Tiles.distanceMeters(origin.first, origin.second, dest.lat, dest.lng)
+        s.takeIf { rangeKm == null || DetourPlanner.fitsRange(rangeKm.toDouble(), direct, s.extraMeters) }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     fun stampCounts(): Map<StampCode, Int> =
@@ -266,6 +295,56 @@ class MainViewModel : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val showWornRoads = FogRuntime.mapPrefs.showWornRoads
+
+    val onboardingDone = FogRuntime.mapPrefs.onboardingDone
+
+    fun setOnboardingDone(done: Boolean) = FogRuntime.mapPrefs.setOnboardingDone(done)
+
+    val voice = FogRuntime.mapPrefs.voice
+
+    fun setVoice(on: Boolean) {
+        FogRuntime.mapPrefs.setVoice(on)
+        if (on) FogRuntime.announcer.warmUp()
+    }
+
+    val stories = FogRuntime.mapPrefs.stories
+
+    fun setStories(on: Boolean) = FogRuntime.mapPrefs.setStories(on)
+
+    fun dismissTripSummary() = FogRuntime.live.update { it.copy(lastTrip = null) }
+
+    /** The last "내 안개지도" card made on the record screen (shown until closed), or why it failed. */
+    val shareCard = MutableStateFlow<java.io.File?>(null)
+    val shareCardMessage = MutableStateFlow<String?>(null)
+
+    fun makeShareCard(context: android.content.Context) {
+        val app = context.applicationContext
+        viewModelScope.launch(Dispatchers.Default) {
+            val s = summary.value
+            val counts = FogRuntime.regions?.levels(repo)
+            val top = counts?.let { n ->
+                n.district.indices.filter { n.district[it] > 0 }.maxByOrNull { n.districtRate(it) }
+                    ?.let { n.atlas.districts[it].name to n.districtRate(it) }
+            }
+            val stats = ShareCard.Stats(
+                level = s.level,
+                areaM2 = s.areaKm2 * 1_000_000,
+                dongs = counts?.visitedDongs?.size ?: 0,
+                stampKinds = s.stampKinds,
+                landings = s.landings,
+                topDistrict = top?.first,
+                topRate = top?.second ?: 0.0,
+            )
+            runCatching { ShareCard.create(app, stats, landings.value.map { it.lat to it.lng }) }
+                .onSuccess {
+                    // QA reads this line: the card folder isn't visible to adb under the driver profile.
+                    android.util.Log.i("FogShare", "card saved ${it.path} (${it.length()} bytes)")
+                    shareCard.value = it
+                    shareCardMessage.value = null
+                }
+                .onFailure { shareCardMessage.value = "카드를 만들지 못했어요: ${it.message}" }
+        }
+    }
 
     fun setShowWornRoads(on: Boolean) = FogRuntime.mapPrefs.setShowWornRoads(on)
 

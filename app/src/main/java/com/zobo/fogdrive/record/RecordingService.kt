@@ -13,6 +13,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.zobo.fogdrive.FogRuntime
+import com.zobo.fogdrive.NewDong
+import com.zobo.fogdrive.TripSummary
 import com.zobo.fogdrive.R
 import com.zobo.fogdrive.car.Arrival
 import com.zobo.fogdrive.car.ArrivalKind
@@ -23,6 +25,7 @@ import com.zobo.fogdrive.data.CellSource
 import com.zobo.fogdrive.data.TripEntity
 import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.demo.DemoDrive
+import com.zobo.fogdrive.explore.CrewMission
 import com.zobo.fogdrive.geo.Area
 import com.zobo.fogdrive.geo.Tiles
 import com.zobo.fogdrive.ui.MainActivity
@@ -65,6 +68,7 @@ class RecordingService : Service() {
         FogRuntime.navi.start()
         val source = locationFeed.start()
         FogRuntime.live.update { it.copy(recording = true, locationSource = source) }
+        FogRuntime.announcer.warmUp()
 
         scope.launch {
             FogRuntime.vehicle.state.collect { v -> handleVehicle(v) }
@@ -109,7 +113,7 @@ class RecordingService : Service() {
         }
         FogRuntime.vehicle.stop()
         FogRuntime.navi.stop()
-        FogRuntime.live.update { it.copy(recording = false, demo = false, tripActive = false) }
+        FogRuntime.live.update { it.copy(recording = false, demo = false, tripActive = false, mission = null) }
         super.onDestroy()
     }
 
@@ -136,8 +140,9 @@ class RecordingService : Service() {
         lastFix = fix
         recordTrack(fix)
         stampRegions(fix)
+        updateMission(fix)
         FogRuntime.live.update {
-            it.copy(location = fix, tripActive = recorder.tripActive, trip = recorder.stats)
+            it.copy(location = fix, tripActive = recorder.tripActive, trip = recorder.stats, missionProgress = missionProgress)
         }
         persistTripStats()
     }
@@ -173,7 +178,11 @@ class RecordingService : Service() {
             if (awardedRegionStamps.add(code)) earned += code to message
         }
         if (t.startProvince < 0) t.startProvince = province
-        if (t.knownDongs.add(dong) && ++t.newDongs >= DONG_HOPPER_COUNT) stamp(StampCode.DONG_HOPPER, "동네 순례: 이번 주행에서 새 동 ${t.newDongs}곳")
+        if (t.knownDongs.add(dong)) {
+            t.newDongs++
+            onNewDong(atlas.dongs[dong], atlas.districts[district].name)
+            if (t.newDongs >= DONG_HOPPER_COUNT) stamp(StampCode.DONG_HOPPER, "동네 순례: 이번 주행에서 새 동 ${t.newDongs}곳")
+        }
         if (t.knownDistricts.add(district)) stamp(StampCode.NEW_DISTRICT, "새 동네 첫발: ${atlas.districts[district].name}")
         if (t.knownProvinces.add(province)) stamp(StampCode.NEW_PROVINCE, "새 땅 밟기: ${atlas.provinces[province].name}")
         if (province != t.startProvince) stamp(StampCode.PROVINCE_CROSS, "경계 넘어: ${atlas.provinces[province].name}")
@@ -183,6 +192,51 @@ class RecordingService : Service() {
         }
     }
     private val awardedRegionStamps = HashSet<StampCode>()
+
+    // This trip, for the summary card: 동 entered for the first time and stamps earned, in order.
+    private val tripNewDongs = ArrayList<NewDong>()
+    private val tripStamps = ArrayList<StampCode>()
+    private var mission: CrewMission? = null
+    private var missionProgress = 0
+    private var missionDone = false
+
+    /** A 동 entered for the first time: say so, and look up its landmark line in the background. */
+    private fun onNewDong(d: com.zobo.fogdrive.geo.Dong, district: String) {
+        val lat = Tiles.yToLat(d.outline.labelY + 0.5)
+        val lng = Tiles.xToLng(d.outline.labelX + 0.5)
+        tripNewDongs += NewDong(d.code, d.name, district, lat, lng)
+        FogRuntime.announcer.say("처음 와 본 ${d.name}${copula(d.name)}")
+        // Only the first few 동 carry a story on the summary card; a long drive needn't look up dozens.
+        if (!FogRuntime.mapPrefs.stories.value || tripNewDongs.size > MAX_TRIP_STORIES) return
+        FogRuntime.scope.launch {
+            val story = FogRuntime.stories.storyFor(d.code, lat, lng) ?: return@launch
+            withContext(Dispatchers.Main) {
+                // Neighbouring 동 can share their nearest landmark; tell it once per trip.
+                if (tripNewDongs.any { it.story?.title == story.title }) return@withContext
+                val i = tripNewDongs.indexOfFirst { it.code == d.code }
+                if (i >= 0) tripNewDongs[i] = tripNewDongs[i].copy(story = story)
+                // A summary already shown (short trip) gets the line too.
+                FogRuntime.live.update { lv ->
+                    val sum = lv.lastTrip ?: return@update lv
+                    lv.copy(lastTrip = sum.copy(newDongs = sum.newDongs.map { if (it.code == d.code) it.copy(story = story) else it }))
+                }
+            }
+        }
+    }
+
+    /** Passenger mission progress; finishing it earns "함께한 미션" once. */
+    private suspend fun updateMission(fix: Fix) {
+        val m = mission ?: return
+        if (!recorder.tripActive) return
+        val s = recorder.stats
+        missionProgress = m.progress(tripRegions?.newDongs ?: 0, Area.ofCells(s.newCells, fix.lat), s.newDistanceMeters)
+        if (!missionDone && missionProgress >= m.target) {
+            missionDone = true
+            apply(RecorderEvent.Stamp(StampCode.CREW_MISSION, fix.lat, fix.lng, fix.timeMs))
+            note("동승자 미션 성공: ${m.title()}")
+            FogRuntime.announcer.say("동승자 미션 성공! ${m.title()}", important = true)
+        }
+    }
     private var trackTrip = 0L
     private var trackLat = 0.0
     private var trackLng = 0.0
@@ -234,7 +288,15 @@ class RecordingService : Service() {
                     }
                 }
                 awardedRegionStamps.clear()
+                tripNewDongs.clear()
+                tripStamps.clear()
+                missionProgress = 0
+                missionDone = false
+                // A mission only when someone rides along (front passenger or rear).
+                mission = if (FogRuntime.vehicle.state.value.hasPassenger) CrewMission.pick(event.at) else null
+                FogRuntime.live.update { it.copy(mission = mission, missionProgress = 0, lastTrip = null) }
                 note("새 주행 기록을 시작했어요")
+                mission?.let { FogRuntime.announcer.say("동승자 미션: ${it.title()}", important = true) }
             }
             is RecorderEvent.TripEnded -> {
                 // Close the route where the car stopped (points are otherwise only every 20 m).
@@ -245,6 +307,7 @@ class RecordingService : Service() {
                 }
                 persistTripStats(endedAt = event.at)
                 tripRow = null
+                showSummary(event.at)
                 // Each finished drive is synced when the driver left auto sync on.
                 if (FogRuntime.cloud.state.value.autoSync) FogRuntime.scope.launch { FogRuntime.cloud.syncNow() }
             }
@@ -259,12 +322,42 @@ class RecordingService : Service() {
                     ArrivalKind.DETOUR -> "안개 구역 원정 성공"
                 }
                 note("$what: ${event.name} 주변을 밝혔어요 (+${Area.formatCells(event.newCells)})")
+                FogRuntime.announcer.say("$what. ${event.name} 주변 안개를 걷었어요", important = true)
             }
             is RecorderEvent.Stamp -> {
                 repo.addStamp(event.code.name, event.lat, event.lng, event.at, repo.currentTripId)
                 note("스탬프 획득: ${event.code.title}")
+                tripStamps += event.code
+                if (event.code != StampCode.CREW_MISSION) FogRuntime.announcer.say("${event.code.title} 스탬프")
             }
         }
+    }
+
+    /** Summary card + a spoken wrap-up for a trip that went somewhere. */
+    private fun showSummary(endedAt: Long) {
+        val s = recorder.stats
+        val m = mission
+        mission = null
+        FogRuntime.live.update { it.copy(mission = null) }
+        if (s.distanceMeters < MIN_SUMMARY_M && s.newCells == 0) return
+        val summary = TripSummary(
+            endedAt = endedAt,
+            distanceMeters = s.distanceMeters,
+            newCells = s.newCells,
+            newDistanceMeters = s.newDistanceMeters,
+            newDongs = tripNewDongs.toList(),
+            stamps = tripStamps.distinct(),
+            mission = m,
+            missionDone = missionDone,
+        )
+        FogRuntime.live.update { it.copy(lastTrip = summary) }
+        val parts = buildList {
+            if (s.newCells > 0) add("안개 ${spokenArea(Area.ofCells(s.newCells))}를 걷었어요")
+            else add("${"%.1f".format(s.distanceMeters / 1000)}킬로미터를 달렸어요")
+            if (summary.newDongs.isNotEmpty()) add("처음 가 본 동네는 ${summary.newDongs.size}곳")
+            if (summary.stamps.isNotEmpty()) add("스탬프 ${summary.stamps.size}개")
+        }
+        FogRuntime.announcer.say("주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + ".", important = true)
     }
 
     private suspend fun persistTripStats(endedAt: Long? = null) {
@@ -388,6 +481,23 @@ class RecordingService : Service() {
         private const val TRACK_STEP_M = 20.0
         private const val SEED_RADIUS = 4
         private const val BOOKMARK_WAIT_MS = 5_000L
+        /** Shorter drives (moving the car in a car park) get no summary card. */
+        private const val MIN_SUMMARY_M = 300.0
+
+        /** Shown with a story on the summary card (TripSummaryCard shows this many 동 in full). */
+        private const val MAX_TRIP_STORIES = 3
+
+        /** "이에요" after a final consonant (신당동이에요), "예요" after a vowel (종로1가예요). */
+        fun copula(word: String): String {
+            val c = word.lastOrNull() ?: return "이에요"
+            if (c !in '가'..'힣') return "이에요"
+            return if ((c - '가') % 28 == 0) "예요" else "이에요"
+        }
+
+        /** "0.12제곱킬로미터" reads naturally; tiny areas in square metres. */
+        fun spokenArea(m2: Double): String =
+            if (m2 >= 10_000) "%.2f제곱킬로미터".format(m2 / 1_000_000).replace(".00", "")
+            else "${(m2 / 100).toInt() * 100}제곱미터"
 
         fun start(context: Context, action: String? = null) {
             val intent = Intent(context, RecordingService::class.java).setAction(action)

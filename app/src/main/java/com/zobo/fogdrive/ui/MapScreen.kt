@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.zobo.fogdrive.car.Place
 import com.zobo.fogdrive.geo.Area
@@ -67,6 +68,7 @@ fun MapScreen(viewModel: MainViewModel) {
     var dismissedFor by remember { mutableStateOf<Place?>(null) }
     var detourMessage by remember { mutableStateOf<String?>(null) }
     val suggestion by viewModel.suggestion.collectAsState()
+    val hereStory by viewModel.hereStory.collectAsState()
     var suggestionHidden by remember { mutableStateOf(false) }
     // Keyed on the place, so "안내를 시작했어요" doesn't stay on a different 동 after the card moves on.
     var suggestionMessage by remember(suggestion?.district, suggestion?.name) { mutableStateOf<String?>(null) }
@@ -115,6 +117,15 @@ fun MapScreen(viewModel: MainViewModel) {
                 ) {
                     Icon(Icons.Outlined.Place, contentDescription = null, tint = FogColors.TextSub, modifier = Modifier.size(28.dp))
                     Text("${h.province.name} ${h.district.name} ${h.dong.name}", style = MaterialTheme.typography.titleMedium)
+                }
+                hereStory?.let { st ->
+                    Text(
+                        "동네 이야기 · ${st.title}: ${st.line}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FogColors.TextSub,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Pill("동 ${formatRate(h.dong.rate)}", FogColors.Accent)
@@ -170,6 +181,12 @@ fun MapScreen(viewModel: MainViewModel) {
             }
         }
 
+        // Just-finished trip: its summary takes the corner until closed (or the next trip starts).
+        val lastTrip = live.lastTrip?.takeIf { vehicle.parked && shownTrip == null }
+        lastTrip?.let {
+            TripSummaryCard(it, onClose = { viewModel.dismissTripSummary() }, Modifier.padding(24.dp).width(640.dp).align(Alignment.BottomStart))
+        }
+
         // Cards switched off in Settings, or dismissed with "오늘 안 보기" today, stay hidden.
         // Per composition entry, not per frame: the cards re-check the day when the map is reopened.
         val today = remember { MapPrefs.today() }
@@ -178,11 +195,11 @@ fun MapScreen(viewModel: MainViewModel) {
         val suggestionOn by viewModel.suggestionCard.enabled.collectAsState()
         val suggestionHiddenOn by viewModel.suggestionCard.hiddenOn.collectAsState()
         val detourAllowed = detourOn && detourHiddenOn != today
-        val showDetour = detourAllowed && visibleDetour != null && destination != null && vehicle.parked && shownTrip == null
+        val showDetour = detourAllowed && visibleDetour != null && destination != null && vehicle.parked && shownTrip == null && lastTrip == null
 
         // "Go explore": nearest unexplored 동, while parked with nothing else in that corner.
         val showSuggestion = suggestion != null && !suggestionHidden && suggestionOn && suggestionHiddenOn != today &&
-            vehicle.parked && shownTrip == null && !showDetour
+            vehicle.parked && shownTrip == null && !showDetour && lastTrip == null
         if (showSuggestion) suggestion?.let { sg ->
             FogCard(
                 modifier = Modifier.padding(24.dp).width(640.dp).align(Alignment.BottomStart),
@@ -239,6 +256,9 @@ fun MapScreen(viewModel: MainViewModel) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = FogColors.TextSub,
                 )
+                vehicle.rangeKm?.let { km ->
+                    Text("주행 가능 거리 ${km.toInt()} km · 돌아오는 길까지 충분해요", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+                }
                 detourMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = FogColors.Accent) }
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(

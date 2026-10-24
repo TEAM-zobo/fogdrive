@@ -14,7 +14,12 @@ import com.zobo.fogdrive.ui.MapPrefs
 import com.zobo.fogdrive.data.FogDb
 import com.zobo.fogdrive.explore.RegionTally
 import com.zobo.fogdrive.geo.RegionAtlas
+import com.zobo.fogdrive.explore.CrewMission
+import com.zobo.fogdrive.explore.LocalStories
+import com.zobo.fogdrive.explore.Story
+import com.zobo.fogdrive.record.StampCode
 import com.zobo.fogdrive.record.TripStats
+import com.zobo.fogdrive.voice.Announcer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +37,29 @@ data class LiveStatus(
     val tripActive: Boolean = false,
     val trip: TripStats = TripStats(),
     val lastEvent: String? = null,
+    /** Mission for the passengers on this trip, and its progress in the mission's unit. */
+    val mission: CrewMission? = null,
+    val missionProgress: Int = 0,
+    /** The trip that just ended, shown as a summary card until dismissed or the next trip starts. */
+    val lastTrip: TripSummary? = null,
 )
+
+/** A 읍·면·동 first entered on a trip, with its landmark line once looked up. */
+data class NewDong(val code: String, val name: String, val district: String, val lat: Double, val lng: Double, val story: Story? = null)
+
+/** What one finished trip achieved, for the summary card and the spoken wrap-up. */
+data class TripSummary(
+    val endedAt: Long,
+    val distanceMeters: Double,
+    val newCells: Int,
+    val newDistanceMeters: Double,
+    val newDongs: List<NewDong>,
+    val stamps: List<StampCode>,
+    val mission: CrewMission?,
+    val missionDone: Boolean,
+) {
+    val newRoadRatio: Double get() = if (distanceMeters > 0) newDistanceMeters / distanceMeters else 0.0
+}
 
 /** Process-wide singletons shared by the recording service and the UI. */
 object FogRuntime {
@@ -47,6 +74,10 @@ object FogRuntime {
     lateinit var demoPrefs: DemoPrefs
         private set
     lateinit var mapPrefs: MapPrefs
+        private set
+    lateinit var announcer: Announcer
+        private set
+    lateinit var stories: LocalStories
         private set
 
     /** 시·도 / 시·군·구 / 읍·면·동 boundaries, parsed off the main thread on first use (the map's
@@ -82,6 +113,8 @@ object FogRuntime {
         cloud = CloudSync(app, repo)
         demoPrefs = DemoPrefs(app)
         mapPrefs = MapPrefs(app)
+        announcer = Announcer(app) { mapPrefs.voice.value }
+        stories = LocalStories(app)
         scope.launch { repo.load() }
     }
 }

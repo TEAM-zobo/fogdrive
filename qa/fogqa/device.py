@@ -201,8 +201,10 @@ class Device:
         for perm in RUNTIME_PERMISSIONS:
             self.shell("pm", "grant", "--user", "current", PACKAGE, perm)
 
-    def app_start(self, wait=True):
-        self.shell("am", "start", "--user", "current", "-n", ACTIVITY)
+    def app_start(self, wait=True, tutorial=False):
+        """Starts the app; unless [tutorial], with the first-run tutorial marked as seen."""
+        extra = [] if tutorial else ["--ez", "skip_onboarding", "true"]
+        self.shell("am", "start", "--user", "current", "-n", ACTIVITY, *extra)
         if wait and not self.wait_text("지도", timeout=15, exact=True):
             raise AssertionError("앱 화면이 뜨지 않음")
 

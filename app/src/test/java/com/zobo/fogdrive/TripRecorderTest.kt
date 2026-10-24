@@ -1,6 +1,7 @@
 package com.zobo.fogdrive
 
 import com.zobo.fogdrive.car.ArrivalKind
+import com.zobo.fogdrive.car.DriveMode
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.Gear
 import com.zobo.fogdrive.car.VehicleState
@@ -245,5 +246,19 @@ class TripRecorderTest {
         val sink = MemorySink()
         assertTrue(TripRecorder(sink).onArrival(ArrivalKind.DESTINATION, "공원", 0).isEmpty())
         assertTrue(sink.cells.isEmpty())
+    }
+
+    @Test
+    fun openWindowSunroofAndDriveModeStamps() {
+        val rec = TripRecorder(MemorySink())
+        val v = drive.copy(windowsOpen = setOf("ROW_1_LEFT"), sunroofOpen = true, drivingMode = DriveMode.ECO)
+        val codes = rec.onFix(fix(37.5, 127.0), v).filterIsInstance<RecorderEvent.Stamp>().map { it.code }
+        assertTrue(StampCode.OPEN_AIR in codes)
+        assertTrue(StampCode.SUNROOF in codes)
+        assertTrue(StampCode.ECO in codes)
+        assertFalse(StampCode.SPORT in codes)
+        // Sport mode on a road already cleared: no new cells, so no stamp.
+        val again = rec.onFix(fix(37.5, 127.0, 1), drive.copy(drivingMode = DriveMode.SPORT))
+        assertFalse(again.any { it is RecorderEvent.Stamp && it.code == StampCode.SPORT })
     }
 }

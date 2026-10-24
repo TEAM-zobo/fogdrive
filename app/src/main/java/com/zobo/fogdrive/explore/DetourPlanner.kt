@@ -20,6 +20,18 @@ object DetourPlanner {
     private const val BLOCK_RADIUS = 2
     private const val MIN_FOGGED = 20
 
+    /** Range kept in reserve beyond the trip there and back, km. */
+    private const val RANGE_RESERVE_KM = 30.0
+
+    /**
+     * Whether [rangeKm] covers going to the destination by the detour and back home by road
+     * (straight lines x [ROAD_FACTOR]) with [RANGE_RESERVE_KM] to spare.
+     */
+    fun fitsRange(rangeKm: Double, directMeters: Double, extraMeters: Double): Boolean {
+        val needKm = (2 * directMeters + extraMeters) * ROAD_FACTOR / 1000.0 + RANGE_RESERVE_KM
+        return rangeKm >= needKm
+    }
+
     fun plan(
         originLat: Double,
         originLng: Double,

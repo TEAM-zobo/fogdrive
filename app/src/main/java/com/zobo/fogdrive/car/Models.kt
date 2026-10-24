@@ -2,6 +2,8 @@ package com.zobo.fogdrive.car
 
 enum class Gear { PARK, REVERSE, NEUTRAL, DRIVE, UNKNOWN }
 
+enum class DriveMode { NORMAL, ECO, SPORT, UNKNOWN }
+
 /** Snapshot of the vehicle signals the game cares about. Unknown values stay null/false. */
 data class VehicleState(
     val gear: Gear = Gear.UNKNOWN,
@@ -13,11 +15,19 @@ data class VehicleState(
     val lowBeamOn: Boolean = false,
     val odometerKm: Float? = null,
     val evSocPercent: Int? = null,
+    /** Side windows opened more than a crack (WindowValue names), and whether the sunroof is open. */
+    val windowsOpen: Set<String> = emptySet(),
+    val sunroofOpen: Boolean = false,
+    val drivingMode: DriveMode = DriveMode.UNKNOWN,
+    /** Distance the car can still drive on its battery or fuel, km. */
+    val rangeKm: Float? = null,
     val pleosVehicleConnected: Boolean = false,
     val aaosConnected: Boolean = false,
 ) {
     val anyDoorOpen: Boolean get() = doorsOpen.isNotEmpty()
     val rearOccupied: Boolean get() = occupiedSeats.any { it.startsWith("ROW_2") || it.startsWith("ROW_3") }
+    /** Anyone besides the driver (front passenger or rear). */
+    val hasPassenger: Boolean get() = occupiedSeats.any { it != com.zobo.fogdrive.record.TripRecorder.DRIVER_SEAT }
 
     /** Parked if the gear says P; without gear data, fall back to UX restrictions. */
     val parked: Boolean

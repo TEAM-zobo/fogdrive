@@ -22,7 +22,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.EnergySavingsLeaf
+import androidx.compose.material.icons.outlined.SportsScore
+import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Bedtime
@@ -263,6 +268,11 @@ private fun stampIcon(code: StampCode): ImageVector = when (code) {
     StampCode.DONG_HOPPER -> Icons.Outlined.Explore
     StampCode.PROVINCE_CROSS -> Icons.Outlined.Moving
     StampCode.NEW_PROVINCE -> Icons.Outlined.Public
+    StampCode.OPEN_AIR -> Icons.Outlined.Air
+    StampCode.SUNROOF -> Icons.Outlined.WbCloudy
+    StampCode.ECO -> Icons.Outlined.EnergySavingsLeaf
+    StampCode.SPORT -> Icons.Outlined.SportsScore
+    StampCode.CREW_MISSION -> Icons.Outlined.EmojiEvents
 }
 
 @Composable

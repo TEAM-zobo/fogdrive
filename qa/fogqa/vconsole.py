@@ -104,11 +104,18 @@ class VConsole:
     def soc(self, percent):
         return self.put("/vehicle/ev-battery", field="soc", value=str(percent))
 
+    def window(self, area, percent):  # front_left | front_right | rear_left | rear_right, 0 (closed)..100
+        field = {"front_left": "window_fl", "front_right": "window_fr", "rear_left": "window_rl", "rear_right": "window_rr"}[area]
+        return self.put("/vehicle/body", **{field: str(percent)})
+
+    def range_km(self, km):
+        return self.put("/vehicle/odometer", remaining_range_m=str(int(km * 1000)))
+
     def speed(self, kph):
         return self.put("/vehicle/controls", speed=str(kph), accelerator="10" if kph else "0", brake="0", steering="0")
 
     def reset(self):
-        """Parked, doors/frunk/trunk/charge port closed, wipers/lights off, no passengers, 80% battery, standing still."""
+        """Parked, doors/windows/frunk/trunk/charge port closed, wipers/lights off, no passengers, 80% battery, standing still."""
         self.speed(0)
         self.gear("Park")
         for area in DOORS:
@@ -120,5 +127,7 @@ class VConsole:
         for area in ("passenger", "rear_left", "rear_right"):
             self.seat(area, False)
         self.soc(80)
+        for area in ("front_left", "front_right", "rear_left", "rear_right"):
+            self.window(area, 0)
         # Also boots with the charge port open (cluster icon).
         self.put("/vehicle/ev-battery", field="charge_port_open", value="false")

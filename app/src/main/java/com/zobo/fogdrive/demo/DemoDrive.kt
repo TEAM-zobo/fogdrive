@@ -48,9 +48,14 @@ class DemoDrive(
     ) {
         stop()
         job = scope.launch {
-            val seats = if (course.rearPassenger) setOf("ROW_1_LEFT", "ROW_2_LEFT") else setOf("ROW_1_LEFT")
+            val seats = buildSet {
+                add("ROW_1_LEFT")
+                if (course.frontPassenger) add("ROW_1_RIGHT")
+                if (course.rearPassenger) add("ROW_2_LEFT")
+            }
             var vehicle = VehicleState(
                 gear = Gear.PARK, occupiedSeats = seats, lowBeamOn = course.lowBeam,
+                sunroofOpen = course.sunroof, drivingMode = course.driveMode, rangeKm = DEMO_RANGE_KM,
                 aaosConnected = true, pleosVehicleConnected = true,
             )
             onVehicle(vehicle)
@@ -105,8 +110,9 @@ class DemoDrive(
             val progress = i.toDouble() / points.size
             onGuidance(guidanceAt(course, p.along))
             val wiper = course.rain?.contains(progress) == true
-            if (wiper != vehicle.wiperOn) {
-                vehicle = vehicle.copy(wiperOn = wiper)
+            val window = course.windowOpen?.contains(progress) == true
+            if (wiper != vehicle.wiperOn || window != vehicle.windowsOpen.isNotEmpty()) {
+                vehicle = vehicle.copy(wiperOn = wiper, windowsOpen = if (window) setOf("ROW_1_LEFT") else emptySet())
                 onVehicle(vehicle)
             }
             // Stamp the fix with when the car reached it (its due time), not when it was sent, so a
@@ -117,7 +123,11 @@ class DemoDrive(
         onGuidance(null)
         onArrival(Arrival(ArrivalKind.DESTINATION, course.destination.name, demo = true))
         delay(1_200)
-        vehicle = vehicle.copy(gear = Gear.PARK, drivingRestricted = false, wiperOn = false)
+        // Parked: wipers and windows off, and the range down by the leg just driven.
+        vehicle = vehicle.copy(
+            gear = Gear.PARK, drivingRestricted = false, wiperOn = false, windowsOpen = emptySet(),
+            rangeKm = vehicle.rangeKm?.let { (it - course.lengthMeters / 1000).toFloat().coerceAtLeast(0f) },
+        )
         onVehicle(vehicle)
         delay(1_200)
         onVehicle(vehicle.copy(doorsOpen = setOf("ROW_1_LEFT")))
@@ -164,6 +174,8 @@ class DemoDrive(
     companion object {
         const val MIN_KMH = 20
         const val MAX_KMH = 200
+        /** Remaining range the demo car starts with (a charged EV), km. */
+        const val DEMO_RANGE_KM = 480f
         const val DEFAULT_KMH = 60
         private const val STEP_M = 15.0
         private const val MIN_FIX_INTERVAL_MS = 200.0

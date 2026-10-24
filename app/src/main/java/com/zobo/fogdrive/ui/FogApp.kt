@@ -84,6 +84,8 @@ fun FogApp(
                 }
             }
         }
+        val onboardingDone by viewModel.onboardingDone.collectAsState()
+        if (!onboardingDone) Onboarding(onDone = { viewModel.setOnboardingDone(true) })
     }
 }
 

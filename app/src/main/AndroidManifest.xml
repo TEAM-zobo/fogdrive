@@ -8,6 +8,14 @@
     <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
 
     <!-- Pleos Vehicle SDK: read-only domains actually used -->
+    <!-- Package visibility (API 30+): lets the share card find apps that take an image. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="image/png" />
+        </intent>
+    </queries>
+
     <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
     <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
     <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
@@ -61,6 +69,17 @@
             android:name=".record.RecordingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Hands the "내 안개지도" card image to a share target, when the car has one. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.cards"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <receiver
             android:name=".record.BootReceiver"

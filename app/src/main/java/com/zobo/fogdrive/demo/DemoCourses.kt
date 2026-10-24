@@ -1,5 +1,6 @@
 package com.zobo.fogdrive.demo
 
+import com.zobo.fogdrive.car.DriveMode
 import com.zobo.fogdrive.car.Place
 import com.zobo.fogdrive.car.TurnKind
 import com.zobo.fogdrive.geo.Tiles
@@ -26,6 +27,13 @@ class DemoCourse(
     val rearPassenger: Boolean = false,
     /** Speed limit shown by the stand-in guidance, km/h. */
     val speedLimit: Int = 50,
+    /** Driver's window open between these fractions of the route (바람길 개척), if set. */
+    val windowOpen: ClosedFloatingPointRange<Double>? = null,
+    /** Sunroof open for the whole drive (하늘 열고 개척). */
+    val sunroof: Boolean = false,
+    /** Front passenger aboard (with [rearPassenger], a 동승자 미션 is given). */
+    val frontPassenger: Boolean = false,
+    val driveMode: DriveMode = DriveMode.NORMAL,
 ) {
     /** Distance along [route] at each of its points, in metres. */
     val along: List<Double> = route.indices.runningFold(0.0) { acc, i ->
@@ -38,6 +46,7 @@ class DemoCourse(
     fun returnTrip(): DemoCourse = DemoCourse(
         id = "$id-back", title = "$title · 복귀", summary = summary, destination = DemoCourses.START,
         route = route.reversed(), rain = rain, lowBeam = lowBeam, rearPassenger = rearPassenger, speedLimit = speedLimit,
+        windowOpen = windowOpen, sunroof = sunroof, frontPassenger = frontPassenger, driveMode = driveMode,
     )
 
     /** Route points where the heading swings by more than 35°, as (distance along, turn). */
@@ -2733,19 +2742,21 @@ object DemoCourses {
         DemoCourse(
             id = "seongsu",
             title = "성수 주말 나들이",
-            summary = "향동 → 성수역 → 뚝섬한강공원. 중간에 비가 오고 뒷좌석에 동승자가 있어요.",
+            summary = "향동 → 성수역 → 뚝섬한강공원. 창문을 열고 출발해, 중간에 비가 오고 뒷좌석에 동승자가 있어요.",
             destination = Place("뚝섬한강공원", 37.5296, 127.0669, "서울 광진구 강변북로 139"),
             route = SEONGSU_ROUTE,
             rain = 0.30..0.62,
             rearPassenger = true,
+            windowOpen = 0.05..0.25,
         ),
         DemoCourse(
             id = "yeouido",
             title = "여의도 야경 드라이브",
-            summary = "향동 → 국회의사당 → 여의도한강공원. 전조등을 켜고 달려요.",
+            summary = "향동 → 국회의사당 → 여의도한강공원. 전조등을 켜고 조수석 동승자와 달려요.",
             destination = Place("여의도한강공원", 37.5284, 126.9343, "서울 영등포구 여의동로 330"),
             route = YeouidoRoute.points,
             lowBeam = true,
+            frontPassenger = true,
         ),
         DemoCourse(
             id = "gangnam",
@@ -2827,19 +2838,22 @@ object DemoCourses {
         DemoCourse(
             id = "pangyo",
             title = "판교 테크노밸리 출장",
-            summary = "고양 → 서울 강남 → 성남 판교. 서울을 가로질러 남쪽으로 내려가요.",
+            summary = "고양 → 서울 강남 → 성남 판교. 에코 모드로 서울을 가로질러 남쪽으로 내려가요.",
             destination = Place("판교역", 37.3948, 127.1112, "경기 성남시 분당구 판교역로 160"),
             route = PangyoRoute.points,
             speedLimit = 80,
+            driveMode = DriveMode.ECO,
         ),
         DemoCourse(
             id = "songdo",
             title = "송도 바닷바람",
-            summary = "고양 → 부천 → 인천 송도. 해 질 녘 서해안으로 가요.",
+            summary = "고양 → 부천 → 인천 송도. 선루프를 열고 동승자와 해 질 녘 서해안으로 가요.",
             destination = Place("송도 센트럴파크", 37.3920, 126.6560, "인천 연수구 컨벤시아대로 160"),
             route = SongdoRoute.points,
             lowBeam = true,
             speedLimit = 80,
+            sunroof = true,
+            frontPassenger = true,
         ),
         DemoCourse(
             id = "uijeongbu",
@@ -2872,11 +2886,13 @@ object DemoCourses {
         DemoCourse(
             id = "gangneung",
             title = "강릉 경포대 동해 여행",
-            summary = "고양 → 원주 → 대관령 → 강릉. 밤에 동해로 넘어가요.",
+            summary = "고양 → 원주 → 대관령 → 강릉. 스포츠 모드로 밤에 대관령을 넘고, 바다가 보이면 창문을 열어요.",
             destination = Place("경포해변", 37.7954, 128.8961, "강원 강릉시 창해로 514"),
             route = GangneungRoute.points,
             lowBeam = true,
             speedLimit = 100,
+            driveMode = DriveMode.SPORT,
+            windowOpen = 0.85..1.0,
         ),
     )
 

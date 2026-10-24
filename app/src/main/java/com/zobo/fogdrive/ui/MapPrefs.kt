@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Map display options shared by the map, the driving view and Settings. */
+/** Display and guidance options shared by the map, the driving view and Settings. */
 class MapPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("fogdrive_map", Context.MODE_PRIVATE)
 
@@ -19,6 +19,33 @@ class MapPrefs(context: Context) {
     fun setShowWornRoads(on: Boolean) {
         _showWornRoads.value = on
         prefs.edit().putBoolean(KEY_WORN, on).apply()
+    }
+
+    private val _onboardingDone = MutableStateFlow(prefs.getBoolean(KEY_ONBOARDING, false))
+    /** The first-run tutorial was finished or skipped; Settings can show it again. */
+    val onboardingDone: StateFlow<Boolean> = _onboardingDone.asStateFlow()
+
+    fun setOnboardingDone(done: Boolean) {
+        _onboardingDone.value = done
+        prefs.edit().putBoolean(KEY_ONBOARDING, done).apply()
+    }
+
+    private val _voice = MutableStateFlow(prefs.getBoolean(KEY_VOICE, true))
+    /** Spoken announcements (new 동, stamps, arrivals, trip summary). */
+    val voice: StateFlow<Boolean> = _voice.asStateFlow()
+
+    fun setVoice(on: Boolean) {
+        _voice.value = on
+        prefs.edit().putBoolean(KEY_VOICE, on).apply()
+    }
+
+    private val _stories = MutableStateFlow(prefs.getBoolean(KEY_STORIES, true))
+    /** "동네 이야기": landmark lines for 동 from Wikipedia (sends the 동's centre point, not the car's). */
+    val stories: StateFlow<Boolean> = _stories.asStateFlow()
+
+    fun setStories(on: Boolean) {
+        _stories.value = on
+        prefs.edit().putBoolean(KEY_STORIES, on).apply()
     }
 
     /** One suggestion card on the map ("탐험 우회 경로", "안 가본 동네 가보기"): off in Settings, or hidden for today. */
@@ -45,6 +72,9 @@ class MapPrefs(context: Context) {
 
     companion object {
         private const val KEY_WORN = "show_worn_roads"
+        private const val KEY_ONBOARDING = "onboarding_done"
+        private const val KEY_VOICE = "voice_on"
+        private const val KEY_STORIES = "stories_on"
 
         fun today(): String = SimpleDateFormat("yyyyMMdd", Locale.KOREA).format(Date())
     }

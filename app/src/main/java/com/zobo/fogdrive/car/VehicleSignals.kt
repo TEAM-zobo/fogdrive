@@ -7,13 +7,17 @@ import ai.pleos.playground.vehicle.api.model.area.WindowArea
 import ai.pleos.playground.vehicle.constant.area.DoorValue
 import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
+import ai.pleos.playground.vehicle.constant.control.DrivingModeType
 import ai.pleos.playground.vehicle.constant.control.LightState
 import ai.pleos.playground.vehicle.constant.control.WiperState
 import ai.pleos.playground.vehicle.listener.DistanceDrivenListener
 import ai.pleos.playground.vehicle.listener.DoorPositionListener
+import ai.pleos.playground.vehicle.listener.DrivingModeStateListener
 import ai.pleos.playground.vehicle.listener.EvBatteryStateOfChargeListener
 import ai.pleos.playground.vehicle.listener.LightStateListener
+import ai.pleos.playground.vehicle.listener.RangeRemainingListener
 import ai.pleos.playground.vehicle.listener.SeatOccupancyListener
+import ai.pleos.playground.vehicle.listener.WindowPositionListener
 import ai.pleos.playground.vehicle.listener.WiperStateListener
 import android.car.Car
 import android.car.VehicleGear
@@ -30,7 +34,8 @@ import kotlinx.coroutines.flow.update
 
 /**
  * Vehicle signals from two sources:
- * - Pleos Vehicle SDK: doors, seat occupancy, wiper, low beam, odometer, EV state of charge;
+ * - Pleos Vehicle SDK: doors, seat occupancy, wiper, low beam, odometer, EV state of charge,
+ *   windows and sunroof, driving mode (eco / sport), remaining range;
  * - AAOS standard APIs: gear (CarPropertyManager) and driving UX restrictions.
  * Every call is guarded: an unsupported signal simply stays at its default.
  * Demo mode can override the whole state to replay a scripted drive.
@@ -162,6 +167,46 @@ class VehicleSignals(private val context: Context) {
             releasers += { ev.unregisterEvBatteryStateOfCharge(listener) }
             ev.getEvBatteryStateOfCharge({ soc -> edit { it.copy(evSocPercent = soc) } }, { logFail("ev soc", it) })
         }
+        startPleosExtras(v)
+    }
+
+    private fun startPleosExtras(v: Vehicle) {
+        guard("window") {
+            val window = v.getWindow()
+            // Each area on its own: a car without a sunroof (or rear windows) still reports the rest.
+            for (value in listOf(WindowValue.ROW_1_LEFT, WindowValue.ROW_1_RIGHT, WindowValue.ROW_2_LEFT, WindowValue.ROW_2_RIGHT, WindowValue.ROOF_TOP_1)) guard("window ${value.name}") {
+                val area = WindowArea(value)
+                val name = value.name
+                val listener = object : WindowPositionListener {
+                    override fun onWindowPositionUpdated(pos: Int?) = setWindow(name, pos)
+                    override fun onFailed(e: Exception) = logFail("window $name", e)
+                }
+                window.registerWindowPosition(area, listener)
+                releasers += { window.unregisterWindowPosition(area, listener) }
+                window.getCurrentWindowPosition(area, { setWindow(name, it) }, { logFail("window $name", it) })
+            }
+        }
+        guard("driving mode") {
+            val mode = v.getDrivingMode()
+            val listener = object : DrivingModeStateListener {
+                override fun onDrivingModeStateUpdated(state: DrivingModeType?) = edit { it.copy(drivingMode = mapMode(state)) }
+                override fun onFailed(e: Exception) = logFail("driving mode", e)
+            }
+            mode.registerDrivingModeState(listener)
+            releasers += { mode.unregisterDrivingModeState(listener) }
+            mode.getCurrentDrivingModeState({ s -> edit { it.copy(drivingMode = mapMode(s)) } }, { logFail("driving mode", it) })
+        }
+        guard("range") {
+            val odometer = v.getOdometer()
+            // RANGE_REMAINING is reported in metres.
+            val listener = object : RangeRemainingListener {
+                override fun onRangeRemainingChanged(meters: Float?) = edit { it.copy(rangeKm = meters?.let { m -> m / 1000f }) }
+                override fun onFailed(e: Exception) = logFail("range", e)
+            }
+            odometer.registerRangeRemainingListener(listener)
+            releasers += { odometer.unregisterRangeRemainingListener(listener) }
+            odometer.getRangeRemainingDistance({ meters -> edit { it.copy(rangeKm = meters?.let { m -> m / 1000f }) } }, { logFail("range", it) })
+        }
     }
 
     private fun startAaos() {
@@ -200,6 +245,22 @@ class VehicleSignals(private val context: Context) {
     private fun setDoor(name: String, open: Boolean) =
         edit { it.copy(doorsOpen = if (open) it.doorsOpen + name else it.doorsOpen - name) }
 
+    /** A window counts as open past a crack ([WINDOW_OPEN_MIN]); ROOF_TOP_1 is the sunroof. */
+    private fun setWindow(name: String, pos: Int?) {
+        val open = (pos ?: 0) >= WINDOW_OPEN_MIN
+        edit {
+            if (name == WindowValue.ROOF_TOP_1.name) it.copy(sunroofOpen = open)
+            else it.copy(windowsOpen = if (open) it.windowsOpen + name else it.windowsOpen - name)
+        }
+    }
+
+    private fun mapMode(state: DrivingModeType?): DriveMode = when (state) {
+        DrivingModeType.ECO -> DriveMode.ECO
+        DrivingModeType.SPORT -> DriveMode.SPORT
+        DrivingModeType.NORMAL -> DriveMode.NORMAL
+        else -> DriveMode.UNKNOWN
+    }
+
     private fun setSeat(name: String, occupied: Boolean) {
         Log.d(TAG, "seat $name occupied=$occupied")
         edit { it.copy(occupiedSeats = if (occupied) it.occupiedSeats + name else it.occupiedSeats - name) }
@@ -227,5 +288,7 @@ class VehicleSignals(private val context: Context) {
 
     private companion object {
         const val TAG = "FogVehicle"
+        /** Window position comes as 0 (closed) to 10 (fully open); 2 is about a fifth down. */
+        const val WINDOW_OPEN_MIN = 2
     }
 }

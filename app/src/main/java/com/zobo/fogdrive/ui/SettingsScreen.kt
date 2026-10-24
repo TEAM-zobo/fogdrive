@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.zobo.fogdrive.car.DriveMode
 import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.demo.DemoDrive
 import java.text.SimpleDateFormat
@@ -127,7 +128,7 @@ fun SettingsScreen(
             }
         }
 
-        SectionHeader("지도 표시 · 제안", Modifier.padding(top = 16.dp))
+        SectionHeader("지도 표시 · 안내", Modifier.padding(top = 16.dp))
         FogCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -151,6 +152,27 @@ fun SettingsScreen(
                 "정차 중에 가까운 안 가본 동네를 추천하고 내비 안내를 보내요.",
                 viewModel.suggestionCard,
             )
+            val voice by viewModel.voice.collectAsState()
+            PrefToggle(
+                "음성 안내",
+                "주행 중 새 동네, 스탬프, 도착, 동승자 미션, 주행 요약을 짧게 말해 줘요. 화면을 보지 않아도 돼요.",
+                voice,
+            ) { viewModel.setVoice(it) }
+            val stories by viewModel.stories.collectAsState()
+            PrefToggle(
+                "동네 이야기",
+                "처음 가 본 동네의 명소를 위키백과에서 찾아 한 줄로 보여 줘요. 차 위치가 아니라 동의 중심 좌표만 보내요.",
+                stories,
+            ) { viewModel.setStories(it) }
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("튜토리얼", style = MaterialTheme.typography.titleMedium)
+                    Text("처음 실행할 때 본 안내를 다시 봐요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+                }
+                OutlinedButton(onClick = { viewModel.setOnboardingDone(false) }, shape = RoundedCornerShape(4.dp)) {
+                    Text("다시 보기", modifier = Modifier.padding(8.dp))
+                }
+            }
         }
 
         SectionHeader("데이터 동기화", Modifier.padding(top = 16.dp))
@@ -282,10 +304,27 @@ private fun ConnectionCard(viewModel: MainViewModel) {
                 if (vehicle.wiperOn) add("와이퍼")
                 if (vehicle.lowBeamOn) add("전조등")
                 vehicle.evSocPercent?.let { add("배터리 $it%") }
+                if (vehicle.windowsOpen.isNotEmpty()) add("창문 열림")
+                if (vehicle.sunroofOpen) add("선루프 열림")
+                if (vehicle.drivingMode == DriveMode.ECO) add("에코 모드")
+                if (vehicle.drivingMode == DriveMode.SPORT) add("스포츠 모드")
+                vehicle.rangeKm?.let { add("주행 가능 %.0f km".format(it)) }
                 vehicle.odometerKm?.let { add("누적 %.0f km".format(it)) }
             }.ifEmpty { listOf("-") }.joinToString(" · "),
         )
         naviMessage?.let { StatusLine("내비 메시지", it) }
+    }
+}
+
+/** On/off row with a one-line explanation. */
+@Composable
+private fun PrefToggle(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(description, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+        }
+        FogSwitch(checked = checked, onCheckedChange = onChange)
     }
 }
 

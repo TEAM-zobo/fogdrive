@@ -58,7 +58,7 @@ private const val RECENTER_AT_PX = PAN_MARGIN_PX * 0.6f
 private const val MIN_STEP_PX = 0.5f
 /** A fix this far from the shown position is a jump (demo start, GPS reset): snap instead of gliding. */
 private const val SNAP_METERS = 500.0
-/** Fixes kept for replay, and the replay delay range (one fix interval and a bit, see shownAt). */
+/** Fixes kept for replay, and the replay delay range (one fix interval and a bit, see replay). */
 private const val FIX_HISTORY = 8
 private const val MIN_LAG_MS = 400
 private const val MAX_LAG_MS = 2_500
@@ -197,7 +197,7 @@ private class CarMarkerView(context: Context) : View(context) {
  * Driving keeps the car at the screen centre without re-rendering the map every fix:
  * the map is rendered larger than the screen, and each display frame the whole pan layer
  * (map + fog) is slid by the car's offset from the rendered centre — a cheap compositor move.
- * The shown position replays the recent fixes a little behind real time (see [shownAt]), so the
+ * The shown position replays the recent fixes a little behind real time (see [replay]), so the
  * motion is continuous and at the speed the fixes were actually covered. Only when the slide nears the margin is the map re-rendered around the car,
  * and the slide and fog are swapped to the new centre on the frame that render finishes.
  */
@@ -307,8 +307,8 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private fun onPanResized() {
         overlay.invalidate()
         if (driving && hasFix) {
-            val (lat, lng) = shownAt(SystemClock.uptimeMillis())
-            recenter(lat, lng)
+            replay(SystemClock.uptimeMillis())
+            recenter(shownLat, shownLng)
         }
     }
 
@@ -384,7 +384,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             lag = START_LAG_MS
             clockOffset = Long.MAX_VALUE
         } else {
-            shownAt(now)  // bring the lag easing up to now before the history changes
+            advanceLag(now)  // bring the lag easing up to now before the history changes
             if (now - fixAt[last] > MAX_LAG_MS) {
                 // Moving again after a stop or a feed gap: playback has long reached the last fix, so
                 // start the new segment from it now instead of stretching it over the whole pause
@@ -450,25 +450,45 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     }
 
     /**
-     * Where the car is shown at [now]: the fix track sampled at `now - lag`. The lag eases toward
-     * [targetLag] over a couple of seconds, so a change in the fix rate bends the speed by a few
-     * percent instead of jumping.
+     * Eases the replay delay toward [lagTarget] up to [now]: over a couple of seconds, so a change in
+     * the fix rate bends the speed by a few percent instead of jumping. The only place the lag moves.
      */
-    private fun shownAt(now: Long): Pair<Double, Double> {
-        val n = fixCount
-        if (n == 0) return 0.0 to 0.0
+    private fun advanceLag(now: Long) {
         val dt = (now - lagEasedAt).coerceAtLeast(0L)
         lagEasedAt = now
         // Growing the lag faster than real time would run the replay backwards: keep it at ≥ half speed.
         lag += ((lagTarget - lag) * (dt / LAG_EASE_MS).coerceAtMost(1.0)).coerceAtMost(dt * 0.5)
+    }
+
+    // Shown position, written by [replay] (fields, not a Pair: it runs every display frame).
+    private var shownLat = 0.0
+    private var shownLng = 0.0
+
+    /**
+     * Moves the shown car to the fix track sampled at `now - lag` (after [advanceLag]), and points
+     * the arrow along the segment being drawn.
+     */
+    private fun replay(now: Long) {
+        advanceLag(now)
+        val n = fixCount
+        if (n == 0) return
         val t = now - lag
-        if (n == 1 || t <= fixAt[0]) return fixLat[0] to fixLng[0]
-        if (t >= fixAt[n - 1]) return fixLat[n - 1] to fixLng[n - 1]
+        if (n == 1 || t <= fixAt[0]) {
+            shownLat = fixLat[0]
+            shownLng = fixLng[0]
+            return
+        }
+        if (t >= fixAt[n - 1]) {
+            shownLat = fixLat[n - 1]
+            shownLng = fixLng[n - 1]
+            return
+        }
         var i = 1
         while (fixAt[i] < t) i++
         if (!fixBearing[i].isNaN()) car.bearing = fixBearing[i]
         val f = (t - fixAt[i - 1]) / (fixAt[i] - fixAt[i - 1])
-        return (fixLat[i - 1] + (fixLat[i] - fixLat[i - 1]) * f) to (fixLng[i - 1] + (fixLng[i] - fixLng[i - 1]) * f)
+        shownLat = fixLat[i - 1] + (fixLat[i] - fixLat[i - 1]) * f
+        shownLng = fixLng[i - 1] + (fixLng[i] - fixLng[i - 1]) * f
     }
 
     private fun recenter(lat: Double, lng: Double) {
@@ -531,14 +551,14 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     /** Slides the pan layer to the shown position, and re-renders around the car near the margin. */
     private fun step() {
         if (driving && hasFix && camReady) {
-            val (lat, lng) = shownAt(SystemClock.uptimeMillis())
-            val dx = ((Tiles.lngToX(lng) - camX) * pxPerX).toFloat()
-            val dy = ((Tiles.latToY(lat) - camY) * pxPerY).toFloat()
+            replay(SystemClock.uptimeMillis())
+            val dx = ((Tiles.lngToX(shownLng) - camX) * pxPerX).toFloat()
+            val dy = ((Tiles.latToY(shownLat) - camY) * pxPerY).toFloat()
             if (forceStep || abs(-dx - mapFrame.slideX) >= MIN_STEP_PX || abs(-dy - mapFrame.slideY) >= MIN_STEP_PX) {
                 forceStep = false
                 mapFrame.slide(-dx, -dy)
             }
-            if (!recenterPending && (abs(dx) > RECENTER_AT_PX || abs(dy) > RECENTER_AT_PX)) recenter(lat, lng)
+            if (!recenterPending && (abs(dx) > RECENTER_AT_PX || abs(dy) > RECENTER_AT_PX)) recenter(shownLat, shownLng)
         }
     }
 

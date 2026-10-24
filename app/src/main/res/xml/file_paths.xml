@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the share card folder is exposed (ShareCard saves to external files / Pictures). -->
+<paths>
+    <external-files-path name="cards" path="Pictures/" />
+    <!-- Fallback when external storage is unavailable (same folder name under internal files). -->
+    <files-path name="cards_internal" path="Pictures/" />
+</paths>
