@@ -315,7 +315,10 @@ def tc_detour(ctx):
     end = time.time() + 6
     nodes = []
     while time.time() < end:
-        nodes = ctx.dev.ui_nodes()
+        try:
+            nodes = ctx.dev.ui_nodes()
+        except RuntimeError:  # dump failed (screen not idle): keep polling
+            continue
         if ctx.dev.find("탐험 우회 경로", nodes=nodes):
             break
         time.sleep(0.3)

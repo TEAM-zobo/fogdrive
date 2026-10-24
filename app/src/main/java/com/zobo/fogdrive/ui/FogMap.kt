@@ -13,12 +13,14 @@ import android.view.Choreographer
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -63,7 +65,17 @@ private fun isNight(context: Context): Boolean =
     (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
 /** Viewport that holds an oversized pan layer (map + fog) and a car marker fixed at the centre. */
-private class MapFrame(context: Context, val pan: FrameLayout, val car: View) : FrameLayout(context) {
+private class MapFrame(context: Context, val pan: FrameLayout, val car: View, val credit: View) : FrameLayout(context) {
+    /** Oversize around the viewport: PAN_MARGIN_PX while driving, 0 when parked (no slide). */
+    var margin = 0
+        set(value) {
+            if (field != value) {
+                field = value
+                requestLayout()
+            }
+        }
+    /** Called after the pan layer was resized (mode switch), so the driving camera can re-base. */
+    var onPanResized: () -> Unit = {}
     init {
         clipChildren = true
         // Nothing here is meaningful to accessibility; hiding the whole subtree keeps per-frame
@@ -71,16 +83,18 @@ private class MapFrame(context: Context, val pan: FrameLayout, val car: View) : 
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         addView(pan)
         addView(car)
+        addView(credit)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = MeasureSpec.getSize(widthMeasureSpec)
         val h = MeasureSpec.getSize(heightMeasureSpec)
         pan.measure(
-            MeasureSpec.makeMeasureSpec(w + 2 * PAN_MARGIN_PX, MeasureSpec.EXACTLY),
-            MeasureSpec.makeMeasureSpec(h + 2 * PAN_MARGIN_PX, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(w + 2 * margin, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(h + 2 * margin, MeasureSpec.EXACTLY),
         )
         car.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
+        credit.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(h, MeasureSpec.AT_MOST))
         setMeasuredDimension(w, h)
     }
 
@@ -109,8 +123,13 @@ private class MapFrame(context: Context, val pan: FrameLayout, val car: View) : 
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        pan.layout(-PAN_MARGIN_PX, -PAN_MARGIN_PX, r - l + PAN_MARGIN_PX, b - t + PAN_MARGIN_PX)
+        val oldW = pan.width
+        val oldH = pan.height
+        pan.layout(-margin, -margin, r - l + margin, b - t + margin)
+        if (oldW != 0 && (oldW != pan.width || oldH != pan.height)) post { onPanResized() }
         car.layout(0, 0, r - l, b - t)
+        val pad = 12
+        credit.layout(pad, b - t - credit.measuredHeight - pad, pad + credit.measuredWidth, b - t - pad)
         // The oversized pan layer must never paint outside the viewport (it covered the nav rail).
         clipBounds = Rect(0, 0, r - l, b - t)
     }
@@ -177,7 +196,15 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         addView(this@FogMapHolder.overlay, lp) // plain `overlay` would resolve to View.getOverlay()
     }
     private val car = CarMarkerView(context).apply { visibility = View.GONE }
-    private val mapFrame = MapFrame(context, pan, car)
+    /** Licence-required map credit, drawn above the fog (the engine's own sits under it). */
+    private val credit = TextView(context).apply {
+        text = "© OpenStreetMap · OpenFreeMap"
+        textSize = 13f
+        setTextColor(Color.argb(200, 0xE6, 0xEB, 0xF2))
+        setShadowLayer(3f, 0f, 1f, Color.BLACK)
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+    private val mapFrame = MapFrame(context, pan, car, credit).also { it.onPanResized = { onPanResized() } }
     val frame: FrameLayout get() = mapFrame
 
     var map: MapLibreMap? = null
@@ -206,16 +233,51 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
 
     fun onMapReady(map: MapLibreMap) {
         this.map = map
+        // The fog covers the engine's logo/attribution; our own credit label is drawn above the fog.
+        map.uiSettings.isLogoEnabled = false
+        map.uiSettings.isAttributionEnabled = false
         mapView.addOnDidFinishRenderingFrameListener(object : MapView.OnDidFinishRenderingFrameListener {
             override fun onDidFinishRenderingFrame(fully: Boolean, frameEncodingTime: Double, frameRenderingTime: Double) {
-                if (fully && recenterPending) adoptRenderedCamera()
+                // Any rendered frame already shows the new camera (partial frames are displayed too),
+                // so re-base now; waiting for `fully` misaligns the slide until all tiles load, and
+                // never re-bases at all when tiles fail to load (offline).
+                if (recenterPending) adoptRenderedCamera()
             }
         })
+    }
+
+    private var night: Boolean? = null
+
+    /** The pan layer changed size: the rendered map moved, so re-base the slide on the next render. */
+    private fun onPanResized() {
+        overlay.invalidate()
+        if (driving && hasFix) {
+            val (lat, lng) = shownAt(SystemClock.uptimeMillis())
+            recenter(lat, lng)
+        }
+    }
+
+    /** Applies the day/night style; re-applied when the system theme flips (uiMode is a handled config change). */
+    fun setNight(context: Context, value: Boolean) {
+        val m = map ?: return
+        if (night == value) return
+        night = value
+        overlay.night = value
+        m.setStyle(Style.Builder().fromJson(styleJson(context, value))) {
+            applyMode()
+            overlay.invalidate()
+        }
+    }
+
+    /** Lifecycle: no frame loop while the app is in the background. */
+    fun onStart() {
+        if (driving) startTicking()
     }
 
     /** Driving/parked map settings; called on mode change and again once the style loads. */
     fun setDriving(value: Boolean) {
         driving = value
+        mapFrame.margin = if (value) PAN_MARGIN_PX else 0
         applyMode()
         car.visibility = if (value) View.VISIBLE else View.GONE
         overlay.showCurrent = !value
@@ -271,6 +333,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         segStart = now
         lastFixAt = now
         hasFix = true
+        startTicking()
     }
 
     private fun shownAt(now: Long): Pair<Double, Double> {
@@ -282,6 +345,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private fun recenter(lat: Double, lng: Double) {
         val m = map ?: return
         recenterPending = true
+        startTicking()
         m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), DRIVING_ZOOM))
         if (!camReady) adoptRenderedCamera()
     }
@@ -319,11 +383,18 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             }
             if (!recenterPending && (abs(dx) > RECENTER_AT_PX || abs(dy) > RECENTER_AT_PX)) recenter(lat, lng)
         }
-        if (ticking) Choreographer.getInstance().postFrameCallback(this)
+        // Keep ticking only while the glide is running or a re-base is due; at a standstill (no new
+        // fixes) the loop sleeps until the next fix instead of waking the main thread every vsync.
+        val gliding = hasFix && SystemClock.uptimeMillis() < segStart + segDuration
+        if (ticking && driving && (gliding || recenterPending || forceStep)) {
+            Choreographer.getInstance().postFrameCallback(this)
+        } else {
+            ticking = false
+        }
     }
 
     private fun startTicking() {
-        if (ticking) return
+        if (ticking || !driving) return
         ticking = true
         Choreographer.getInstance().postFrameCallback(this)
     }
@@ -359,10 +430,16 @@ fun FogMap(
         mv.onCreate(null)
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> mv.onStart()
+                Lifecycle.Event.ON_START -> {
+                    mv.onStart()
+                    holder.onStart()
+                }
                 Lifecycle.Event.ON_RESUME -> mv.onResume()
                 Lifecycle.Event.ON_PAUSE -> mv.onPause()
-                Lifecycle.Event.ON_STOP -> mv.onStop()
+                Lifecycle.Event.ON_STOP -> {
+                    holder.stopTicking()
+                    mv.onStop()
+                }
                 else -> Unit
             }
         }
@@ -380,12 +457,7 @@ fun FogMap(
                 .target(LatLng(current?.first ?: 37.5446, current?.second ?: 127.0559))
                 .zoom(if (driving) DRIVING_ZOOM else 14.0)
                 .build()
-            val night = isNight(context)
-            holder.overlay.night = night
-            map.setStyle(Style.Builder().fromJson(styleJson(context, night))) {
-                holder.applyMode()
-                holder.overlay.invalidate()
-            }
+            holder.setNight(context, isNight(context))
             // While driving the fog is re-based only when a re-render lands (adoptRenderedCamera).
             map.addOnCameraMoveListener { if (!holder.driving) holder.overlay.invalidate() }
             map.addOnCameraIdleListener { if (!holder.driving) holder.overlay.invalidate() }
@@ -414,6 +486,10 @@ fun FogMap(
     }
     LaunchedEffect(driving) {
         if (holder.map != null) holder.setDriving(driving)
+    }
+    val night = (LocalConfiguration.current.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    LaunchedEffect(night) {
+        holder.setNight(context, night)
     }
     LaunchedEffect(current, follow, driving) {
         val map = holder.map ?: return@LaunchedEffect

@@ -6,6 +6,7 @@ import android.graphics.BitmapShader
 import android.graphics.Shader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.PorterDuff
@@ -78,6 +79,7 @@ class FogOverlayView(context: Context) : View(context) {
     }
     private val maskPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val fogPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val textureMatrix = Matrix()
     private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x5E, 0xE6, 0xB8) }
     private var centres = FloatArray(512)
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5EE6B8") }
@@ -119,6 +121,12 @@ class FogOverlayView(context: Context) : View(context) {
         if (fogPaint.shader == null) {
             fogPaint.shader = BitmapShader(cloudTexture(night), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
         }
+        // Anchor the clouds to the map (not the screen) so they move with it when panning or re-basing.
+        val texSize = TEXTURE_SIZE.toDouble()
+        val ox = (-(x0 * pxPerCell / MASK_DIV)).mod(texSize).toFloat()
+        val oy = (-(y0 * pxPerCell / MASK_DIV)).mod(texSize).toFloat()
+        textureMatrix.setTranslate(ox, oy)
+        fogPaint.shader.setLocalMatrix(textureMatrix)
         maskCanvas.drawPaint(fogPaint)
 
         // Pick a level so one drawn tile covers at least ~1.5 mask pixels.
@@ -189,6 +197,7 @@ class FogOverlayView(context: Context) : View(context) {
     private companion object {
         const val MASK_DIV = 3
         const val MAX_DZ = 10
+        const val TEXTURE_SIZE = 128
         private var cachedTexture: Bitmap? = null
         private var cachedNight = false
 
@@ -198,7 +207,7 @@ class FogOverlayView(context: Context) : View(context) {
          */
         fun cloudTexture(night: Boolean): Bitmap {
             cachedTexture?.takeIf { cachedNight == night }?.let { return it }
-            val size = 128
+            val size = TEXTURE_SIZE
             val base = if (night) intArrayOf(9, 13, 20) else intArrayOf(28, 37, 51)
             val rnd = java.util.Random(19)
             fun grid(n: Int) = Array(n) { FloatArray(n) { rnd.nextFloat() } }

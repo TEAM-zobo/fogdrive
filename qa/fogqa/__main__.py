@@ -23,6 +23,7 @@ def main():
     pf = sub.add_parser("perf", help="주행 모드 CPU·메모리 측정")
     pf.add_argument("--kmh", type=int, nargs="*", default=[40, 100])
     pf.add_argument("--headless", action="store_true")
+    pf.add_argument("--shutdown", action="store_true", help="--headless 측정 후 QA 에뮬레이터 종료")
     sub.add_parser("tc-doc", help="docs/test-cases.html 생성")
     a = p.parse_args()
 
@@ -51,7 +52,7 @@ def main():
         print(f"\n{len(results) - len(failed)}/{len(results)} 통과 · 리포트: {os.path.join(out, 'index.html')}")
         sys.exit(1 if failed else 0)
     elif a.cmd == "perf":
-        from .device import Device, boot_headless
+        from .device import Device, boot_headless, shutdown
         from .perf import driving_benchmark
         from .vconsole import VConsole
         dev = boot_headless() if a.headless else Device()
@@ -64,6 +65,8 @@ def main():
                 driving_benchmark(dev, vc, kmh)
         finally:
             vc.stop()
+            if a.headless and a.shutdown:
+                shutdown(dev)
     elif a.cmd == "list":
         from .cases import CASES
         for c in CASES:

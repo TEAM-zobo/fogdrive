@@ -140,7 +140,11 @@ class Device:
     def wait_text(self, text, timeout=10.0, exact=False, present=True):
         end = time.time() + timeout
         while time.time() < end:
-            found = self.find(text, exact=exact) is not None
+            try:
+                found = self.find(text, exact=exact) is not None
+            except RuntimeError:  # dump failed (screen not idle): unknown, keep polling
+                time.sleep(0.5)
+                continue
             if found == present:
                 return True
             time.sleep(0.5)
@@ -159,7 +163,10 @@ class Device:
     def tap_text(self, text, exact=True, timeout=5.0):
         end = time.time() + timeout
         while time.time() < end:
-            node = self.find(text, exact=exact)
+            try:
+                node = self.find(text, exact=exact)
+            except RuntimeError:  # dump failed (screen not idle): keep polling
+                node = None
             if node:
                 self.tap(*node.center)
                 return True

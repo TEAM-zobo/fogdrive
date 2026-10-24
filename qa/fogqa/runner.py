@@ -23,6 +23,7 @@ class Context:
         self.logs = []
         self.checks = []
         self.shots = []
+        self.attempt = 1
 
     def log(self, msg):
         self.logs.append(msg)
@@ -35,7 +36,9 @@ class Context:
             raise CaseFailed(what)
 
     def shot(self, name):
-        fname = f"{self.case.id}-{len(self.shots) + 1:02d}-{name}.png"
+        # Retry attempts get their own file names so the first attempt's shots are not overwritten.
+        tag = f"-try{self.attempt}" if self.attempt > 1 else ""
+        fname = f"{self.case.id}{tag}-{len(self.shots) + 1:02d}-{name}.png"
         self.dev.save_screenshot(os.path.join(self.out_dir, fname))
         self.shots.append(fname)
 
@@ -70,17 +73,22 @@ def run(ids=None, dev=None, vc=None, emit=print, stop_flag=None, vc_port=8088):
             # Emulators occasionally stall (black screen, dump timeouts) under memory pressure, so a
             # non-passing case is retried once; the first attempt's error stays in the report.
             first_error = ""
+            first_logs, first_shots = [], []
             for attempt in (1, 2):
                 ctx = Context(dev, vc, out_dir, c, emit)
+                ctx.attempt = attempt
                 status, error = _attempt(c, ctx, vc)
                 if status == "PASS" or attempt == 2:
                     break
                 first_error = f"{status}: {error}"
+                # Keep the first attempt's evidence (failure screenshot, traceback) in the report.
+                first_logs = [f"[1차] {l}" for l in ctx.logs]
+                first_shots = list(ctx.shots)
                 emit(f"[{c.id}] 재시도 (1차 {first_error})")
             r = {
                 "id": c.id, "feature": c.feature, "title": c.title, "status": status, "error": error,
                 "retried_after": first_error,
-                "seconds": round(time.time() - t0, 1), "checks": ctx.checks, "logs": ctx.logs, "shots": ctx.shots,
+                "seconds": round(time.time() - t0, 1), "checks": ctx.checks, "logs": first_logs + ctx.logs, "shots": first_shots + ctx.shots,
             }
             results.append(r)
             emit(f"[{c.id}] {status} ({r['seconds']}s){' - ' + error if error else ''}")
