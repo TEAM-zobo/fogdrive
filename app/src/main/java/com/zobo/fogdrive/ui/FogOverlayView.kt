@@ -43,6 +43,8 @@ import kotlin.math.min
 class FogOverlayView(context: Context) : View(context) {
     var map: MapLibreMap? = null
     var cellsAtLevel: (Int) -> Set<Long> = { emptySet() }
+    /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
+    var revisits: () -> Map<Long, Int> = { emptyMap() }
     var current: Pair<Double, Double>? = null
     var landings: List<Pair<Double, Double>> = emptyList()
     var detour: Pair<Double, Double>? = null
@@ -121,7 +123,22 @@ class FogOverlayView(context: Context) : View(context) {
         style = Paint.Style.STROKE
         strokeWidth = 5f
     }
+    private val density = resources.displayMetrics.density
     private val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
+    private val wornLight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(55, 0x00, 0x81, 0xF8) }
+    private val wornMid = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(100, 0x00, 0x81, 0xF8) }
+    private val wornHeavy = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(150, 0x00, 0x5C, 0xC8) }
+    private val pinRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f * density
+    }
+    private val pinText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+        textSize = 16f * density
+        typeface = Typeface.create(Typeface.DEFAULT, 600, false)
+    }
     private val detourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#0081F8")
         style = Paint.Style.STROKE
@@ -129,7 +146,6 @@ class FogOverlayView(context: Context) : View(context) {
     }
     private val src = Rect()
     private val dst = RectF()
-    private val density = resources.displayMetrics.density
     private fun linePaint(argb: Int, width: Float, dash: Float = 0f) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = argb
         style = Paint.Style.STROKE
@@ -264,6 +280,7 @@ class FogOverlayView(context: Context) : View(context) {
         src.set(0, 0, mw, mh)
         dst.set(0f, 0f, w.toFloat(), h.toFloat())
         canvas.drawBitmap(bmp, src, dst, maskPaint)
+        drawWornRoads(canvas, x0, y0, x1, y1, pxPerCell)
         if (regions != null) {
             drawBoundaries(canvas, regions, pxPerCell, x0, y0, x1, y1)
             if (showLabels) {
@@ -300,11 +317,7 @@ class FogOverlayView(context: Context) : View(context) {
                 for ((lat, lng) in r.points) canvas.drawCircle(sx(lng), sy(lat), radius, routeDot)
             }
         }
-        for ((lat, lng) in landings) {
-            val p = toScreen(lat, lng)
-            canvas.drawCircle(p.x, p.y - 26f, 14f, pinPaint)
-            canvas.drawRect(p.x - 2.5f, p.y - 26f, p.x + 2.5f, p.y, pinPaint)
-        }
+        drawLandingPins(canvas, x0, y0, pxPerCell)
         detour?.let { (lat, lng) ->
             val p = toScreen(lat, lng)
             canvas.drawCircle(p.x, p.y, min(160f, max(48f, pxPerCell.toFloat() * 3)), detourPaint)
@@ -313,6 +326,97 @@ class FogOverlayView(context: Context) : View(context) {
             val p = toScreen(lat, lng)
             canvas.drawCircle(p.x, p.y, 16f, dotPaint)
             canvas.drawCircle(p.x, p.y, 16f, dotRing)
+        }
+    }
+
+    /**
+     * Roads driven on several trips get a blue tint that deepens with the count (2, 3-4, 5+), so
+     * the daily routes stand out at a glance. Only once single cells are visible (zoom ~13+).
+     */
+    private fun drawWornRoads(c: Canvas, x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
+        if (px < WORN_MIN_PX) return
+        val visits = revisits()
+        if (visits.isEmpty()) return
+        val r = (px * 0.62).toFloat()
+        fun draw(cx: Int, cy: Int, n: Int) {
+            val paint = when {
+                n >= 5 -> wornHeavy
+                n >= 3 -> wornMid
+                else -> wornLight
+            }
+            c.drawCircle(((cx + 0.5 - x0) * px).toFloat(), ((cy + 0.5 - y0) * px).toFloat(), r, paint)
+        }
+        val lx0 = floor(x0).toInt()
+        val lx1 = floor(x1).toInt()
+        val ly0 = floor(y0).toInt()
+        val ly1 = floor(y1).toInt()
+        if ((lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1) < visits.size) {
+            // Zoomed in on a long history: probe only the cells on screen (as the fog mask does).
+            for (cx in lx0..lx1) for (cy in ly0..ly1) visits[Tiles.pack(cx, cy)]?.let { draw(cx, cy, it) }
+        } else {
+            for ((cell, n) in visits) {
+                val cx = Tiles.x(cell)
+                val cy = Tiles.y(cell)
+                if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
+                draw(cx, cy, n)
+            }
+        }
+    }
+
+    private var clusterX = FloatArray(64)
+    private var clusterY = FloatArray(64)
+    private var clusterN = IntArray(64)
+
+    /**
+     * Drop-off pins, merged on screen: pins within [CLUSTER_DP] of a group join it (drawn at the
+     * group's average position with the count), so repeated stops at home or work stay one marker.
+     */
+    private fun drawLandingPins(c: Canvas, x0: Double, y0: Double, px: Double) {
+        if (landings.isEmpty()) return
+        val radius = CLUSTER_DP * density
+        var groups = 0
+        for ((lat, lng) in landings) {
+            val x = ((Tiles.lngToX(lng) - x0) * px).toFloat()
+            val y = ((Tiles.latToY(lat) - y0) * px).toFloat()
+            var g = 0
+            while (g < groups) {
+                val n = clusterN[g]
+                val dx = clusterX[g] / n - x
+                val dy = clusterY[g] / n - y
+                if (dx * dx + dy * dy < radius * radius) break
+                g++
+            }
+            if (g == groups) {
+                if (groups == clusterN.size) {
+                    clusterX = clusterX.copyOf(groups * 2)
+                    clusterY = clusterY.copyOf(groups * 2)
+                    clusterN = clusterN.copyOf(groups * 2)
+                }
+                clusterX[g] = 0f
+                clusterY[g] = 0f
+                clusterN[g] = 0
+                groups++
+            }
+            clusterX[g] += x
+            clusterY[g] += y
+            clusterN[g]++
+        }
+        for (g in 0 until groups) {
+            val n = clusterN[g]
+            val x = clusterX[g] / n
+            val y = clusterY[g] / n
+            if (x < -radius || y < -radius || x > width + radius || y > height + radius) continue
+            if (n == 1) {
+                c.drawRect(x - 2.5f * density, y - 18f * density, x + 2.5f * density, y, pinPaint)
+                c.drawCircle(x, y - 20f * density, 10f * density, pinPaint)
+                c.drawCircle(x, y - 20f * density, 10f * density, pinRing)
+            } else {
+                val r = (14f + 2f * minOf(n, 9)) * density
+                c.drawCircle(x, y, r, pinPaint)
+                c.drawCircle(x, y, r, pinRing)
+                val label = if (n > 99) "99+" else n.toString()
+                c.drawText(label, x, y - (pinText.descent() + pinText.ascent()) / 2, pinText)
+            }
         }
     }
 
@@ -432,6 +536,10 @@ class FogOverlayView(context: Context) : View(context) {
         /** Screen px per grid cell from which 읍·면·동 (zoom ~13) / 시·군·구 (zoom ~9) are drawn. */
         const val DONG_LINES_PX = 4.0
         const val DISTRICT_LINES_PX = 0.25
+        /** Screen px per cell from which worn roads are drawn (single cells visible, zoom ~13). */
+        const val WORN_MIN_PX = 3.0
+        /** Drop-off pins closer than this on screen are shown as one numbered pin. */
+        const val CLUSTER_DP = 44f
         /** ln(2) / 8: dash lengths are refreshed every eighth of a zoom level. */
         val DASH_STEP_LN = ln(2.0) / 8
         const val MASK_DIV = 3

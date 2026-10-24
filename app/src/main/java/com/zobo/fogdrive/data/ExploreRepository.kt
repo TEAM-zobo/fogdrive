@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
@@ -71,6 +72,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     suspend fun load() {
         val all = withContext(Dispatchers.IO) { db.dao().allCellIds() }
         synchronized(lock) { for (c in all) if (cells.add(c)) append(c) }
+        withContext(Dispatchers.IO) { db.dao().revisited() }.forEach { visitCounts[it.cell] = it.visits }
         bump()
         _loaded.value = true
     }
@@ -78,6 +80,18 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     fun count(): Int = synchronized(lock) { cells.size }
 
     override fun isExplored(cell: Long): Boolean = cell in cells  // concurrent set: no lock needed
+
+    /** Cells driven by more than one trip, with their trip count (read live by the map). */
+    private val visitCounts = ConcurrentHashMap<Long, Int>()
+    val revisits: Map<Long, Int> get() = visitCounts
+
+    override fun revisit(cells: Collection<Long>) {
+        // No version bump: that would rebuild the coarse fog levels on every fix over a known road.
+        // The map redraws on each fix anyway and reads [revisits] live.
+        for (c in cells) visitCounts.merge(c, 2) { old, _ -> old + 1 }
+        val list = cells.toList()
+        scope.launch(Dispatchers.IO) { list.chunked(SQL_IN_LIMIT).forEach { db.dao().addVisit(it) } }
+    }
 
     override fun reveal(newCells: Collection<Long>, source: Int): Int {
         val added = ArrayList<Long>()
@@ -168,9 +182,24 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     suspend fun reset() {
         withContext(Dispatchers.IO) { db.clearAllTables() }
+        forgetAll()
+    }
+
+    suspend fun exportTo(file: File): BackupSummary = withContext(Dispatchers.IO) { Backup.export(db, file) }
+
+    /** Replaces all records with a backup, then reloads them (the recorder drops its trip, as on reset). */
+    suspend fun importFrom(file: File): BackupSummary {
+        val summary = withContext(Dispatchers.IO) { Backup.import(db, file) }
+        forgetAll()
+        load()
+        return summary
+    }
+
+    private fun forgetAll() {
         synchronized(lock) {
             resetGeneration++
             cells.clear()
+            visitCounts.clear()
             orderSize = 0
             levelCache.clear()
             tripCells.clear()
@@ -183,5 +212,10 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     private fun bump() {
         _version.update { it + 1 }
+    }
+
+    private companion object {
+        /** SQLite's default bound-parameter limit is 999. */
+        const val SQL_IN_LIMIT = 900
     }
 }

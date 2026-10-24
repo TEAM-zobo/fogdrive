@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -46,6 +47,16 @@ data class TripRoute(val trip: TripEntity, val points: List<Pair<Double, Double>
 data class RegionHere(val province: NamedRate, val district: NamedRate, val dong: NamedRate)
 
 data class NamedRate(val name: String, val rate: Double)
+
+/** An unexplored 읍·면·동 near the car, suggested on the map. */
+data class ExploreSuggestion(
+    val name: String,
+    val district: String,
+    val lat: Double,
+    val lng: Double,
+    val distanceM: Double,
+    val bounds: TileBox,
+)
 
 class MainViewModel : ViewModel() {
     private val repo = FogRuntime.repo
@@ -88,8 +99,9 @@ class MainViewModel : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Region dex; computed only while a screen shows it. Null until loaded, empty if the atlas failed. */
-    val regions: StateFlow<List<ProvinceProgress>?> = version
-        .map { FogRuntime.regions?.tally(repo) ?: emptyList() }
+    val regions: StateFlow<List<ProvinceProgress>?> = combine(version, landings) { _, l ->
+        FogRuntime.regions?.tally(repo, l.map { Tiles.cellOf(it.lat, it.lng) }) ?: emptyList()
+    }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -119,6 +131,45 @@ class MainViewModel : ViewModel() {
             NamedRate(dong.name, n.dongRate(i)),
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val suggestionSkip = MutableStateFlow(0)
+
+    /**
+     * The nearest 읍·면·동 never entered (cycled by [nextSuggestion]), for the map's "go explore"
+     * card. Follows the car in ~1 km steps so the card doesn't change on every fix.
+     */
+    val suggestion: StateFlow<ExploreSuggestion?> = combine(
+        // Only a newly entered 동 changes the candidates, not every revealed cell.
+        regionCounts.distinctUntilChangedBy { it?.visitedDongs },
+        live.map { it.location?.let { f -> Tiles.parent(Tiles.cellOf(f.lat, f.lng), 5) } }.distinctUntilChanged(),
+        suggestionSkip,
+    ) { n, area, skip ->
+        if (n == null || area == null) return@combine null
+        val atlas = n.atlas
+        val lat = Tiles.yToLat(Tiles.y(area) * 32.0 + 16)
+        val lng = Tiles.xToLng(Tiles.x(area) * 32.0 + 16)
+        val near = atlas.dongs.indices.asSequence()
+            .filter { n.dong[it] == 0 }
+            .map { i ->
+                val o = atlas.dongs[i].outline
+                val p = Tiles.yToLat(o.labelY + 0.5) to Tiles.xToLng(o.labelX + 0.5)
+                Triple(i, p, Tiles.distanceMeters(lat, lng, p.first, p.second))
+            }
+            .filter { it.third < SUGGEST_MAX_M }
+            .sortedBy { it.third }
+            .take(SUGGEST_CHOICES)
+            .toList()
+        if (near.isEmpty()) return@combine null
+        val (i, p, d) = near[skip % near.size]
+        val dong = atlas.dongs[i]
+        ExploreSuggestion(dong.name, atlas.districts[dong.district].name, p.first, p.second, d, dong.outline.box)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun nextSuggestion() {
+        suggestionSkip.value++
+    }
+
+    fun routeToSuggestion(s: ExploreSuggestion): Boolean = navi.routeTo(s.lat, s.lng, "${s.district} ${s.name}")
 
     /** Entered 읍·면·동 out of all of them, for the map header. */
     val nationwide: StateFlow<Pair<Int, Int>?> = regionCounts
@@ -181,6 +232,41 @@ class MainViewModel : ViewModel() {
     fun acceptDetour(s: DetourPlanner.Suggestion): Boolean =
         navi.addDetourWaypoint(s.lat, s.lng)
 
+    val cloud = FogRuntime.cloud.state
+
+    /** Result line under the export / import buttons. */
+    val backupMessage = MutableStateFlow<String?>(null)
+
+    fun syncNow() {
+        viewModelScope.launch { FogRuntime.cloud.syncNow() }
+    }
+
+    fun setAutoSync(on: Boolean) = FogRuntime.cloud.setAutoSync(on)
+
+    fun exportData() {
+        viewModelScope.launch {
+            backupMessage.value = runCatching { repo.exportTo(FogRuntime.backupFile) }.fold(
+                { "내보냈어요: 칸 ${it.cells}개 · 주행 ${it.trips}건 · 하차 ${it.landings}곳\n${FogRuntime.backupFile.path}" },
+                { "내보내지 못했어요: ${it.message}" },
+            )
+        }
+    }
+
+    fun importData() {
+        viewModelScope.launch {
+            val file = FogRuntime.backupFile
+            backupMessage.value = if (!file.exists()) {
+                "불러올 파일이 없어요. ${file.path} 에 백업 파일을 넣어 주세요."
+            } else {
+                runCatching { repo.importFrom(file) }.fold(
+                    { "불러왔어요: 칸 ${it.cells}개 · 주행 ${it.trips}건 · 하차 ${it.landings}곳" },
+                    { "불러오지 못했어요: ${it.message}" },
+                )
+            }
+            shownTrip.value = null
+        }
+    }
+
     fun resetAll() {
         showTripJob?.cancel()
         shownTrip.value = null
@@ -188,6 +274,10 @@ class MainViewModel : ViewModel() {
     }
 
     companion object {
+        /** Unexplored 동 farther than this are not suggested; the nearest few are offered in turn. */
+        const val SUGGEST_MAX_M = 30_000.0
+        const val SUGGEST_CHOICES = 8
+
         fun monthStart(): Long = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 0)

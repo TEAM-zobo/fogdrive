@@ -2,11 +2,13 @@ package com.zobo.fogdrive.car
 
 import ai.pleos.playground.navi.constants.NaviErrorCode
 import ai.pleos.playground.navi.constants.NavigationStatus
+import ai.pleos.playground.navi.constants.RouteOption
 import ai.pleos.playground.navi.constants.TurnType
 import ai.pleos.playground.navi.constants.WaypointIndex
 import ai.pleos.playground.navi.data.BookmarkInfo
 import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.DestinationInfo
+import ai.pleos.playground.navi.data.RouteInfo
 import ai.pleos.playground.navi.data.RouteStateInfo
 import ai.pleos.playground.navi.data.RecentDestinationInfo
 import ai.pleos.playground.navi.data.RequestWaypointInfo
@@ -118,6 +120,28 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
         }
         if (ok) detourPending = true
         return ok
+    }
+
+    /** Starts navigation guidance to an unexplored place picked by the app (the "안 가본 동네" card). */
+    fun routeTo(lat: Double, lng: Double, name: String): Boolean {
+        val h = helper ?: return false
+        return call("requestRoute") {
+            h.requestRoute(
+                RouteInfo(
+                    latitude = lat,
+                    longitude = lng,
+                    displayLatitude = null,
+                    displayLongitude = null,
+                    poiName = name,
+                    poiId = "",
+                    address = name,
+                    poiSubId = "0",
+                    routeOption = RouteOption.RECOMMENDED,
+                    poiProvider = "",
+                    isMobileRequest = false,
+                )
+            )
+        }
     }
 
     /** Demo mode stand-in when no navigation destination exists in the emulator. */

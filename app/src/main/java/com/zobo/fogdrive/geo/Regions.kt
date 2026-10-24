@@ -86,8 +86,12 @@ class RegionAtlas(
     }
 
     companion object {
-        /** Bucket = zoom-15 tile (~1 km), about the size of a city 동. */
-        private const val BUCKET_DZ = 5
+        /**
+         * Bucket = zoom-13 tile (~5 km). Finer buckets made rural 동 (tens of km across) span hundreds
+         * each: ~270k index entries and seconds of start-up; this is ~25k, and the bbox check per
+         * candidate keeps lookups cheap (each explored cell is located only once anyway).
+         */
+        private const val BUCKET_DZ = 7
         const val ASSET = "regions/kr_regions.bin"
         private const val FORMAT_VERSION = 2
 

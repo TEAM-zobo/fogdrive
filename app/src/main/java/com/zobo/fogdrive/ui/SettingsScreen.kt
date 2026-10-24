@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,6 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -40,6 +47,10 @@ fun SettingsScreen(
     val naviConnected by viewModel.navi.connected.collectAsState()
     val naviMessage by viewModel.navi.lastMessage.collectAsState()
     var confirmReset by remember { mutableStateOf(false) }
+    var confirmImport by remember { mutableStateOf(false) }
+    val cloud by viewModel.cloud.collectAsState()
+    val backupMessage by viewModel.backupMessage.collectAsState()
+    val syncTime = remember { SimpleDateFormat("M월 d일 HH:mm", Locale.KOREA) }
 
     Column(
         Modifier.fillMaxSize().padding(40.dp).verticalScroll(rememberScrollState()),
@@ -79,6 +90,65 @@ fun SettingsScreen(
                     Text("시연 중지", modifier = Modifier.padding(12.dp))
                 }
             }
+        }
+
+        SectionHeader("데이터 동기화", Modifier.padding(top = 16.dp))
+        FogCard(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                IconBadge(Icons.Outlined.CloudSync, FogColors.Accent)
+                Column(Modifier.weight(1f)) {
+                    Text("클라우드 동기화", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        when {
+                            cloud.syncing -> "동기화 중…"
+                            cloud.error != null -> "동기화 실패: ${cloud.error}"
+                            cloud.lastSyncAt != null -> "Pleos 계정 · 마지막 동기화 ${syncTime.format(Date(cloud.lastSyncAt!!))}"
+                            else -> "Pleos 계정 · 아직 동기화하지 않았어요"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FogColors.TextSub,
+                    )
+                }
+                Button(
+                    onClick = { viewModel.syncNow() },
+                    enabled = !cloud.syncing,
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = FogColors.Accent, contentColor = FogColors.OnAccent),
+                ) { Text(if (cloud.syncing) "동기화 중" else "지금 동기화", modifier = Modifier.padding(8.dp)) }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("주행이 끝나면 자동으로 동기화", modifier = Modifier.weight(1f))
+                Switch(checked = cloud.autoSync, onCheckedChange = { viewModel.setAutoSync(it) })
+            }
+            Text(
+                "다른 차량에서 같은 Pleos 계정으로 로그인하면 개척 기록을 이어서 쓸 수 있어요. " +
+                    "서버 연동은 Pleos Sync SDK 공개에 맞춰 열리고, 그 전까지는 이 차량 안에 동기화 사본을 보관해요.",
+                style = MaterialTheme.typography.bodySmall,
+                color = FogColors.TextSub,
+            )
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedButton(onClick = { viewModel.exportData() }, shape = RoundedCornerShape(4.dp)) {
+                    Text("내보내기", modifier = Modifier.padding(8.dp))
+                }
+                if (!confirmImport) {
+                    OutlinedButton(onClick = { confirmImport = true }, shape = RoundedCornerShape(4.dp)) {
+                        Text("불러오기", modifier = Modifier.padding(8.dp))
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            viewModel.importData()
+                            confirmImport = false
+                        },
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = FogColors.Amber, contentColor = FogColors.OnAccent),
+                    ) { Text("지금 기록을 백업으로 바꾸기", modifier = Modifier.padding(8.dp)) }
+                    OutlinedButton(onClick = { confirmImport = false }, shape = RoundedCornerShape(4.dp)) {
+                        Text("취소", modifier = Modifier.padding(8.dp))
+                    }
+                }
+            }
+            backupMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub) }
         }
 
         SectionHeader("기록과 개인정보", Modifier.padding(top = 16.dp))

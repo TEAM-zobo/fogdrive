@@ -484,6 +484,7 @@ fun FogMap(
             holder.onMapReady(map)
             holder.overlay.map = map
             holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
+            holder.overlay.revisits = { FogRuntime.repo.revisits }
             map.uiSettings.isRotateGesturesEnabled = false
             map.uiSettings.isTiltGesturesEnabled = false
             map.uiSettings.isCompassEnabled = false

@@ -44,7 +44,7 @@ import com.zobo.fogdrive.geo.Area
 
 /**
  * Driving view (distraction-optimized): the map follows the car with no gestures or animation,
- * plus two glanceable numbers and, while the navigation guides, its next turn and speed limit.
+ * plus a few glanceable numbers (level, area cleared, new 동, the 동 under the car) and, while the navigation guides, its next turn and speed limit.
  * No game panels, lists, text input, or detour prompts.
  */
 @Composable
@@ -54,6 +54,8 @@ fun DrivingScreen(viewModel: MainViewModel) {
     val summary by viewModel.summary.collectAsState()
     val landings by viewModel.landings.collectAsState()
     val guidance by viewModel.navi.guidance.collectAsState()
+    val here by viewModel.here.collectAsState()
+    val tripNewDongs by viewModel.tripNewDongs.collectAsState()
     val current = live.location?.let { it.lat to it.lng }
     val pins = remember(landings) { landings.map { it.lat to it.lng } }
 
@@ -85,6 +87,15 @@ fun DrivingScreen(viewModel: MainViewModel) {
             Text("주행 모드", style = MaterialTheme.typography.titleMedium, color = FogColors.TextSub)
             Text("Lv.${summary.level}", color = FogColors.Accent, style = MaterialTheme.typography.displaySmall)
             Text("+${Area.formatCells(live.trip.newCells, live.location?.lat ?: 37.5)}", color = FogColors.Amber, style = MaterialTheme.typography.displaySmall)
+            if (tripNewDongs > 0) {
+                Text("새 동 +$tripNewDongs", color = FogColors.Blue, style = MaterialTheme.typography.displaySmall)
+            }
+            here?.let { h ->
+                Column {
+                    Text(h.dong.name, style = MaterialTheme.typography.titleLarge, color = FogColors.TextMain)
+                    Text(formatRate(h.dong.rate), style = MaterialTheme.typography.titleMedium, color = FogColors.Accent)
+                }
+            }
         }
         GuidancePanel(guidance, Modifier.align(Alignment.TopEnd).padding(28.dp))
     }

@@ -1,6 +1,8 @@
 package com.zobo.fogdrive.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +42,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -77,6 +81,7 @@ fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
                 district != null && province != null -> {
                     Breadcrumb(listOf("전국" to toCountry, province.name to toProvince, district.name to null))
                     RegionHeading(district, "읍·면·동 ${district.visitedDongs} / ${district.dongs.size} 방문") { onShowOnMap(district) }
+                    DexLegend()
                     Text("동을 누르면 지도에서 보여 줘요.", color = FogColors.TextSub)
                     RegionGrid(district.dongs, columns = 5, cardHeight = 124.dp, onSelect = onShowOnMap) { d ->
                         Text(d.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -86,6 +91,7 @@ fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
                 province != null -> {
                     Breadcrumb(listOf("전국" to toCountry, province.name to null))
                     RegionHeading(province, "시·군·구 ${province.visitedDistricts} / ${province.districts.size} 방문") { onShowOnMap(province) }
+                    DexLegend()
                     RegionGrid(province.districts, columns = 4, cardHeight = 184.dp, onSelect = { viewModel.dexDistrict.value = it.code }) { d ->
                         Text(d.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(formatRate(d.rate), style = MaterialTheme.typography.headlineMedium, color = FogColors.Accent)
@@ -111,10 +117,12 @@ private fun CountryPage(regions: List<ProvinceProgress>, onOpen: (ProvinceProgre
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Pill("시·도 ${regions.count { it.visited }} / ${regions.size}", FogColors.Accent)
         Pill("시·군·구 ${districts.count { it.visited }} / ${districts.size}", FogColors.Blue)
-        Pill("읍·면·동 ${dongs.count { it.visited }} / ${dongs.size}", FogColors.Amber)
+        Pill("읍·면·동 ${dongs.count { it.visited }} / ${dongs.size}", FogColors.Blue)
+        Pill("하차한 동 ${dongs.count { it.landed }}곳", FogColors.Amber)
         Spacer(Modifier.weight(1f))
         Text("행정구역 경계: admdongkor (CC BY 4.0), 원자료 통계청", style = MaterialTheme.typography.bodySmall, color = FogColors.TextSub)
     }
+    DexLegend()
     RegionGrid(regions, columns = 4, cardHeight = 184.dp, onSelect = onOpen) { p ->
         Text(p.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(formatRate(p.rate), style = MaterialTheme.typography.headlineMedium, color = FogColors.Accent)
@@ -172,6 +180,36 @@ private fun stampIcon(code: StampCode): ImageVector = when (code) {
     else -> Icons.Outlined.EmojiEvents
 }
 
+@Composable
+private fun LandedBadge(count: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(4.dp)).background(FogColors.Amber).padding(horizontal = 8.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Flag, contentDescription = "하차", tint = Color.White, modifier = Modifier.size(18.dp))
+        Text("$count", style = MaterialTheme.typography.labelMedium, color = Color.White, modifier = Modifier.padding(start = 2.dp))
+    }
+}
+
+/** Swatches explaining the three card states. */
+@Composable
+private fun DexLegend() {
+    @Composable
+    fun item(label: String, fill: Color, border: Color?) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            var m = Modifier.size(22.dp).clip(RoundedCornerShape(4.dp)).background(fill)
+            if (border != null) m = m.border(2.dp, border, RoundedCornerShape(4.dp))
+            Box(m)
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        item("하차한 곳", FogColors.Amber.copy(alpha = 0.10f), FogColors.Amber)
+        item("지나간 곳", FogColors.Surface, FogColors.Accent)
+        item("안 가본 곳", FogColors.SurfaceHigh, null)
+    }
+}
+
 /** "전국 › 서울특별시 › 성동구": every level but the current one is a link back up. */
 @Composable
 private fun Breadcrumb(path: List<Pair<String, (() -> Unit)?>>) {
@@ -202,6 +240,7 @@ private fun RegionHeading(region: RegionStat, visitedLine: String, onShowOnMap: 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Pill("달성률 ${formatRate(region.rate)}", FogColors.Accent)
                 Pill(visitedLine, FogColors.Blue)
+                if (region.landed) Pill("하차 ${region.landings}회", FogColors.Amber)
             }
         }
         Button(
@@ -235,6 +274,20 @@ private fun <T : RegionStat> RegionGrid(
                     FogCard(mod, color = FogColors.SurfaceHigh, padding = 20.dp) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("?", style = MaterialTheme.typography.headlineMedium, color = FogColors.TextSub)
+                        }
+                    }
+                } else if (item.landed) {
+                    // Got off here: warm fill and frame, plus a flag with how many times.
+                    FogCard(
+                        mod,
+                        color = FogColors.Amber.copy(alpha = 0.10f),
+                        padding = 20.dp,
+                        borderColor = FogColors.Amber,
+                        onClick = { onSelect(item) },
+                    ) {
+                        Box(Modifier.fillMaxSize()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { content(item) }
+                            LandedBadge(item.landings, Modifier.align(Alignment.TopEnd))
                         }
                     }
                 } else {

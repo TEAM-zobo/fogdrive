@@ -3,9 +3,11 @@ package com.zobo.fogdrive
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
+import java.io.File
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.NaviBridge
 import com.zobo.fogdrive.car.VehicleSignals
+import com.zobo.fogdrive.data.CloudSync
 import com.zobo.fogdrive.data.ExploreRepository
 import com.zobo.fogdrive.data.FogDb
 import com.zobo.fogdrive.explore.RegionTally
@@ -36,6 +38,8 @@ object FogRuntime {
         private set
     lateinit var navi: NaviBridge
         private set
+    lateinit var cloud: CloudSync
+        private set
 
     /** 시·도 / 시·군·구 / 읍·면·동 boundaries, parsed off the main thread on first use (the map's
      *  two-strength fog, then the dex tab) rather than in [init]. */
@@ -50,6 +54,10 @@ object FogRuntime {
     }
     private lateinit var appContext: Context
 
+    /** Export / import file: app-specific external storage, so it can be copied off with adb or USB. */
+    val backupFile: File
+        get() = File(appContext.getExternalFilesDir(null) ?: appContext.filesDir, "fogdrive-backup.json")
+
     val live = MutableStateFlow(LiveStatus())
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -63,6 +71,7 @@ object FogRuntime {
         repo = ExploreRepository(FogDb.create(app), scope)
         vehicle = VehicleSignals(app)
         navi = NaviBridge(app)
+        cloud = CloudSync(app, repo)
         scope.launch { repo.load() }
     }
 }

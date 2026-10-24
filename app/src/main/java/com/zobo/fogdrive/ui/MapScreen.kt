@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AltRoute
@@ -15,11 +16,13 @@ import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,6 +65,10 @@ fun MapScreen(viewModel: MainViewModel) {
     // Dismissal is per destination: the suggested point moves with every fix, so keying on it never sticks.
     var dismissedFor by remember { mutableStateOf<Place?>(null) }
     var detourMessage by remember { mutableStateOf<String?>(null) }
+    val suggestion by viewModel.suggestion.collectAsState()
+    var suggestionHidden by remember { mutableStateOf(false) }
+    // Keyed on the place, so "안내를 시작했어요" doesn't stay on a different 동 after the card moves on.
+    var suggestionMessage by remember(suggestion?.district, suggestion?.name) { mutableStateOf<String?>(null) }
 
     val current = live.location?.let { it.lat to it.lng }
     val lat = live.location?.lat ?: 37.5
@@ -159,6 +166,43 @@ fun MapScreen(viewModel: MainViewModel) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = FogColors.TextSub,
                     )
+                }
+            }
+        }
+
+        // "Go explore": nearest unexplored 동, while parked with nothing else in that corner.
+        val showSuggestion = suggestion != null && !suggestionHidden && vehicle.parked && shownTrip == null &&
+            !(visibleDetour != null && destination != null)
+        if (showSuggestion) suggestion?.let { sg ->
+            FogCard(
+                modifier = Modifier.padding(24.dp).width(640.dp).align(Alignment.BottomStart),
+                color = FogColors.Surface.copy(alpha = 0.97f),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    IconBadge(Icons.Outlined.TravelExplore, FogColors.Accent, size = 44.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text("안 가본 동네 가보기", style = MaterialTheme.typography.titleSmall, color = FogColors.Accent)
+                        Text("${sg.district} ${sg.name} · ${formatKm(sg.distanceM)}", style = MaterialTheme.typography.titleLarge)
+                    }
+                    TextButton(onClick = { suggestionHidden = true }) {
+                        Text("닫기", color = FogColors.TextSub, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                suggestionMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub) }
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = {
+                            suggestionMessage = if (viewModel.routeToSuggestion(sg)) "내비 안내를 시작했어요" else "내비 연결이 없어 안내를 시작하지 못했어요"
+                        },
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = FogColors.Accent, contentColor = FogColors.OnAccent),
+                    ) { Text("내비 안내", modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) }
+                    OutlinedButton(onClick = { viewModel.mapFocus.value = sg.bounds; follow = false }, shape = RoundedCornerShape(4.dp)) {
+                        Text("지도에서 보기", color = FogColors.TextMain, modifier = Modifier.padding(vertical = 6.dp))
+                    }
+                    OutlinedButton(onClick = { suggestionMessage = null; viewModel.nextSuggestion() }, shape = RoundedCornerShape(4.dp)) {
+                        Text("다른 곳", color = FogColors.TextMain, modifier = Modifier.padding(vertical = 6.dp))
+                    }
                 }
             }
         }

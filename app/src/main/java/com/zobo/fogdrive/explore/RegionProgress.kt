@@ -11,7 +11,10 @@ sealed interface RegionStat {
     val total: Long
     /** Bounding box, for framing the region on the map. */
     val bounds: TileBox?
+    /** Drop-off points (P + door open) inside the region: "got off here", not just "drove through". */
+    val landings: Int
     val visited: Boolean get() = explored > 0
+    val landed: Boolean get() = landings > 0
     val rate: Double get() = if (total > 0) explored.toDouble() / total else 0.0
 }
 
@@ -21,20 +24,25 @@ data class DongProgress(
     override val explored: Int,
     override val total: Long,
     override val bounds: TileBox,
+    override val landings: Int = 0,
 ) : RegionStat
 
 data class DistrictProgress(override val code: String, override val name: String, val dongs: List<DongProgress>) : RegionStat {
     override val explored: Int = dongs.sumOf { it.explored }
     override val total: Long = dongs.sumOf { it.total }
     override val bounds: TileBox? = dongs.map { it.bounds }.reduceOrNull(TileBox::union)
+    override val landings: Int = dongs.sumOf { it.landings }
     val visitedDongs: Int get() = dongs.count { it.visited }
+    val landedDongs: Int get() = dongs.count { it.landed }
 }
 
 data class ProvinceProgress(override val code: String, override val name: String, val districts: List<DistrictProgress>) : RegionStat {
     override val explored: Int = districts.sumOf { it.explored }
     override val total: Long = districts.sumOf { it.total }
     override val bounds: TileBox? = districts.mapNotNull { it.bounds }.reduceOrNull(TileBox::union)
+    override val landings: Int = districts.sumOf { it.landings }
     val visitedDistricts: Int get() = districts.count { it.visited }
+    val landedDistricts: Int get() = districts.count { it.landed }
 }
 
 /**
@@ -107,14 +115,17 @@ class RegionTally(val atlas: RegionAtlas) {
 
     fun tally(cells: Set<Long>): List<ProvinceProgress> = tally(CellLog.of(cells))
 
-    fun tally(log: CellLog): List<ProvinceProgress> {
+    /** Full tree for the dex; [landingCells] are the cells of the drop-off points. */
+    fun tally(log: CellLog, landingCells: Collection<Long> = emptyList()): List<ProvinceProgress> {
         val counts = counts(log)
+        val landed = IntArray(atlas.dongs.size)
+        for (c in landingCells) atlas.dongOf(c).takeIf { it >= 0 }?.let { landed[it]++ }
         return atlas.provinces.mapIndexed { p, province ->
             val districts = districtsByProvince[p].orEmpty().map { di ->
                 val district = atlas.districts[di]
                 val dongs = dongsByDistrict[di].orEmpty().map { i ->
                     val d = atlas.dongs[i]
-                    DongProgress(d.code, d.name, counts[i], d.cells, d.outline.box)
+                    DongProgress(d.code, d.name, counts[i], d.cells, d.outline.box, landed[i])
                 }
                 DistrictProgress(district.code, district.name, dongs)
             }

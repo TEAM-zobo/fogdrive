@@ -1,6 +1,7 @@
 package com.zobo.fogdrive.data
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -29,7 +30,12 @@ data class CellEntity(
     val firstSeenAt: Long,
     val tripId: Long,
     val source: Int,
+    /** Trips that drove over the cell (from schema v4; older rows start at 1). */
+    @ColumnInfo(defaultValue = "1") val visits: Int = 1,
 )
+
+/** A cell driven more than once, with how many trips passed it. */
+data class CellVisits(val cell: Long, val visits: Int)
 
 @Entity(tableName = "trips")
 data class TripEntity(
@@ -81,6 +87,12 @@ interface FogDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCells(cells: List<CellEntity>)
 
+    @Query("UPDATE cells SET visits = visits + 1 WHERE cell IN (:cells)")
+    suspend fun addVisit(cells: List<Long>)
+
+    @Query("SELECT cell, visits FROM cells WHERE visits > 1")
+    suspend fun revisited(): List<CellVisits>
+
     @Query("SELECT COUNT(*) FROM cells WHERE firstSeenAt >= :since AND source != 2")
     fun countCellsSince(since: Long): Flow<Int>
 
@@ -110,11 +122,55 @@ interface FogDao {
 
     @Query("SELECT * FROM track WHERE tripId = :tripId ORDER BY at, id")
     suspend fun trackOf(tripId: Long): List<TrackPointEntity>
+
+    // Whole-table reads and writes for backup export / import (see Backup).
+    @Query("SELECT * FROM cells")
+    suspend fun allCells(): List<CellEntity>
+
+    @Query("SELECT * FROM trips")
+    suspend fun allTrips(): List<TripEntity>
+
+    @Query("SELECT * FROM landings")
+    suspend fun allLandings(): List<LandingEntity>
+
+    @Query("SELECT * FROM stamps")
+    suspend fun allStamps(): List<StampEntity>
+
+    @Query("SELECT * FROM track")
+    suspend fun allTrack(): List<TrackPointEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putTrips(rows: List<TripEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putLandings(rows: List<LandingEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putStamps(rows: List<StampEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putTrack(rows: List<TrackPointEntity>)
+
+    // clearAllTables() refuses to run inside a transaction; import empties the tables with these.
+    @Query("DELETE FROM cells")
+    suspend fun deleteCells()
+
+    @Query("DELETE FROM trips")
+    suspend fun deleteTrips()
+
+    @Query("DELETE FROM landings")
+    suspend fun deleteLandings()
+
+    @Query("DELETE FROM stamps")
+    suspend fun deleteStamps()
+
+    @Query("DELETE FROM track")
+    suspend fun deleteTrack()
 }
 
 @Database(
     entities = [CellEntity::class, TripEntity::class, LandingEntity::class, StampEntity::class, TrackPointEntity::class],
-    version = 3,
+    version = 4,
 )
 abstract class FogDb : RoomDatabase() {
     abstract fun dao(): FogDao
@@ -122,11 +178,18 @@ abstract class FogDb : RoomDatabase() {
     companion object {
         fun create(context: Context): FogDb =
             Room.databaseBuilder(context, FogDb::class.java, "fogdrive.db")
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 // v2 moved the grid from zoom 19 to 20; v1 pre-release data is simply discarded.
                 .fallbackToDestructiveMigrationFrom(1)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
+
+        /** v4 counts how many trips drove over each cell. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `cells` ADD COLUMN `visits` INTEGER NOT NULL DEFAULT 1")
+            }
+        }
 
         /** v3 adds the route table; everything recorded so far is kept. */
         val MIGRATION_2_3 = object : Migration(2, 3) {

@@ -193,6 +193,8 @@ class RecordingService : Service() {
                 }
                 persistTripStats(endedAt = event.at)
                 tripRow = null
+                // Each finished drive is synced when the driver left auto sync on.
+                if (FogRuntime.cloud.state.value.autoSync) FogRuntime.scope.launch { FogRuntime.cloud.syncNow() }
             }
             is RecorderEvent.Landing -> {
                 repo.addLanding(event.lat, event.lng, event.at, repo.currentTripId)

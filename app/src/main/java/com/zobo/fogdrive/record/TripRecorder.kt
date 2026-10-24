@@ -10,6 +10,8 @@ import com.zobo.fogdrive.geo.Tiles
 interface ExploreSink {
     fun reveal(newCells: Collection<Long>, source: Int): Int
     fun isExplored(cell: Long): Boolean
+    /** Already-explored cells driven over again on this trip (each at most once per trip). */
+    fun revisit(cells: Collection<Long>) {}
 }
 
 enum class StampCode(val title: String, val description: String) {
@@ -55,6 +57,7 @@ class TripRecorder(private val sink: ExploreSink) {
     private val stampsThisTrip = mutableSetOf<StampCode>()
     /** Cells first revealed during this trip still count as new road (the swath reveals ahead of the car). */
     private val revealedThisTrip = HashSet<Long>()
+    private val revisitedThisTrip = HashSet<Long>()
     /** Cells the car itself has driven through this trip, so doubling back is not new road. */
     private val visitedThisTrip = HashSet<Long>()
     private var prevCenter: Long? = null
@@ -76,6 +79,7 @@ class TripRecorder(private val sink: ExploreSink) {
         stats = TripStats()
         stampsThisTrip.clear()
         revealedThisTrip.clear()
+        revisitedThisTrip.clear()
         visitedThisTrip.clear()
         prevCenter = null
         prevStepNew = false
@@ -109,6 +113,12 @@ class TripRecorder(private val sink: ExploreSink) {
         prevStepNew = centerWasNew
         val swath = LinkedHashSet<Long>()
         for (c in path) swath.addAll(Tiles.neighborhood(c, DRIVE_RADIUS))
+        // Cells explored before this trip count one more drive, once per trip ("worn" roads on the map).
+        val again = swath.filter { it !in revealedThisTrip && it !in revisitedThisTrip && sink.isExplored(it) }
+        if (again.isNotEmpty()) {
+            revisitedThisTrip.addAll(again)
+            sink.revisit(again)
+        }
         for (c in swath) if (!sink.isExplored(c)) revealedThisTrip.add(c)
         val added = sink.reveal(swath, CellSource.DRIVE)
         stats = stats.copy(
@@ -171,7 +181,10 @@ class TripRecorder(private val sink: ExploreSink) {
         // Without a recent fix (tunnel, underground car park) the car's position is unknown.
         val fix = last?.takeIf { now - it.timeMs <= MAX_ARRIVAL_FIX_AGE_MS } ?: return emptyList()
         val radius = if (kind == ArrivalKind.DETOUR) DETOUR_RADIUS else ARRIVAL_RADIUS
-        val added = sink.reveal(Tiles.neighborhood(Tiles.cellOf(fix.lat, fix.lng), radius), CellSource.ARRIVAL)
+        val area = Tiles.neighborhood(Tiles.cellOf(fix.lat, fix.lng), radius)
+        // A waypoint arrival keeps the trip going: what it clears is new on this trip, not a second drive.
+        if (tripActive) for (c in area) if (!sink.isExplored(c)) revealedThisTrip.add(c)
+        val added = sink.reveal(area, CellSource.ARRIVAL)
         if (tripActive) stats = stats.copy(newCells = stats.newCells + added)
         val events = mutableListOf<RecorderEvent>()
         when (kind) {

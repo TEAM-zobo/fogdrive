@@ -18,10 +18,28 @@ class TripRecorderTest {
         val cells = HashSet<Long>()
         override fun reveal(newCells: Collection<Long>, source: Int): Int = newCells.count { cells.add(it) }
         override fun isExplored(cell: Long): Boolean = cell in cells
+        val visits = HashMap<Long, Int>()
+        override fun revisit(cells: Collection<Long>) {
+            for (c in cells) visits.merge(c, 1, Int::plus)
+        }
     }
 
     private val drive = VehicleState(gear = Gear.DRIVE)
     private fun fix(lat: Double, lng: Double, t: Long = 0) = Fix(lat, lng, t, 5f, "test")
+
+    @Test
+    fun knownRoadsCountOneExtraDrivePerTrip() {
+        val sink = MemorySink()
+        val rec = TripRecorder(sink)
+        rec.onFix(fix(37.5, 127.0), drive)
+        rec.onFix(fix(37.5, 127.0), drive)  // same spot again in the same trip: not a new drive
+        assertTrue(sink.visits.isEmpty())
+        rec.endTrip(1)
+        rec.onFix(fix(37.5, 127.0, 2), drive)
+        rec.onFix(fix(37.5, 127.0, 3), drive)
+        assertEquals(9, sink.visits.size)
+        assertTrue(sink.visits.values.all { it == 1 })
+    }
 
     @Test
     fun parkedFixesDoNotReveal() {
