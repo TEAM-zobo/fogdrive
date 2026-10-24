@@ -59,8 +59,6 @@ class TripRecorder(private val sink: ExploreSink) {
     private var socAtPark: Int? = null
     private var chargeStamped = false
 
-    val lastFix: Fix? get() = last
-
     fun onFix(fix: Fix, vehicle: VehicleState): List<RecorderEvent> {
         if ((fix.accuracyM ?: 0f) > MAX_ACCURACY_M) return emptyList()
         val events = mutableListOf<RecorderEvent>()
@@ -154,8 +152,12 @@ class TripRecorder(private val sink: ExploreSink) {
         return events
     }
 
-    /** Closes the current trip without a landing (service stopping). */
+    /**
+     * Closes the current trip without a landing (service stopping, demo stopped, records reset).
+     * Also forgets the last fix so the next fix is not joined to a position from another session.
+     */
     fun endTrip(now: Long): List<RecorderEvent> {
+        last = null
         if (!tripActive) return emptyList()
         tripActive = false
         return listOf(RecorderEvent.TripEnded(now))

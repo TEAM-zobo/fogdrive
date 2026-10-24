@@ -26,13 +26,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Foreground service that records while the car runs. No UI is shown while driving;
@@ -64,6 +65,16 @@ class RecordingService : Service() {
             FogRuntime.vehicle.state.collect { v -> handleVehicle(v) }
         }
         scope.launch { seedFromNavigation() }
+        scope.launch {
+            // 기록 전체 삭제: the active trip row is gone, so close it and start fresh on the next fix.
+            repo.resets.drop(1).collect {
+                mutex.withLock {
+                    recorder.endTrip(System.currentTimeMillis())
+                    tripRow = null
+                    repo.currentTripId = 0L
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -79,19 +90,24 @@ class RecordingService : Service() {
     }
 
     override fun onDestroy() {
-        stopDemo()
+        stopDemo(endTrip = false)
         locationFeed.stop()
+        // Cancel in-flight fix/vehicle handling first so it releases the mutex, then close the trip
+        // under the same mutex so tripRow is never written from two places at once.
+        scope.cancel()
         val now = System.currentTimeMillis()
-        val events = recorder.endTrip(now)
-        FogRuntime.scope.launch { events.forEach { apply(it) } }
+        FogRuntime.scope.launch {
+            mutex.withLock { recorder.endTrip(now).forEach { apply(it) } }
+        }
         FogRuntime.vehicle.stop()
         FogRuntime.navi.stop()
         FogRuntime.live.update { it.copy(recording = false, demo = false, tripActive = false) }
-        scope.cancel()
         super.onDestroy()
     }
 
     private suspend fun handleFix(fix: Fix) = mutex.withLock {
+        // Until the explored set is loaded every cell looks new (inflated counts, bogus stamps).
+        repo.loaded.first { it }
         // Real fixes are ignored while the scripted demo drive is playing.
         if (demoSession && fix.source != LocationFeed.SOURCE_DEMO) return@withLock
         val events = recorder.onFix(fix, FogRuntime.vehicle.state.value)
@@ -103,6 +119,7 @@ class RecordingService : Service() {
     }
 
     private suspend fun handleVehicle(v: VehicleState) = mutex.withLock {
+        repo.loaded.first { it }
         val events = recorder.onVehicle(v, System.currentTimeMillis())
         events.forEach { apply(it) }
         if (events.isNotEmpty()) {
@@ -142,6 +159,7 @@ class RecordingService : Service() {
             distanceMeters = s.distanceMeters,
             newDistanceMeters = s.newDistanceMeters,
         )
+        if (updated == row) return
         tripRow = updated
         repo.saveTrip(updated)
     }
@@ -152,7 +170,10 @@ class RecordingService : Service() {
         if (prefs.getBoolean(KEY_SEEDED, false)) return
         repo.loaded.first { it }
         val recent = FogRuntime.navi.recent.filterNotNull().first()
-        val bookmarks = FogRuntime.navi.bookmarks.value.orEmpty()
+        // Bookmarks answer through their own callback, which may land after the recent list.
+        val bookmarks = FogRuntime.navi.bookmarks.value
+            ?: withTimeoutOrNull(BOOKMARK_WAIT_MS) { FogRuntime.navi.bookmarks.filterNotNull().first() }
+            ?: emptyList()
         val places = recent + bookmarks
         if (places.isEmpty()) return
         var added = 0
@@ -178,10 +199,17 @@ class RecordingService : Service() {
         FogRuntime.live.update { it.copy(demo = true, locationSource = LocationFeed.SOURCE_DEMO) }
     }
 
-    private fun stopDemo() {
+    private fun stopDemo(endTrip: Boolean = true) {
+        val wasDemo = demoSession
         demo?.stop()
         demo = null
         demoSession = false
+        if (wasDemo && endTrip) {
+            // Close the demo trip and forget the demo's last fix so real driving starts a clean trip.
+            scope.launch {
+                mutex.withLock { recorder.endTrip(System.currentTimeMillis()).forEach { apply(it) } }
+            }
+        }
         FogRuntime.navi.setDemoDestination(null)
         FogRuntime.vehicle.setDemoOverride(null)
         FogRuntime.live.update { it.copy(demo = false, locationSource = locationFeed.sourceName) }
@@ -219,6 +247,7 @@ class RecordingService : Service() {
         private const val CHANNEL = "recording"
         private const val NOTIF_ID = 19
         private const val SEED_RADIUS = 4
+        private const val BOOKMARK_WAIT_MS = 5_000L
 
         fun start(context: Context, action: String? = null) {
             val intent = Intent(context, RecordingService::class.java).setAction(action)

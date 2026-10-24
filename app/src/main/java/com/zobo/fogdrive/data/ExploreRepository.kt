@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -26,6 +27,10 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     private val _loaded = MutableStateFlow(false)
     val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
+    private val _resets = MutableStateFlow(0)
+    /** Bumped after [reset] wipes every record, so the recorder can drop the deleted trip. */
+    val resets: StateFlow<Int> = _resets.asStateFlow()
 
     val trips: Flow<List<TripEntity>> = db.dao().trips()
     val landings: Flow<List<LandingEntity>> = db.dao().landings()
@@ -101,9 +106,10 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             levelCache.clear()
         }
         bump()
+        _resets.update { it + 1 }
     }
 
     private fun bump() {
-        _version.value = _version.value + 1
+        _version.update { it + 1 }
     }
 }

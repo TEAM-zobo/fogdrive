@@ -85,14 +85,24 @@ class FogOverlayView(context: Context) : View(context) {
         val ly1 = floor(y1 / scale).toInt() + 1
         val pad = cellMaskPx * 0.35f
         val r = RectF()
-        for (cell in cellsAtLevel(dz)) {
-            val cx = Tiles.x(cell)
-            val cy = Tiles.y(cell)
-            if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
+        fun punch(cx: Int, cy: Int) {
             val left = ((cx * scale - x0) * pxPerCell / MASK_DIV).toFloat()
             val top = ((cy * scale - y0) * pxPerCell / MASK_DIV).toFloat()
             r.set(left - pad, top - pad, left + cellMaskPx + pad, top + cellMaskPx + pad)
             maskCanvas.drawRoundRect(r, pad * 2, pad * 2, clearPaint)
+        }
+        val explored = cellsAtLevel(dz)
+        val visibleTiles = (lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1)
+        if (visibleTiles < explored.size) {
+            // Zoomed in on a large explored set: probe only the tiles on screen.
+            for (cx in lx0..lx1) for (cy in ly0..ly1) if (Tiles.pack(cx, cy) in explored) punch(cx, cy)
+        } else {
+            for (cell in explored) {
+                val cx = Tiles.x(cell)
+                val cy = Tiles.y(cell)
+                if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
+                punch(cx, cy)
+            }
         }
         src.set(0, 0, mw, mh)
         dst.set(0f, 0f, w.toFloat(), h.toFloat())

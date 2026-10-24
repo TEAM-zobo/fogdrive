@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.zobo.fogdrive.car.Place
 
 @Composable
 fun MapScreen(viewModel: MainViewModel) {
@@ -39,12 +40,13 @@ fun MapScreen(viewModel: MainViewModel) {
     val vehicle by viewModel.vehicle.collectAsState()
     var follow by remember { mutableStateOf(true) }
     var recenter by remember { mutableIntStateOf(0) }
-    var dismissedDetour by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // Dismissal is per destination: the suggested point moves with every fix, so keying on it never sticks.
+    var dismissedFor by remember { mutableStateOf<Place?>(null) }
     var detourMessage by remember { mutableStateOf<String?>(null) }
 
     val current = live.location?.let { it.lat to it.lng }
     val pins = remember(landings) { landings.map { it.lat to it.lng } }
-    val visibleDetour = detour?.takeIf { (it.lat to it.lng) != dismissedDetour }
+    val visibleDetour = detour?.takeIf { destination == null || destination != dismissedFor }
 
     Box(Modifier.fillMaxSize()) {
         FogMap(
@@ -113,7 +115,7 @@ fun MapScreen(viewModel: MainViewModel) {
                         colors = ButtonDefaults.buttonColors(containerColor = FogColors.Accent),
                         contentPadding = ButtonDefaults.ContentPadding,
                     ) { Text("경유지 추가", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) }
-                    TextButton(onClick = { dismissedDetour = visibleDetour.lat to visibleDetour.lng }) {
+                    TextButton(onClick = { dismissedFor = destination }) {
                         Text("괜찮아요", color = FogColors.TextSub, modifier = Modifier.padding(8.dp))
                     }
                 }
