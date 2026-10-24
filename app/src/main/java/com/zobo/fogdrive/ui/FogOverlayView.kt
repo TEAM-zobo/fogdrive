@@ -43,6 +43,8 @@ import kotlin.math.min
 class FogOverlayView(context: Context) : View(context) {
     var map: MapLibreMap? = null
     var cellsAtLevel: (Int) -> Set<Long> = { emptySet() }
+    /** Draw [revisits] at all (map / driving view / Settings toggle). */
+    var showWornRoads = true
     /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
     var revisits: () -> Map<Long, Int> = { emptyMap() }
     var current: Pair<Double, Double>? = null
@@ -125,9 +127,7 @@ class FogOverlayView(context: Context) : View(context) {
     }
     private val density = resources.displayMetrics.density
     private val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
-    private val wornLight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(55, 0x00, 0x81, 0xF8) }
-    private val wornMid = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(100, 0x00, 0x81, 0xF8) }
-    private val wornHeavy = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(150, 0x00, 0x5C, 0xC8) }
+    private val wornPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0x00, 0x71, 0xE0) }
     private val pinRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.STROKE
@@ -334,34 +334,55 @@ class FogOverlayView(context: Context) : View(context) {
      * the daily routes stand out at a glance. Only once single cells are visible (zoom ~13+).
      */
     private fun drawWornRoads(c: Canvas, x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
-        if (px < WORN_MIN_PX) return
+        if (!showWornRoads || px < WORN_MIN_PX) return
         val visits = revisits()
         if (visits.isEmpty()) return
-        val r = (px * 0.62).toFloat()
-        fun draw(cx: Int, cy: Int, n: Int) {
-            val paint = when {
-                n >= 5 -> wornHeavy
-                n >= 3 -> wornMid
-                else -> wornLight
-            }
-            c.drawCircle(((cx + 0.5 - x0) * px).toFloat(), ((cy + 0.5 - y0) * px).toFloat(), r, paint)
-        }
+        val r = (px * 0.75).toFloat()
         val lx0 = floor(x0).toInt()
         val lx1 = floor(x1).toInt()
         val ly0 = floor(y0).toInt()
         val ly1 = floor(y1).toInt()
+        // One scan buckets the on-screen cells by tint; each tint is then drawn in one layer.
+        for (level in WORN_LEVELS.indices) wornCount[level] = 0
+        fun collect(cx: Int, cy: Int, n: Int) {
+            var level = WORN_LEVELS.size - 1
+            while (level >= 0 && n < WORN_LEVELS[level].first) level--
+            if (level < 0) return
+            val i = wornCount[level]
+            if (i + 2 > wornXy[level].size) wornXy[level] = wornXy[level].copyOf(wornXy[level].size * 2)
+            wornXy[level][i] = ((cx + 0.5 - x0) * px).toFloat()
+            wornXy[level][i + 1] = ((cy + 0.5 - y0) * px).toFloat()
+            wornCount[level] = i + 2
+        }
         if ((lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1) < visits.size) {
             // Zoomed in on a long history: probe only the cells on screen (as the fog mask does).
-            for (cx in lx0..lx1) for (cy in ly0..ly1) visits[Tiles.pack(cx, cy)]?.let { draw(cx, cy, it) }
+            for (cx in lx0..lx1) for (cy in ly0..ly1) visits[Tiles.pack(cx, cy)]?.let { collect(cx, cy, it) }
         } else {
             for ((cell, n) in visits) {
                 val cx = Tiles.x(cell)
                 val cy = Tiles.y(cell)
                 if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
-                draw(cx, cy, n)
+                collect(cx, cy, n)
             }
         }
+        // One layer per tint: opaque circles inside merge into an even band, and the layer's alpha
+        // is applied once (overlapping translucent circles used to show as a dotted pattern).
+        for (level in WORN_LEVELS.indices) {
+            val count = wornCount[level]
+            if (count == 0) continue
+            val xy = wornXy[level]
+            val layer = c.saveLayerAlpha(null, WORN_LEVELS[level].second)
+            var i = 0
+            while (i < count) {
+                c.drawCircle(xy[i], xy[i + 1], r, wornPaint)
+                i += 2
+            }
+            c.restoreToCount(layer)
+        }
     }
+
+    private val wornXy = Array(WORN_LEVELS.size) { FloatArray(256) }
+    private val wornCount = IntArray(WORN_LEVELS.size)
 
     private var clusterX = FloatArray(64)
     private var clusterY = FloatArray(64)
@@ -538,6 +559,8 @@ class FogOverlayView(context: Context) : View(context) {
         const val DISTRICT_LINES_PX = 0.25
         /** Screen px per cell from which worn roads are drawn (single cells visible, zoom ~13). */
         const val WORN_MIN_PX = 3.0
+        /** Worn-road tints as (from this many trips, layer alpha): 2, 3-4, 5+. */
+        val WORN_LEVELS = listOf(2 to 60, 3 to 105, 5 to 160)
         /** Drop-off pins closer than this on screen are shown as one numbered pin. */
         const val CLUSTER_DP = 44f
         /** ln(2) / 8: dash lengths are refreshed every eighth of a zoom level. */

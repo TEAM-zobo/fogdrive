@@ -56,6 +56,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
     val guidance by viewModel.navi.guidance.collectAsState()
     val here by viewModel.here.collectAsState()
     val tripNewDongs by viewModel.tripNewDongs.collectAsState()
+    val showWornRoads by viewModel.showWornRoads.collectAsState()
     val current = live.location?.let { it.lat to it.lng }
     val pins = remember(landings) { landings.map { it.lat to it.lng } }
 
@@ -70,6 +71,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
             recenterSignal = 0,
             onUserMoved = {},
             driving = true,
+            showWornRoads = showWornRoads,
         )
         Row(
             modifier = Modifier
@@ -98,6 +100,14 @@ fun DrivingScreen(viewModel: MainViewModel) {
             }
         }
         GuidancePanel(guidance, Modifier.align(Alignment.TopEnd).padding(28.dp))
+        Column(
+            Modifier.align(Alignment.BottomEnd).padding(28.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            DemoControls(viewModel, compact = true)
+            WornRoadsButton(showWornRoads) { viewModel.setShowWornRoads(!showWornRoads) }
+        }
     }
 }
 

@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -150,6 +154,22 @@ fun MapButton(icon: ImageVector, description: String, onClick: () -> Unit, tint:
     }
 }
 
+/** Switch in the app's colours (the Material default is a faint grey when off). */
+@Composable
+fun FogSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = FogColors.OnAccent,
+            checkedTrackColor = FogColors.Accent,
+            uncheckedThumbColor = FogColors.TextSub,
+            uncheckedTrackColor = FogColors.SurfaceHigh,
+            uncheckedBorderColor = FogColors.Outline,
+        ),
+    )
+}
+
 fun formatKm(meters: Double): String = if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
 
 fun formatPercent(ratio: Double): String = "%.0f%%".format(ratio * 100)
@@ -164,4 +184,15 @@ fun formatRate(ratio: Double): String {
         pct < 10 -> "%.1f%%".format(pct)
         else -> "%.0f%%".format(pct)
     }
+}
+
+/** Map / driving-view toggle for the "자주 다닌 길" tint. */
+@Composable
+fun WornRoadsButton(on: Boolean, onToggle: () -> Unit) {
+    MapButton(
+        Icons.Outlined.Timeline,
+        if (on) "자주 다닌 길 끄기" else "자주 다닌 길 켜기",
+        tint = if (on) FogColors.Accent else FogColors.TextSub,
+        onClick = onToggle,
+    )
 }

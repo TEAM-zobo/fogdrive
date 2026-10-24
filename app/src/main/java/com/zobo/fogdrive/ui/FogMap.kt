@@ -27,6 +27,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zobo.fogdrive.FogRuntime
+import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.geo.TileBox
 import com.zobo.fogdrive.geo.Tiles
 import kotlinx.coroutines.Dispatchers
@@ -453,6 +454,8 @@ fun FogMap(
     onFocusShown: () -> Unit = {},
     /** Past trip to draw (record screen). */
     route: TripRoute? = null,
+    /** Tint roads driven on several trips. */
+    showWornRoads: Boolean = true,
 ) {
     val context = LocalContext.current
     val holder = remember {
@@ -491,7 +494,7 @@ fun FogMap(
             map.setMinZoomPreference(5.0)
             map.setMaxZoomPreference(18.0)
             map.cameraPosition = CameraPosition.Builder()
-                .target(LatLng(current?.first ?: 37.5446, current?.second ?: 127.0559))
+                .target(LatLng(current?.first ?: DemoCourses.START.lat, current?.second ?: DemoCourses.START.lng))
                 .zoom(if (driving) DRIVING_ZOOM else 14.0)
                 .build()
             holder.setNight(context, isNight(context))
@@ -545,6 +548,10 @@ fun FogMap(
             map.animateCamera(CameraUpdateFactory.newLatLng(LatLng(current.first, current.second)), 600)
         }
     }
+    LaunchedEffect(showWornRoads) {
+        holder.overlay.showWornRoads = showWornRoads
+        holder.overlay.invalidate()
+    }
     LaunchedEffect(route) {
         holder.overlay.route = route
         holder.overlay.invalidate()
@@ -561,8 +568,10 @@ fun FogMap(
     }
     LaunchedEffect(recenterSignal) {
         val map = holder.map ?: return@LaunchedEffect
-        if (recenterSignal > 0 && current != null) {
-            map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(current.first, current.second), 15.0), 800)
+        if (recenterSignal > 0) {
+            // Before the first fix "my location" is the home point (향기5로 66), like the start camera.
+            val (lat, lng) = current ?: (DemoCourses.START.lat to DemoCourses.START.lng)
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 15.0), 800)
         }
     }
 

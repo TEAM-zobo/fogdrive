@@ -210,6 +210,8 @@ class Device:
 EMULATOR = os.path.expanduser("~/Library/Android/sdk/emulator/emulator")
 QA_AVD = "Pleos_Connect_QA"
 QA_SERIAL = "emulator-5556"
+# Home position (경기 고양시 덕양구 향기5로 66), where every demo course starts; set after boot.
+HOME = (37.60852, 126.89592)
 
 
 def boot_headless(avd=QA_AVD, serial=QA_SERIAL, timeout=300, emit=print):
@@ -229,6 +231,7 @@ def boot_headless(avd=QA_AVD, serial=QA_SERIAL, timeout=300, emit=print):
     while time.time() < end:
         if dev.shell("getprop", "sys.boot_completed", timeout=10).strip() == "1":
             time.sleep(5)  # vehicle/navi services finish starting after boot_completed
+            dev.geo(*HOME)
             return dev
         time.sleep(5)
     raise RuntimeError(f"{avd} 부팅 시간 초과")
@@ -239,8 +242,8 @@ def shutdown(dev):
 
 
 def demo_route():
-    """Road path of the in-app demo drive (single source: DemoDrive.kt)."""
-    src = os.path.join(ROOT, "app/src/main/java/com/zobo/fogdrive/demo/DemoDrive.kt")
+    """Road path of the default demo course (single source: DemoCourses.kt, SEONGSU_ROUTE)."""
+    src = os.path.join(ROOT, "app/src/main/java/com/zobo/fogdrive/demo/DemoCourses.kt")
     with open(src, encoding="utf-8") as f:
-        body = f.read().split("val ROUTE", 1)[1]
+        body = f.read().split("val SEONGSU_ROUTE", 1)[1].split("\n    )", 1)[0]
     return [(float(a), float(b)) for a, b in re.findall(r"(\d+\.\d+) to (\d+\.\d+)", body)]

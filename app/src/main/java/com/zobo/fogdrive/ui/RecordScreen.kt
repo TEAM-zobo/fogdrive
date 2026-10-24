@@ -40,7 +40,8 @@ fun RecordScreen(viewModel: MainViewModel, onShowTrip: (TripEntity) -> Unit) {
         ScreenTitle("나의 개척 기록", "Lv.${summary.level} · 경험치 ${summary.xp}")
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
             StatTile("밝힌 면적", Area.format(summary.areaKm2 * 1_000_000), Modifier.weight(1f), FogColors.Accent, Icons.Outlined.Landscape)
-            StatTile("주행 거리", formatKm(trips.sumOf { it.distanceMeters }), Modifier.weight(1f), FogColors.TextMain, Icons.Outlined.Route)
+            val totalMeters = remember(trips) { trips.sumOf { it.distanceMeters } }
+            StatTile("주행 거리", formatKm(totalMeters), Modifier.weight(1f), FogColors.TextMain, Icons.Outlined.Route)
             StatTile("하차 지점", "${summary.landings}곳", Modifier.weight(1f), FogColors.Amber, Icons.Outlined.Flag)
             StatTile("새 길 비율", formatPercent(summary.newRoadRatio), Modifier.weight(1f), FogColors.Blue, Icons.Outlined.AltRoute)
         }

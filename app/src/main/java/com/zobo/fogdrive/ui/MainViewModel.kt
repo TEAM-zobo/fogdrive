@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -72,7 +73,8 @@ class MainViewModel : ViewModel() {
 
     val summary: StateFlow<Summary> = combine(version, landings, stamps, trips, live) { _, l, s, t, lv ->
         val cells = repo.count()
-        val lat = lv.location?.lat ?: 37.5
+        // Cell size only depends on latitude; 0.1° steps keep the summary from changing on every fix.
+        val lat = lv.location?.lat?.let { Math.round(it * 10) / 10.0 } ?: 37.5
         val cellKm = Tiles.cellSizeMeters(lat) / 1000.0
         val xp = Progress.xp(cells, l.size, s.size)
         val dist = t.sumOf { it.distanceMeters }
@@ -234,6 +236,27 @@ class MainViewModel : ViewModel() {
 
     val cloud = FogRuntime.cloud.state
 
+    /** Demo session on (real fixes ignored) / its drive still playing. */
+    val demoRunning: StateFlow<Boolean> = live.map { it.demo }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val demoPlaying: StateFlow<Boolean> = live.map { it.demoPlaying }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val showWornRoads = FogRuntime.mapPrefs.showWornRoads
+
+    fun setShowWornRoads(on: Boolean) = FogRuntime.mapPrefs.setShowWornRoads(on)
+
+    val demoCourse = FogRuntime.demoPrefs.courseId
+    val demoSpeed = FogRuntime.demoPrefs.speedKmh
+
+    fun setDemoCourse(id: String) = FogRuntime.demoPrefs.setCourse(id)
+
+    fun setDemoSpeed(kmh: Int) = FogRuntime.demoPrefs.setSpeed(kmh)
+
+    val demoRoundTrip = FogRuntime.demoPrefs.roundTrip
+
+    fun setDemoRoundTrip(on: Boolean) = FogRuntime.demoPrefs.setRoundTrip(on)
+
     /** Result line under the export / import buttons. */
     val backupMessage = MutableStateFlow<String?>(null)
 
@@ -267,10 +290,19 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    /** Wipes every record and puts the screens back to a first-run state (e.g. before a demo). */
     fun resetAll() {
         showTripJob?.cancel()
         shownTrip.value = null
-        viewModelScope.launch { repo.reset() }
+        mapFocus.value = null
+        dexProvince.value = null
+        dexDistrict.value = null
+        backupMessage.value = null
+        suggestionSkip.value = 0
+        viewModelScope.launch {
+            repo.reset()
+            FogRuntime.live.update { it.copy(lastEvent = "기록을 모두 지웠어요. 처음 상태에서 다시 시작해요") }
+        }
     }
 
     companion object {

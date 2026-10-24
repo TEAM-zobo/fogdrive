@@ -9,6 +9,8 @@ import com.zobo.fogdrive.car.NaviBridge
 import com.zobo.fogdrive.car.VehicleSignals
 import com.zobo.fogdrive.data.CloudSync
 import com.zobo.fogdrive.data.ExploreRepository
+import com.zobo.fogdrive.demo.DemoPrefs
+import com.zobo.fogdrive.ui.MapPrefs
 import com.zobo.fogdrive.data.FogDb
 import com.zobo.fogdrive.explore.RegionTally
 import com.zobo.fogdrive.geo.RegionAtlas
@@ -23,6 +25,8 @@ import kotlinx.coroutines.launch
 data class LiveStatus(
     val recording: Boolean = false,
     val demo: Boolean = false,
+    /** The scripted drive is still moving (false once it parked at the end; [demo] stays on). */
+    val demoPlaying: Boolean = false,
     val location: Fix? = null,
     val locationSource: String = "-",
     val tripActive: Boolean = false,
@@ -39,6 +43,10 @@ object FogRuntime {
     lateinit var navi: NaviBridge
         private set
     lateinit var cloud: CloudSync
+        private set
+    lateinit var demoPrefs: DemoPrefs
+        private set
+    lateinit var mapPrefs: MapPrefs
         private set
 
     /** 시·도 / 시·군·구 / 읍·면·동 boundaries, parsed off the main thread on first use (the map's
@@ -72,6 +80,8 @@ object FogRuntime {
         vehicle = VehicleSignals(app)
         navi = NaviBridge(app)
         cloud = CloudSync(app, repo)
+        demoPrefs = DemoPrefs(app)
+        mapPrefs = MapPrefs(app)
         scope.launch { repo.load() }
     }
 }

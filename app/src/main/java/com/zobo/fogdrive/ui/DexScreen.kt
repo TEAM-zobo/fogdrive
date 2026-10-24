@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,13 +113,22 @@ fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
 @Composable
 private fun CountryPage(regions: List<ProvinceProgress>, onOpen: (ProvinceProgress) -> Unit) {
     ScreenTitle("지역 도감", "달성률은 그 지역에서 안개를 걷은 면적 비율이에요. 가본 곳만 열리고 나머지는 ? 로 남아요.")
-    val districts = regions.flatMap { it.districts }
-    val dongs = districts.flatMap { it.dongs }
+    // ~3,800 regions: count once per tally, not on every recomposition.
+    val totals = remember(regions) {
+        val districts = regions.flatMap { it.districts }
+        val dongs = districts.flatMap { it.dongs }
+        listOf(
+            regions.count { it.visited }, regions.size,
+            districts.count { it.visited }, districts.size,
+            dongs.count { it.visited }, dongs.size,
+            dongs.count { it.landed },
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Pill("시·도 ${regions.count { it.visited }} / ${regions.size}", FogColors.Accent)
-        Pill("시·군·구 ${districts.count { it.visited }} / ${districts.size}", FogColors.Blue)
-        Pill("읍·면·동 ${dongs.count { it.visited }} / ${dongs.size}", FogColors.Blue)
-        Pill("하차한 동 ${dongs.count { it.landed }}곳", FogColors.Amber)
+        Pill("시·도 ${totals[0]} / ${totals[1]}", FogColors.Accent)
+        Pill("시·군·구 ${totals[2]} / ${totals[3]}", FogColors.Blue)
+        Pill("읍·면·동 ${totals[4]} / ${totals[5]}", FogColors.Blue)
+        Pill("하차한 동 ${totals[6]}곳", FogColors.Amber)
         Spacer(Modifier.weight(1f))
         Text("행정구역 경계: admdongkor (CC BY 4.0), 원자료 통계청", style = MaterialTheme.typography.bodySmall, color = FogColors.TextSub)
     }

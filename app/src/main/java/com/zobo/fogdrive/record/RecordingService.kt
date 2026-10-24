@@ -21,6 +21,7 @@ import com.zobo.fogdrive.car.LocationFeed
 import com.zobo.fogdrive.car.VehicleState
 import com.zobo.fogdrive.data.CellSource
 import com.zobo.fogdrive.data.TripEntity
+import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.demo.DemoDrive
 import com.zobo.fogdrive.geo.Area
 import com.zobo.fogdrive.geo.Tiles
@@ -251,19 +252,36 @@ class RecordingService : Service() {
 
     private fun startDemo() {
         if (demo?.running == true) return
+        if (demoSession) {
+            // Another run after a finished one: close its trip, since a repeat of the same course
+            // lands within the landing cooldown and would otherwise never end its trip.
+            scope.launch {
+                mutex.withLock { recorder.endTrip(System.currentTimeMillis()).forEach { apply(it) } }
+            }
+        }
         demoSession = true
-        FogRuntime.navi.setDemoDestination(DemoDrive.DESTINATION)
+        val course = DemoCourses.byId(FogRuntime.demoPrefs.courseId.value)
+        FogRuntime.navi.setDemoDestination(course.destination)
         val d = DemoDrive(
             scope = scope,
             onFix = { fix -> scope.launch { handleFix(fix) } },
             onVehicle = { v -> FogRuntime.vehicle.setDemoOverride(v) },
             onGuidance = { g -> FogRuntime.navi.setDemoGuidance(g) },
             onArrival = { a -> FogRuntime.navi.emitDemoArrival(a) },
-            onFinished = { FogRuntime.live.update { it.copy(lastEvent = "시연 주행 완료 · 설정에서 시연 중지를 누르면 실제 위치로 돌아가요") } },
+            onFinished = {
+                FogRuntime.live.update {
+                    it.copy(demoPlaying = false, lastEvent = "시연 주행 완료 · 다른 코스를 바로 시작하거나, 시연 중지로 실제 위치로 돌아가요")
+                }
+            },
         )
         demo = d
-        d.start()
-        FogRuntime.live.update { it.copy(demo = true, locationSource = LocationFeed.SOURCE_DEMO) }
+        d.start(
+            course,
+            speedKmh = { FogRuntime.demoPrefs.speedKmh.value },
+            roundTrip = { FogRuntime.demoPrefs.roundTrip.value },
+            onReturn = { note("${course.destination.name}에서 같은 길로 출발지까지 돌아가요") },
+        )
+        FogRuntime.live.update { it.copy(demo = true, demoPlaying = true, locationSource = LocationFeed.SOURCE_DEMO) }
     }
 
     private fun stopDemo(endTrip: Boolean = true) {
@@ -280,7 +298,7 @@ class RecordingService : Service() {
         FogRuntime.navi.setDemoDestination(null)
         FogRuntime.navi.setDemoGuidance(null)
         FogRuntime.vehicle.setDemoOverride(null)
-        FogRuntime.live.update { it.copy(demo = false, locationSource = locationFeed.sourceName) }
+        FogRuntime.live.update { it.copy(demo = false, demoPlaying = false, locationSource = locationFeed.sourceName) }
     }
 
     private fun note(message: String) {

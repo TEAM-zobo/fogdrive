@@ -57,6 +57,7 @@ fun MapScreen(viewModel: MainViewModel) {
     // Opened from the dex: frame that region instead of chasing the car.
     var follow by remember { mutableStateOf(viewModel.mapFocus.value == null) }
     val shownTrip by viewModel.shownTrip.collectAsState()
+    val showWornRoads by viewModel.showWornRoads.collectAsState()
     // A region or trip picked elsewhere may arrive after the tab switch; stop following the car then.
     LaunchedEffect(focus) { if (focus != null) follow = false }
     var zoomIn by remember { mutableIntStateOf(0) }
@@ -90,6 +91,7 @@ fun MapScreen(viewModel: MainViewModel) {
             focus = focus,
             onFocusShown = { viewModel.mapFocus.value = null },
             route = shownTrip,
+            showWornRoads = showWornRoads,
         )
 
         // Header: level, where the car is in the region dex, and this trip.
@@ -133,9 +135,7 @@ fun MapScreen(viewModel: MainViewModel) {
             live.lastEvent?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub) }
         }
 
-        if (live.demo) {
-            Pill("시연 모드 주행 중", FogColors.Amber, Modifier.padding(24.dp).align(Alignment.TopEnd))
-        }
+        DemoControls(viewModel, Modifier.padding(24.dp).align(Alignment.TopEnd))
 
         shownTrip?.let { t ->
             FogCard(
@@ -230,7 +230,12 @@ fun MapScreen(viewModel: MainViewModel) {
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
                         onClick = {
-                            detourMessage = if (viewModel.acceptDetour(visibleDetour)) "경유지로 추가했어요" else "내비 연결이 없어 추가하지 못했어요"
+                            detourMessage = when {
+                                // The scripted drive keeps its own path; say so instead of implying a reroute.
+                                live.demo -> "시연에서는 내비에 경유지를 보내지 않고 시연 경로를 그대로 달려요"
+                                viewModel.acceptDetour(visibleDetour) -> "경유지로 추가했어요"
+                                else -> "내비 연결이 없어 추가하지 못했어요"
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = FogColors.Accent, contentColor = FogColors.OnAccent),
                     ) { Text("경유지 추가", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) }
@@ -242,6 +247,7 @@ fun MapScreen(viewModel: MainViewModel) {
         }
 
         Column(Modifier.align(Alignment.BottomEnd).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            WornRoadsButton(showWornRoads) { viewModel.setShowWornRoads(!showWornRoads) }
             MapButton(Icons.Outlined.Add, "확대", onClick = { zoomIn++ })
             MapButton(Icons.Outlined.Remove, "축소", onClick = { zoomOut++ })
             MapButton(Icons.Outlined.MyLocation, "내 위치", tint = FogColors.Accent, onClick = {
