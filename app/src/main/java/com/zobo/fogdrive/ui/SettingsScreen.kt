@@ -68,7 +68,7 @@ fun SettingsScreen(
 
         SectionHeader("시연 모드", Modifier.padding(top = 16.dp))
         FogCard(Modifier.fillMaxWidth()) {
-            Text("성수역 → 서울숲 → 한강 코스를 자동으로 달려요. 중간에 비가 오고(와이퍼), 뒷좌석 동승자가 있으며, 도착하면 P단 + 도어 열림으로 상륙 지점이 기록돼요.", color = FogColors.TextSub)
+            Text("성수역 → 서울숲 → 한강 코스를 자동으로 달려요. 중간에 비가 오고(와이퍼), 뒷좌석 동승자가 있으며, 도착하면 P단 + 도어 열림으로 하차 지점이 기록돼요.", color = FogColors.TextSub)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Button(
                     onClick = onStartDemo,

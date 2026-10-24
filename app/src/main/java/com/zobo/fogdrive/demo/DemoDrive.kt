@@ -60,7 +60,7 @@ class DemoDrive(
                 delay(stepDelayMs)
             }
             onGuidance(null)
-            onArrival(Arrival(ArrivalKind.DESTINATION, DESTINATION.name))
+            onArrival(Arrival(ArrivalKind.DESTINATION, DESTINATION.name, demo = true))
             delay(1_200)
             vehicle = vehicle.copy(gear = Gear.PARK, drivingRestricted = false, wiperOn = false)
             onVehicle(vehicle)

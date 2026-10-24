@@ -22,7 +22,9 @@ import com.zobo.fogdrive.geo.Outline
 import com.zobo.fogdrive.geo.RegionAtlas
 import com.zobo.fogdrive.geo.Tiles
 import org.maplibre.android.maps.MapLibreMap
+import kotlin.math.exp
 import kotlin.math.floor
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 
@@ -44,6 +46,8 @@ class FogOverlayView(context: Context) : View(context) {
     var current: Pair<Double, Double>? = null
     var landings: List<Pair<Double, Double>> = emptyList()
     var detour: Pair<Double, Double>? = null
+    /** A past trip picked on the record screen: its route as a line, or (older trips) its cells as dots. */
+    var route: TripRoute? = null
     /** Draw the car dot here (parked). While driving a fixed centre marker is used instead. */
     var showCurrent = true
     /** Keep drawing with the transform from [captureTransform] (driving: fog moves with the slid map). */
@@ -58,8 +62,14 @@ class FogOverlayView(context: Context) : View(context) {
                 invalidate()
             }
         }
-    /** Boundaries and explored counts; null until the atlas is loaded, then everything is light fog. */
+    /** Boundaries and explored counts; null until the atlas is loaded (dark fog everywhere meanwhile). */
     var regions: RegionLayer? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+    /** The region atlas could not be loaded: draw light fog everywhere instead of waiting for it. */
+    var regionsUnavailable = false
         set(value) {
             field = value
             invalidate()
@@ -128,11 +138,17 @@ class FogOverlayView(context: Context) : View(context) {
         if (dash > 0) pathEffect = DashPathEffect(floatArrayOf(dash * density, dash * density * 0.8f), 0f)
     }
     // Each level is a light line over a dark halo so it reads on the dark fog and the light map alike.
-    private val provinceHalo = linePaint(Color.argb(110, 0, 0, 0), 5f)
-    private val provinceLine = linePaint(Color.argb(230, 0xF1, 0xF4, 0xF8), 2.4f)
-    private val districtHalo = linePaint(Color.argb(90, 0, 0, 0), 3.4f)
-    private val districtLine = linePaint(Color.argb(190, 0xC9, 0xD3, 0xDF), 1.5f)
-    private val dongLine = linePaint(Color.argb(150, 0xAE, 0xB8, 0xC6), 1f, dash = 5f)
+    // Over unexplored (dark) fog the lines are light; inside an entered region the map shows through
+    // light fog, so there they are dark to stay visible.
+    private val provinceHalo = Stroke(Color.argb(110, 0, 0, 0), 5f)
+    private val provinceLine = Stroke(Color.argb(230, 0xF1, 0xF4, 0xF8), 2.4f)
+    private val districtHalo = Stroke(Color.argb(90, 0, 0, 0), 3.4f)
+    private val districtLine = Stroke(Color.argb(190, 0xC9, 0xD3, 0xDF), 1.5f)
+    private val districtHaloIn = Stroke(Color.argb(150, 0xFF, 0xFF, 0xFF), 4f)
+    private val districtLineIn = Stroke(Color.argb(230, 0x2A, 0x30, 0x38), 1.8f)
+    private val dongLine = Stroke(Color.argb(150, 0xAE, 0xB8, 0xC6), 1f, dashDp = 5f)
+    private val dongLineIn = Stroke(Color.argb(210, 0x4A, 0x52, 0x60), 1.3f, dashDp = 5f)
+    private val strokes = listOf(provinceHalo, provinceLine, districtHalo, districtLine, districtHaloIn, districtLineIn, dongLine, dongLineIn)
     private val nameText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#F1F4F8")
         textSize = 22f * density
@@ -152,6 +168,12 @@ class FogOverlayView(context: Context) : View(context) {
     }
     private val rateHalo = Paint(textHalo).apply { textSize = rateText.textSize }
     private val placedLabels = ArrayList<RectF>()
+    private val routePath = Path()
+    private val routeCasing = linePaint(Color.WHITE, 9f).apply { strokeCap = Paint.Cap.ROUND }
+    private val routeLine = linePaint(Color.parseColor("#FF9900"), 5f).apply { strokeCap = Paint.Cap.ROUND }
+    private val routeDot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(170, 0xFF, 0x99, 0x00) }
+    private val routeStart = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#111111") }
+    private val routeEnd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
 
     override fun onDraw(canvas: Canvas) {
         if (map == null) return
@@ -187,7 +209,9 @@ class FogOverlayView(context: Context) : View(context) {
         lightFogPaint.shader.setLocalMatrix(textureMatrix)
         val regions = regions
         if (regions == null) {
-            maskCanvas.drawPaint(lightFogPaint)
+            // Still loading: dark everywhere, so nothing unvisited flashes into view. If the atlas is
+            // missing for good, fall back to one strength of fog (the light one).
+            maskCanvas.drawPaint(if (regionsUnavailable) lightFogPaint else fogPaint)
         } else {
             maskCanvas.drawPaint(fogPaint)
             for (i in regions.counts.visitedDongs) {
@@ -258,6 +282,24 @@ class FogOverlayView(context: Context) : View(context) {
             ((Tiles.lngToX(lng) - x0) * pxPerCell).toFloat(),
             ((Tiles.latToY(lat) - y0) * pxPerCell).toFloat(),
         )
+        route?.let { r ->
+            // No per-point PointF: a route can hold thousands of points and this runs every frame.
+            fun sx(lng: Double) = ((Tiles.lngToX(lng) - x0) * pxPerCell).toFloat()
+            fun sy(lat: Double) = ((Tiles.latToY(lat) - y0) * pxPerCell).toFloat()
+            if (r.isTrack) {
+                routePath.rewind()
+                r.points.forEachIndexed { i, (lat, lng) ->
+                    if (i == 0) routePath.moveTo(sx(lng), sy(lat)) else routePath.lineTo(sx(lng), sy(lat))
+                }
+                canvas.drawPath(routePath, routeCasing)
+                canvas.drawPath(routePath, routeLine)
+                r.points.first().let { (lat, lng) -> canvas.drawCircle(sx(lng), sy(lat), 10f * density, routeStart) }
+                r.points.last().let { (lat, lng) -> canvas.drawCircle(sx(lng), sy(lat), 10f * density, routeEnd) }
+            } else {
+                val radius = max(3f * density, pxPerCell.toFloat() * 0.6f)
+                for ((lat, lng) in r.points) canvas.drawCircle(sx(lng), sy(lat), radius, routeDot)
+            }
+        }
         for ((lat, lng) in landings) {
             val p = toScreen(lat, lng)
             canvas.drawCircle(p.x, p.y - 26f, 14f, pinPaint)
@@ -288,21 +330,67 @@ class FogOverlayView(context: Context) : View(context) {
         for (p in paints) c.drawPath(outlinePath, p)
     }
 
+    /**
+     * Boundary lines are drawn through a canvas transform from the cached tile-unit paths, so no
+     * path is copied per frame; stroke widths and dashes are divided by the scale to stay in dp.
+     */
     private fun drawBoundaries(c: Canvas, r: RegionLayer, px: Double, x0: Double, y0: Double, x1: Double, y1: Double) {
+        for (st in strokes) st.prepare(px.toFloat())
+        val n = r.counts
         if (px >= DONG_LINES_PX) {
             r.atlas.dongs.forEachIndexed { i, d ->
-                if (visible(d.outline, x0, y0, x1, y1)) drawOutline(c, d.outline, DONG, i, px, x0, y0, dongLine)
+                if (visible(d.outline, x0, y0, x1, y1)) {
+                    strokeOutline(c, d.outline, DONG, i, px, x0, y0, if (n.dong[i] > 0) dongLineIn else dongLine)
+                }
             }
         }
         if (px >= DISTRICT_LINES_PX) {
             r.atlas.districts.forEachIndexed { i, d ->
                 val o = d.outline ?: return@forEachIndexed
-                if (visible(o, x0, y0, x1, y1)) drawOutline(c, o, DISTRICT, i, px, x0, y0, districtHalo, districtLine)
+                if (!visible(o, x0, y0, x1, y1)) return@forEachIndexed
+                if (n.district[i] > 0) strokeOutline(c, o, DISTRICT, i, px, x0, y0, districtHaloIn, districtLineIn)
+                else strokeOutline(c, o, DISTRICT, i, px, x0, y0, districtHalo, districtLine)
             }
         }
         r.atlas.provinces.forEachIndexed { i, p ->
             val o = p.outline ?: return@forEachIndexed
-            if (visible(o, x0, y0, x1, y1)) drawOutline(c, o, PROVINCE, i, px, x0, y0, provinceHalo, provinceLine)
+            if (visible(o, x0, y0, x1, y1)) strokeOutline(c, o, PROVINCE, i, px, x0, y0, provinceHalo, provinceLine)
+        }
+    }
+
+    private fun strokeOutline(c: Canvas, o: Outline, level: Int, index: Int, scale: Double, x0: Double, y0: Double, vararg strokes: Stroke) {
+        val save = c.save()
+        c.translate(((o.bbox[0] - x0) * scale).toFloat(), ((o.bbox[1] - y0) * scale).toFloat())
+        c.scale(scale.toFloat(), scale.toFloat())
+        val path = OutlinePaths.get(level, index, o)
+        for (st in strokes) c.drawPath(path, st.paint)
+        c.restoreToCount(save)
+    }
+
+    /** A line style in dp, re-expressed in tile units for the current scale (see [drawBoundaries]). */
+    private inner class Stroke(argb: Int, private val widthDp: Float, private val dashDp: Float = 0f) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = argb
+            style = Paint.Style.STROKE
+            strokeJoin = Paint.Join.ROUND
+        }
+        private var scale = 0f
+        private var dashStep = Int.MIN_VALUE
+
+        fun prepare(newScale: Float) {
+            if (newScale == scale) return
+            scale = newScale
+            paint.strokeWidth = widthDp * density / newScale
+            if (dashDp > 0) {
+                // A new dash effect only per ~9 % zoom step: during camera animation the scale changes
+                // every frame, and dashes that are a few percent off are invisible.
+                val step = Math.round(ln(newScale.toDouble()) / DASH_STEP_LN).toInt()
+                if (step != dashStep) {
+                    dashStep = step
+                    val on = (dashDp * density / exp(step * DASH_STEP_LN)).toFloat()
+                    paint.pathEffect = DashPathEffect(floatArrayOf(on, on * 0.8f), 0f)
+                }
+            }
         }
     }
 
@@ -344,6 +432,8 @@ class FogOverlayView(context: Context) : View(context) {
         /** Screen px per grid cell from which 읍·면·동 (zoom ~13) / 시·군·구 (zoom ~9) are drawn. */
         const val DONG_LINES_PX = 4.0
         const val DISTRICT_LINES_PX = 0.25
+        /** ln(2) / 8: dash lengths are refreshed every eighth of a zoom level. */
+        val DASH_STEP_LN = ln(2.0) / 8
         const val MASK_DIV = 3
         const val MAX_DZ = 10
         const val TEXTURE_SIZE = 128

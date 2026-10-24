@@ -86,7 +86,7 @@ def read_record(ctx):
     t = ctx.dev.texts()
     return {
         "area": area_m2(value_after(t, "밝힌 면적")),
-        "landings": number(value_after(t, "상륙 지점")),
+        "landings": number(value_after(t, "하차 지점")),
         "new_ratio": number(value_after(t, "새 길 비율")),
         "trips": sum(1 for x in t if re.match(r"\d+월 \d+일 \d\d:\d\d", x)),
     }
@@ -193,10 +193,10 @@ def tc_parked_no_reveal(ctx):
     ctx.check(after["trips"] == 0, "주행 기록 없음")
 
 
-@case("TC-05", "상륙 지점", "주행 후 P단에서 도어를 열면 상륙 지점이 기록된다",
+@case("TC-05", "하차 지점", "주행 후 P단에서 도어를 열면 하차 지점이 기록된다",
       "앱 초기화",
       ["기어 D로 15개 지점 주행", "기어 P", "운전석 도어 열기"],
-      ["'상륙 지점을 기록했어요' 표시", "상륙 지점 1곳", "밝힌 면적 추가 증가(7×7칸 공개)"])
+      ["'하차 지점을 기록했어요' 표시", "하차 지점 1곳", "밝힌 면적 추가 증가(7×7칸 공개)"])
 def tc_landing(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -205,19 +205,19 @@ def tc_landing(ctx):
     mid = read_record(ctx)
     ctx.dev.tap_text("지도")
     ctx.vc.door("front_left", True)
-    ctx.check(ctx.dev.wait_text("상륙 지점을 기록했어요", timeout=8), "상륙 메시지 표시")
+    ctx.check(ctx.dev.wait_text("하차 지점을 기록했어요", timeout=8), "하차 메시지 표시")
     ctx.shot("landing")
     ctx.vc.door("front_left", False)
     after = read_record(ctx)
-    ctx.log(f"주행 후 {mid} → 상륙 후 {after}")
-    ctx.check(after["landings"] == 1, f"상륙 지점 {after['landings']}곳")
-    ctx.check(after["area"] > mid["area"], "상륙으로 면적 추가 공개")
+    ctx.log(f"주행 후 {mid} → 하차 후 {after}")
+    ctx.check(after["landings"] == 1, f"하차 지점 {after['landings']}곳")
+    ctx.check(after["area"] > mid["area"], "하차로 면적 추가 공개")
 
 
-@case("TC-06", "상륙 지점", "주행 중(D단) 도어가 열려도 상륙으로 기록하지 않는다",
+@case("TC-06", "하차 지점", "주행 중(D단) 도어가 열려도 하차로 기록하지 않는다",
       "앱 초기화",
       ["기어 D로 10개 지점 주행", "D단 상태에서 도어 열기"],
-      ["상륙 지점 0곳"])
+      ["하차 지점 0곳"])
 def tc_no_landing_while_driving(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -228,7 +228,7 @@ def tc_no_landing_while_driving(ctx):
     park(ctx)
     r = read_record(ctx)
     ctx.log(f"기록: {r}")
-    ctx.check(r["landings"] == 0, f"상륙 지점 {r['landings']}곳")
+    ctx.check(r["landings"] == 0, f"하차 지점 {r['landings']}곳")
 
 
 def _stamp_case(ctx, setup, name):
@@ -340,10 +340,10 @@ def tc_detour(ctx):
     ctx.dev.app_stop()
 
 
-@case("TC-13", "시연 모드", "시연 모드가 출발→주행→상륙까지 끝까지 재생된다",
+@case("TC-13", "시연 모드", "시연 모드가 출발→주행→하차까지 끝까지 재생된다",
       "앱 초기화",
       ["설정 → 시연 시작 → 지도", "완료 메시지까지 대기(약 2분)", "기록·도감 확인", "시연 중지"],
-      ["'시연 주행 완료' 표시", "상륙 지점 1곳, 주행 기록 1건", "빗속 개척·가족 탐험 획득"])
+      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "빗속 개척·가족 탐험 획득"])
 def tc_demo(ctx):
     fresh(ctx)
     ctx.dev.tap_text("설정")
@@ -354,7 +354,7 @@ def tc_demo(ctx):
     r = read_record(ctx)
     s = read_stamps(ctx)
     ctx.log(f"기록 {r} / 스탬프 {s}")
-    ctx.check(r["landings"] == 1 and r["trips"] == 1, "상륙 1곳, 주행 1건")
+    ctx.check(r["landings"] == 1 and r["trips"] == 1, "하차 1곳, 주행 1건")
     ctx.check(s.get("빗속 개척", 0) >= 1 and s.get("가족 탐험", 0) >= 1, "빗속 개척·가족 탐험")
     ctx.dev.tap_text("설정")
     ctx.dev.tap_text("시연 중지")
@@ -363,7 +363,7 @@ def tc_demo(ctx):
 @case("TC-14", "기록 관리", "기록 전체 삭제 후 모든 기록이 0으로 돌아간다",
       "앱 초기화 후 한 번 주행",
       ["기어 D로 10개 지점 주행 후 P", "설정 → 기록 전체 삭제 → 정말 삭제", "기록 탭 확인"],
-      ["밝힌 면적 0, 상륙 0곳, 주행 기록 0건"])
+      ["밝힌 면적 0, 하차 0곳, 주행 기록 0건"])
 def tc_reset(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")

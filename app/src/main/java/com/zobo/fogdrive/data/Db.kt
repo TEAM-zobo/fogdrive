@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
@@ -11,6 +12,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 object CellSource {
@@ -57,6 +60,16 @@ data class StampEntity(
     val lng: Double,
 )
 
+/** The driven route, sampled every ~20 m while a trip is active (from schema v3). */
+@Entity(tableName = "track", indices = [Index("tripId")])
+data class TrackPointEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val tripId: Long,
+    val lat: Double,
+    val lng: Double,
+    val at: Long,
+)
+
 @Dao
 interface FogDao {
     @Query("SELECT cell FROM cells")
@@ -91,11 +104,17 @@ interface FogDao {
 
     @Query("SELECT * FROM stamps ORDER BY at DESC")
     fun stamps(): Flow<List<StampEntity>>
+
+    @Insert
+    suspend fun insertTrackPoint(point: TrackPointEntity)
+
+    @Query("SELECT * FROM track WHERE tripId = :tripId ORDER BY at, id")
+    suspend fun trackOf(tripId: Long): List<TrackPointEntity>
 }
 
 @Database(
-    entities = [CellEntity::class, TripEntity::class, LandingEntity::class, StampEntity::class],
-    version = 2,
+    entities = [CellEntity::class, TripEntity::class, LandingEntity::class, StampEntity::class, TrackPointEntity::class],
+    version = 3,
 )
 abstract class FogDb : RoomDatabase() {
     abstract fun dao(): FogDao
@@ -103,8 +122,21 @@ abstract class FogDb : RoomDatabase() {
     companion object {
         fun create(context: Context): FogDb =
             Room.databaseBuilder(context, FogDb::class.java, "fogdrive.db")
-                // v2 moved the grid from zoom 19 to 20; pre-release data is simply discarded.
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_2_3)
+                // v2 moved the grid from zoom 19 to 20; v1 pre-release data is simply discarded.
+                .fallbackToDestructiveMigrationFrom(1)
+                .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
+
+        /** v3 adds the route table; everything recorded so far is kept. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `track` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`tripId` INTEGER NOT NULL, `lat` REAL NOT NULL, `lng` REAL NOT NULL, `at` INTEGER NOT NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_track_tripId` ON `track` (`tripId`)")
+            }
+        }
     }
 }

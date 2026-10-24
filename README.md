@@ -16,7 +16,7 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 | 기능 | 내용 | 사용 SDK/API |
 | --- | --- | --- |
 | 자동 안개 걷기 | 주행 경로를 약 30m 격자로 기록해 도로와 눈에 보이는 범위(도로 양쪽 약 45m)만 안개를 걷음 | Pleos FusedLocation (미지원 시 Android GPS) |
-| 상륙 지점 | P단 전환 후 도어가 열린 곳 주변(약 210m)을 걷고 핀 표시 | AAOS `GEAR_SELECTION`, Pleos Vehicle Door |
+| 하차 지점 | P단 전환 후 도어가 열린 곳 주변(약 210m)을 걷고 핀 표시 | AAOS `GEAR_SELECTION`, Pleos Vehicle Door |
 | 첫 실행 지도 채우기 | 내비 최근 목적지·즐겨찾기 주변을 미리 걷음 | Pleos NaviHelper |
 | 탐험 우회 경로 | 출발 전 목적지 근처의 안개 구역을 찾아 경유지로 추가 | Pleos NaviHelper `getDestinationInfo`, `addWaypoint` |
 | 상황 스탬프 | 빗속·야간·가족 탐험·충전소 깃발 | Pleos Vehicle Wiper, Light, Seat, EvBattery |
@@ -77,7 +77,7 @@ Release 서명 정보는 저장소 밖의 `keystore.properties`(gitignore)에서
 
 1. 출발 전(P단): 탐험 우회 경로 카드가 나타납니다.
 2. 주행 중: 안개가 걷히고, 와이퍼 구간에서 빗속 개척, 뒷좌석 동승자로 가족 탐험 스탬프를 얻습니다.
-3. 도착: P단 + 운전석 도어 열림으로 상륙 지점이 기록됩니다.
+3. 도착: P단 + 운전석 도어 열림으로 하차 지점이 기록됩니다.
 
 시연이 끝나도 화면이 유지되며, **시연 중지**를 누르면 실제 위치로 돌아갑니다.
 

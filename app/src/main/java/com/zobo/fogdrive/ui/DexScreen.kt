@@ -2,6 +2,7 @@ package com.zobo.fogdrive.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -40,6 +41,8 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.zobo.fogdrive.explore.ProvinceProgress
 import com.zobo.fogdrive.explore.RegionStat
@@ -65,24 +68,26 @@ fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
         ) {
             val r = regions
             when {
-                r == null -> {
+                r.isNullOrEmpty() -> {
                     ScreenTitle("지역 도감")
-                    Text("지역 정보를 불러오는 중…", color = FogColors.TextSub)
+                    Text(if (r == null) "지역 정보를 불러오는 중…" else "지역 정보를 불러오지 못했어요. 앱을 다시 설치해 주세요.", color = FogColors.TextSub)
+                    // Season and stamps don't depend on the atlas; keep them visible while it loads.
+                    SeasonAndStamps(viewModel)
                 }
                 district != null && province != null -> {
                     Breadcrumb(listOf("전국" to toCountry, province.name to toProvince, district.name to null))
                     RegionHeading(district, "읍·면·동 ${district.visitedDongs} / ${district.dongs.size} 방문") { onShowOnMap(district) }
                     Text("동을 누르면 지도에서 보여 줘요.", color = FogColors.TextSub)
-                    RegionGrid(district.dongs, columns = 5, onSelect = onShowOnMap) { d ->
-                        Text(d.name, style = MaterialTheme.typography.titleMedium)
+                    RegionGrid(district.dongs, columns = 5, cardHeight = 124.dp, onSelect = onShowOnMap) { d ->
+                        Text(d.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(formatRate(d.rate), style = MaterialTheme.typography.titleLarge, color = FogColors.Accent)
                     }
                 }
                 province != null -> {
                     Breadcrumb(listOf("전국" to toCountry, province.name to null))
                     RegionHeading(province, "시·군·구 ${province.visitedDistricts} / ${province.districts.size} 방문") { onShowOnMap(province) }
-                    RegionGrid(province.districts, columns = 4, onSelect = { viewModel.dexDistrict.value = it.code }) { d ->
-                        Text(d.name, style = MaterialTheme.typography.titleMedium)
+                    RegionGrid(province.districts, columns = 4, cardHeight = 184.dp, onSelect = { viewModel.dexDistrict.value = it.code }) { d ->
+                        Text(d.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(formatRate(d.rate), style = MaterialTheme.typography.headlineMedium, color = FogColors.Accent)
                         Text("읍·면·동 ${d.visitedDongs} / ${d.dongs.size}", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
                         ProgressBar(d.visitedDongs.toFloat() / maxOf(1, d.dongs.size), height = 8.dp)
@@ -110,8 +115,8 @@ private fun CountryPage(regions: List<ProvinceProgress>, onOpen: (ProvinceProgre
         Spacer(Modifier.weight(1f))
         Text("행정구역 경계: admdongkor (CC BY 4.0), 원자료 통계청", style = MaterialTheme.typography.bodySmall, color = FogColors.TextSub)
     }
-    RegionGrid(regions, columns = 4, onSelect = onOpen) { p ->
-        Text(p.name, style = MaterialTheme.typography.titleMedium)
+    RegionGrid(regions, columns = 4, cardHeight = 184.dp, onSelect = onOpen) { p ->
+        Text(p.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(formatRate(p.rate), style = MaterialTheme.typography.headlineMedium, color = FogColors.Accent)
         Text("시·군·구 ${p.visitedDistricts} / ${p.districts.size}", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
         ProgressBar(p.visitedDistricts.toFloat() / maxOf(1, p.districts.size), height = 8.dp)
@@ -210,24 +215,30 @@ private fun RegionHeading(region: RegionStat, visitedLine: String, onShowOnMap: 
     }
 }
 
-/** Equal-width, equal-height cards; unvisited regions are outlined "?" cards and cannot be opened. */
+/**
+ * One fixed card height per grid, so "?" rows and filled rows line up. Unlocked regions are white
+ * with a blue frame; locked ones are flat grey "?" tiles that cannot be opened.
+ */
 @Composable
 private fun <T : RegionStat> RegionGrid(
     items: List<T>,
     columns: Int,
+    cardHeight: Dp,
     onSelect: (T) -> Unit,
     content: @Composable ColumnScope.(T) -> Unit,
 ) {
     items.chunked(columns).forEach { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             row.forEach { item ->
-                val mod = Modifier.weight(1f).fillMaxHeight()
+                val mod = Modifier.weight(1f).height(cardHeight)
                 if (!item.visited) {
-                    FogCard(mod, outlined = true, padding = 20.dp) {
-                        Text("?", style = MaterialTheme.typography.headlineMedium, color = FogColors.TextSub)
+                    FogCard(mod, color = FogColors.SurfaceHigh, padding = 20.dp) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("?", style = MaterialTheme.typography.headlineMedium, color = FogColors.TextSub)
+                        }
                     }
                 } else {
-                    FogCard(mod, padding = 20.dp, onClick = { onSelect(item) }) { content(item) }
+                    FogCard(mod, padding = 20.dp, borderColor = FogColors.Accent, onClick = { onSelect(item) }) { content(item) }
                 }
             }
             repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }

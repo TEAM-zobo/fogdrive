@@ -43,11 +43,17 @@ fun FogCard(
     color: Color = FogColors.Surface,
     outlined: Boolean = false,
     padding: Dp = 24.dp,
+    /** Filled card with a coloured frame (e.g. an unlocked dex entry). */
+    borderColor: Color? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var m = modifier.clip(CardShape)
-    m = if (outlined) m.border(2.dp, FogColors.Outline, CardShape) else m.background(color)
+    m = when {
+        outlined -> m.border(2.dp, FogColors.Outline, CardShape)
+        borderColor != null -> m.background(color).border(2.dp, borderColor, CardShape)
+        else -> m.background(color)
+    }
     if (onClick != null) m = m.clickable(onClick = onClick)
     Column(m.padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
 }

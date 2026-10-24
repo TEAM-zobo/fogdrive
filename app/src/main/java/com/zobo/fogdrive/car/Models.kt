@@ -56,4 +56,5 @@ data class Guidance(
 
 enum class ArrivalKind { DESTINATION, WAYPOINT, DETOUR }
 
-data class Arrival(val kind: ArrivalKind, val name: String)
+/** [demo]: scripted by the demo drive (real arrivals are ignored while it plays, like real fixes). */
+data class Arrival(val kind: ArrivalKind, val name: String, val demo: Boolean = false)

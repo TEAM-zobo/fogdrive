@@ -1,6 +1,8 @@
 package com.zobo.fogdrive
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.NaviBridge
 import com.zobo.fogdrive.car.VehicleSignals
@@ -37,7 +39,15 @@ object FogRuntime {
 
     /** 시·도 / 시·군·구 / 읍·면·동 boundaries, parsed off the main thread on first use (the map's
      *  two-strength fog, then the dex tab) rather than in [init]. */
-    val regions: RegionTally by lazy { RegionTally(RegionAtlas.load(appContext)) }
+    val regions: RegionTally? by lazy {
+        // The file ships with the app, but a broken install must not take the app down with it:
+        // without it the map falls back to one-strength fog and the dex says it is unavailable.
+        val start = SystemClock.elapsedRealtime()
+        runCatching { RegionTally(RegionAtlas.load(appContext)) }
+            .onSuccess { Log.i("FogRuntime", "region atlas loaded in ${SystemClock.elapsedRealtime() - start} ms") }
+            .onFailure { Log.e("FogRuntime", "region atlas unavailable", it) }
+            .getOrNull()
+    }
     private lateinit var appContext: Context
 
     val live = MutableStateFlow(LiveStatus())

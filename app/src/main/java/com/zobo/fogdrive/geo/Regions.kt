@@ -1,9 +1,9 @@
 package com.zobo.fogdrive.geo
 
 import android.content.Context
-import java.io.BufferedInputStream
-import java.io.DataInputStream
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.max
 import kotlin.math.min
 
@@ -93,25 +93,36 @@ class RegionAtlas(
 
         fun load(context: Context): RegionAtlas = context.assets.open(ASSET).use { read(it) }
 
-        /** Reads the binary layout documented in build_regions.py. */
+        /**
+         * Reads the binary layout documented in build_regions.py. The whole file is read at once and
+         * ring coordinates are bulk-copied (about a million ints), not read one stream call at a time.
+         */
         fun read(stream: InputStream): RegionAtlas {
-            val input = DataInputStream(BufferedInputStream(stream, 64 * 1024))
-            val magic = ByteArray(4).also { input.readFully(it) }
+            val buf = ByteBuffer.wrap(stream.readBytes()).order(ByteOrder.BIG_ENDIAN)
+            val magic = ByteArray(4).also { buf.get(it) }
             require(String(magic, Charsets.US_ASCII) == "FGRG") { "not a region atlas" }
-            require(input.readInt() == FORMAT_VERSION) { "unsupported region atlas version" }
-            val source = input.readUTF()
+            require(buf.int == FORMAT_VERSION) { "unsupported region atlas version" }
+            fun utf(): String {
+                val bytes = ByteArray(buf.short.toInt() and 0xFFFF).also { buf.get(it) }
+                return String(bytes, Charsets.UTF_8)
+            }
+            fun ints(n: Int): IntArray {
+                val out = IntArray(n)
+                buf.asIntBuffer().get(out)
+                buf.position(buf.position() + n * 4)
+                return out
+            }
             fun outline(): Outline {
-                val bbox = IntArray(4) { input.readInt() }
-                val labelX = input.readInt()
-                val labelY = input.readInt()
-                val rings = List(input.readInt()) { IntArray(input.readInt() * 2) { input.readInt() } }
+                val bbox = ints(4)
+                val labelX = buf.int
+                val labelY = buf.int
+                val rings = List(buf.int) { ints(buf.int * 2) }
                 return Outline(bbox, labelX, labelY, rings)
             }
-            val provinces = List(input.readInt()) { Province(input.readUTF(), input.readUTF(), outline()) }
-            val districts = List(input.readInt()) { District(input.readUTF(), input.readUTF(), input.readInt(), outline()) }
-            val dongs = List(input.readInt()) {
-                Dong(input.readUTF(), input.readUTF(), input.readInt(), input.readLong(), outline())
-            }
+            val source = utf()
+            val provinces = List(buf.int) { Province(utf(), utf(), outline()) }
+            val districts = List(buf.int) { District(utf(), utf(), buf.int, outline()) }
+            val dongs = List(buf.int) { Dong(utf(), utf(), buf.int, buf.long, outline()) }
             return RegionAtlas(provinces, districts, dongs, source)
         }
     }

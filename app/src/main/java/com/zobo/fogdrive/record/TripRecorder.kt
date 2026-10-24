@@ -65,6 +65,23 @@ class TripRecorder(private val sink: ExploreSink) {
     private var socAtPark: Int? = null
     private var chargeStamped = false
 
+    /**
+     * Starts a trip on the first moving, accurate fix. The service calls this before [onFix] so the
+     * trip row exists (and new cells are tagged with its id) before the first swath is revealed;
+     * [onFix] still calls it for callers that don't.
+     */
+    fun startTripIfNeeded(fix: Fix, vehicle: VehicleState): RecorderEvent.TripStarted? {
+        if (tripActive || vehicle.parked || (fix.accuracyM ?: 0f) > MAX_ACCURACY_M) return null
+        tripActive = true
+        stats = TripStats()
+        stampsThisTrip.clear()
+        revealedThisTrip.clear()
+        visitedThisTrip.clear()
+        prevCenter = null
+        prevStepNew = false
+        return RecorderEvent.TripStarted(fix.timeMs)
+    }
+
     fun onFix(fix: Fix, vehicle: VehicleState): List<RecorderEvent> {
         if ((fix.accuracyM ?: 0f) > MAX_ACCURACY_M) return emptyList()
         val events = mutableListOf<RecorderEvent>()
@@ -72,16 +89,7 @@ class TripRecorder(private val sink: ExploreSink) {
         last = fix
         if (vehicle.parked) return events
 
-        if (!tripActive) {
-            tripActive = true
-            stats = TripStats()
-            stampsThisTrip.clear()
-            revealedThisTrip.clear()
-            visitedThisTrip.clear()
-            prevCenter = null
-            prevStepNew = false
-            events += RecorderEvent.TripStarted(fix.timeMs)
-        }
+        startTripIfNeeded(fix, vehicle)?.let { events += it }
 
         val center = Tiles.cellOf(fix.lat, fix.lng)
         val path: Set<Long>

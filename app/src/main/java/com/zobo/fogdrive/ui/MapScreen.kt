@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.AltRoute
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -21,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,6 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.zobo.fogdrive.car.Place
 import com.zobo.fogdrive.geo.Area
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun MapScreen(viewModel: MainViewModel) {
@@ -43,17 +48,14 @@ fun MapScreen(viewModel: MainViewModel) {
     val destination by viewModel.navi.destination.collectAsState()
     val vehicle by viewModel.vehicle.collectAsState()
     val here by viewModel.here.collectAsState()
-    val regions by viewModel.regions.collectAsState()
-    // Every live fix recomposes this screen; count the ~3,500 동 only when the tally changes.
-    val nationwide = remember(regions) {
-        regions?.let { r ->
-            r.sumOf { p -> p.districts.sumOf { it.visitedDongs } } to r.sumOf { p -> p.districts.sumOf { it.dongs.size } }
-        }
-    }
+    val nationwide by viewModel.nationwide.collectAsState()
     val tripNewDongs by viewModel.tripNewDongs.collectAsState()
     val focus by viewModel.mapFocus.collectAsState()
     // Opened from the dex: frame that region instead of chasing the car.
     var follow by remember { mutableStateOf(viewModel.mapFocus.value == null) }
+    val shownTrip by viewModel.shownTrip.collectAsState()
+    // A region or trip picked elsewhere may arrive after the tab switch; stop following the car then.
+    LaunchedEffect(focus) { if (focus != null) follow = false }
     var zoomIn by remember { mutableIntStateOf(0) }
     var zoomOut by remember { mutableIntStateOf(0) }
     var recenter by remember { mutableIntStateOf(0) }
@@ -80,6 +82,7 @@ fun MapScreen(viewModel: MainViewModel) {
             zoomOutSignal = zoomOut,
             focus = focus,
             onFocusShown = { viewModel.mapFocus.value = null },
+            route = shownTrip,
         )
 
         // Header: level, where the car is in the region dex, and this trip.
@@ -127,8 +130,41 @@ fun MapScreen(viewModel: MainViewModel) {
             Pill("시연 모드 주행 중", FogColors.Amber, Modifier.padding(24.dp).align(Alignment.TopEnd))
         }
 
+        shownTrip?.let { t ->
+            FogCard(
+                modifier = Modifier.padding(24.dp).width(620.dp).align(Alignment.BottomStart),
+                color = FogColors.Surface.copy(alpha = 0.97f),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    IconBadge(Icons.Outlined.Route, FogColors.Amber, size = 44.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            SimpleDateFormat("M월 d일 HH:mm 주행", Locale.KOREA).format(Date(t.trip.startedAt)),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            "${formatKm(t.trip.distanceMeters)} · +${Area.formatCells(t.trip.newCells, t.points.firstOrNull()?.first ?: lat)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = FogColors.TextSub,
+                        )
+                    }
+                    TextButton(onClick = { viewModel.shownTrip.value = null }) {
+                        Text("닫기", style = MaterialTheme.typography.titleMedium, color = FogColors.Accent)
+                    }
+                }
+                if (!t.isTrack) {
+                    Text(
+                        if (t.points.isEmpty()) "이 주행은 경로 기록 기능 전이라 표시할 경로가 없어요."
+                        else "경로 기록 기능 전의 주행이라 이때 새로 밝힌 곳만 점으로 보여 줘요.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FogColors.TextSub,
+                    )
+                }
+            }
+        }
+
         // Detour suggestion (shown while parked, before departure).
-        if (visibleDetour != null && destination != null && vehicle.parked) {
+        if (visibleDetour != null && destination != null && vehicle.parked && shownTrip == null) {
             FogCard(
                 modifier = Modifier.padding(24.dp).width(620.dp).align(Alignment.BottomStart),
                 color = FogColors.Surface.copy(alpha = 0.97f),

@@ -207,7 +207,7 @@
       <table>
         <thead><tr><th>날짜</th><th>할 일</th><th>산출물</th><th>상태</th></tr></thead>
         <tbody>
-          <tr class="today"><td class="date">10/24(토)</td><td>공모전·개발 문서 분석, 프로젝트 생성, Pleos 에뮬레이터 구축, MVP 구현(자동 기록·안개·상륙·스탬프·내비 연동·우회 제안·시연 모드)</td><td>저장소, 디버그/릴리스 APK, 이 문서</td><td><span class="tag done">완료</span></td></tr>
+          <tr class="today"><td class="date">10/24(토)</td><td>공모전·개발 문서 분석, 프로젝트 생성, Pleos 에뮬레이터 구축, MVP 구현(자동 기록·안개·하차 지점·스탬프·내비 연동·우회 제안·시연 모드)</td><td>저장소, 디버그/릴리스 APK, 이 문서</td><td><span class="tag done">완료</span></td></tr>
           <tr><td class="date">10/25(일)</td><td>행정구역(시군구·읍면동) 경계 데이터 적용 → 지역 정복률·지역 도감</td><td>"○○구 정복률" 화면</td><td><span class="tag todo">예정</span></td></tr>
           <tr><td class="date">10/26(월)</td><td>Virtual Console로 기어·도어·와이퍼·전조등·좌석 실신호 검증, 에뮬레이터 위치 이동 테스트</td><td>검증 기록</td><td><span class="tag todo">예정</span></td></tr>
           <tr><td class="date">10/27(화)</td><td>설명회 질문 정리, 주행 중 화면 차단 동작·큰 터치 영역 점검</td><td>질문 목록</td><td><span class="tag todo">예정</span></td></tr>
@@ -246,7 +246,7 @@
         <thead><tr><th>기능</th><th>사용 API</th><th>상태</th></tr></thead>
         <tbody>
           <tr><td>자동 안개 걷기(약 30m 격자, 도로 양쪽 약 45m)</td><td>FusedLocation → 미지원 시 Android GPS</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>상륙 지점(P단 + 도어 열림)</td><td>AAOS GEAR_SELECTION, Vehicle Door</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>하차 지점(P단 + 도어 열림)</td><td>AAOS GEAR_SELECTION, Vehicle Door</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>첫 실행 지도 채우기</td><td>NaviHelper 최근 목적지·즐겨찾기</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>탐험 우회 경로 → 경유지 추가</td><td>NaviHelper getDestinationInfo · addWaypoint</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>상황 스탬프(빗속·야간·가족·충전)</td><td>Vehicle Wiper · Light · Seat · EvBattery</td><td><span class="tag done">구현</span></td></tr>

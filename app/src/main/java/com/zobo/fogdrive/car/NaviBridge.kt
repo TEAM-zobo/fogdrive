@@ -7,6 +7,7 @@ import ai.pleos.playground.navi.constants.WaypointIndex
 import ai.pleos.playground.navi.data.BookmarkInfo
 import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.DestinationInfo
+import ai.pleos.playground.navi.data.RouteStateInfo
 import ai.pleos.playground.navi.data.RecentDestinationInfo
 import ai.pleos.playground.navi.data.RequestWaypointInfo
 import ai.pleos.playground.navi.data.RouteStartInfo
@@ -54,6 +55,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     /** The fog detour went in as the first waypoint and has not been reached yet. */
     @Volatile private var detourPending = false
+    @Volatile private var lastTbtRequestAt = 0L
 
     private val _lastMessage = MutableStateFlow<String?>(null)
     val lastMessage: StateFlow<String?> = _lastMessage.asStateFlow()
@@ -67,6 +69,8 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
             helper = h
             _connected.value = true
             refresh()
+            // A route may already be guided when the service starts; no onRouteStarted will come then.
+            call("routeState") { h.getRouteStateInfo() }
         } catch (e: Throwable) {
             Log.w(TAG, "NaviHelper unavailable", e)
             _connected.value = false
@@ -80,6 +84,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
         }
         helper = null
         _connected.value = false
+        detourPending = false
         _guidance.value = Guidance()
     }
 
@@ -163,13 +168,47 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
         _guidance.update { it.copy(routing = true) }
-        call("tbt") { helper?.getTBTInfo() }
+        requestTurnInfo(force = true)
+    }
+
+    override fun onReRouteEnded() = requestTurnInfo(force = true)
+
+    /**
+     * getTBTInfo is a one-shot query (like the other info getters), so the next turn and its distance
+     * are re-read as the car moves; called on every fix and throttled to [TBT_INTERVAL_MS].
+     */
+    fun requestTurnInfo(force: Boolean = false) {
+        val h = helper ?: return
+        if (!force && !_guidance.value.routing) return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastTbtRequestAt < TBT_INTERVAL_MS) return
+        lastTbtRequestAt = now
+        if (force) {
+            call("tbt") { h.getTBTInfo() }
+        } else {
+            // Periodic refresh: a failing query would otherwise overwrite the status line every second.
+            try { h.getTBTInfo() } catch (e: Throwable) { Log.w(TAG, "tbt refresh failed", e) }
+        }
     }
 
     override fun onRouteEnded() = endGuidance()
 
+    override fun onRouteStateInfo(routeStateInfo: RouteStateInfo) {
+        if (!routeStateInfo.isRouting) return
+        _guidance.update { it.copy(routing = true) }
+        requestTurnInfo(force = true)
+    }
+
     override fun onNavigationStatus(navigationStatus: NavigationStatus) {
-        if (navigationStatus == NavigationStatus.ROUTE_DRIVE) _guidance.update { it.copy(routing = true) } else endGuidance()
+        when (navigationStatus) {
+            NavigationStatus.ROUTE_DRIVE -> _guidance.update { it.copy(routing = true) }
+            // The navigation is off: nothing it reported (speed limit included) is current any more.
+            NavigationStatus.INACTIVE -> {
+                endGuidance()
+                _guidance.value = Guidance()
+            }
+            else -> endGuidance()
+        }
     }
 
     override fun onCurrentRoadSpeedLimit(speedLimit: Int) {
@@ -177,6 +216,8 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     override fun onTBTInfo(tbtInfoList: List<TBTInfo>) {
+        // A periodic query can answer after the route ended; don't bring back a stale arrow.
+        if (!_guidance.value.routing) return
         val next = tbtInfoList.firstOrNull()
         val kind = next?.type?.let(::turnKind)
         _guidance.update { it.copy(nextTurn = if (next != null && kind != null) TurnHint(kind, next.distance.toInt()) else null) }
@@ -208,6 +249,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
         /** Waypoint name of the fog detour; arriving at a waypoint with this name counts as an expedition. */
         const val DETOUR_NAME = "안개 구역 탐험"
         private const val TAG = "FogNavi"
+        private const val TBT_INTERVAL_MS = 1_000L
 
         /** Collapses the navigation's ~45 turn types into the few arrows the driving screen draws. */
         fun turnKind(type: TurnType): TurnKind? = when {

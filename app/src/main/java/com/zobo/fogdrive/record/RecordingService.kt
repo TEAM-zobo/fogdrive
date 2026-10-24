@@ -111,17 +111,48 @@ class RecordingService : Service() {
         super.onDestroy()
     }
 
-    private suspend fun handleFix(fix: Fix) = mutex.withLock {
+    private suspend fun handleFix(fix: Fix) {
+        // Off the main thread and outside the lock: a slow navigation binder must not hold up fixes,
+        // vehicle events or the UI. Skipped while the demo plays: its scripted guidance would be
+        // overwritten by the real navigation's (empty) answer.
+        if (!demoSession && fix.source != LocationFeed.SOURCE_DEMO) {
+            scope.launch(Dispatchers.IO) { FogRuntime.navi.requestTurnInfo() }
+        }
+        mutex.withLock { recordFix(fix) }
+    }
+
+    private suspend fun recordFix(fix: Fix) {
         // Until the explored set is loaded every cell looks new (inflated counts, bogus stamps).
         repo.loaded.first { it }
         // Real fixes are ignored while the scripted demo drive is playing.
-        if (demoSession && fix.source != LocationFeed.SOURCE_DEMO) return@withLock
-        val events = recorder.onFix(fix, FogRuntime.vehicle.state.value)
+        if (demoSession && fix.source != LocationFeed.SOURCE_DEMO) return
+        val vehicle = FogRuntime.vehicle.state.value
+        // Create the trip row first so the first swath is saved under the new trip, not the last one.
+        recorder.startTripIfNeeded(fix, vehicle)?.let { apply(it) }
+        val events = recorder.onFix(fix, vehicle)
         events.forEach { apply(it) }
+        lastFix = fix
+        recordTrack(fix)
         FogRuntime.live.update {
             it.copy(location = fix, tripActive = recorder.tripActive, trip = recorder.stats)
         }
         persistTripStats()
+    }
+
+    private var lastFix: Fix? = null
+    private var trackTrip = 0L
+    private var trackLat = 0.0
+    private var trackLng = 0.0
+
+    /** Keeps the route of the active trip for the record screen: a point every [TRACK_STEP_M]. */
+    private fun recordTrack(fix: Fix) {
+        val trip = repo.currentTripId
+        if (!recorder.tripActive || trip == 0L) return
+        if (trip == trackTrip && Tiles.distanceMeters(trackLat, trackLng, fix.lat, fix.lng) < TRACK_STEP_M) return
+        trackTrip = trip
+        trackLat = fix.lat
+        trackLng = fix.lng
+        repo.addTrackPoint(trip, fix.lat, fix.lng, fix.timeMs)
     }
 
     private suspend fun handleVehicle(v: VehicleState) = mutex.withLock {
@@ -135,9 +166,14 @@ class RecordingService : Service() {
 
     private suspend fun handleArrival(arrival: Arrival) = mutex.withLock {
         repo.loaded.first { it }
+        // Like fixes: while the demo plays, only its scripted arrival counts.
+        if (demoSession && !arrival.demo) return@withLock
         val events = recorder.onArrival(arrival.kind, arrival.name, System.currentTimeMillis())
         events.forEach { apply(it) }
-        if (events.isNotEmpty()) FogRuntime.live.update { it.copy(trip = recorder.stats) }
+        if (events.isNotEmpty()) {
+            FogRuntime.live.update { it.copy(trip = recorder.stats) }
+            persistTripStats()
+        }
     }
 
     private suspend fun apply(event: RecorderEvent) {
@@ -149,12 +185,18 @@ class RecordingService : Service() {
                 note("새 주행 기록을 시작했어요")
             }
             is RecorderEvent.TripEnded -> {
+                // Close the route where the car stopped (points are otherwise only every 20 m).
+                lastFix?.let { f ->
+                    if (trackTrip == repo.currentTripId && Tiles.distanceMeters(trackLat, trackLng, f.lat, f.lng) > 1.0) {
+                        repo.addTrackPoint(trackTrip, f.lat, f.lng, f.timeMs)
+                    }
+                }
                 persistTripStats(endedAt = event.at)
                 tripRow = null
             }
             is RecorderEvent.Landing -> {
                 repo.addLanding(event.lat, event.lng, event.at, repo.currentTripId)
-                note("상륙 지점을 기록했어요 (+${Area.formatCells(event.newCells)})")
+                note("하차 지점을 기록했어요 (+${Area.formatCells(event.newCells)})")
             }
             is RecorderEvent.Arrival -> {
                 val what = when (event.kind) {
@@ -270,6 +312,8 @@ class RecordingService : Service() {
         const val KEY_SEEDED = "seeded_from_navi"
         private const val CHANNEL = "recording"
         private const val NOTIF_ID = 19
+        /** Route sampling step: dense enough to follow streets, ~50 points per km at most. */
+        private const val TRACK_STEP_M = 20.0
         private const val SEED_RADIUS = 4
         private const val BOOKMARK_WAIT_MS = 5_000L
 

@@ -1,5 +1,6 @@
 package com.zobo.fogdrive
 
+import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.explore.RegionTally
 import com.zobo.fogdrive.geo.District
 import com.zobo.fogdrive.geo.Dong
@@ -69,6 +70,33 @@ class RegionTallyTest {
         assertEquals(3.0 / 20_000, counts.districtRate(0), 1e-12)
         // 가동 already had a cell before the trip; 나동 and 다면 were first entered on it.
         assertEquals(2, tally.firstEntered(trip, counts))
+    }
+
+    /** A growing log like the repository's: appends, then a reset that bumps the generation. */
+    private class FakeLog : CellLog {
+        val cells = ArrayList<Long>()
+        var generation = 0
+        override fun readSince(generation: Int, from: Int): CellLog.Slice {
+            val start = if (generation == this.generation) from else 0
+            return CellLog.Slice(this.generation, cells.size, cells.subList(start, cells.size).toLongArray())
+        }
+    }
+
+    @Test
+    fun countsOnlyNewCellsAndRestartsAfterReset() {
+        val log = FakeLog()
+        val tally = RegionTally(atlas)
+        log.cells += Tiles.pack(1010, 1010)
+        val first = tally.levels(log)
+        assertEquals(1, first.dong[0])
+        log.cells += listOf(Tiles.pack(1011, 1010), Tiles.pack(1150, 1050))
+        val second = tally.levels(log)
+        assertEquals(listOf(2, 1, 0), second.dong.toList())
+        assertEquals(1, first.dong[0])  // earlier snapshots never change
+        log.cells.clear()
+        log.generation++
+        log.cells += Tiles.pack(2010, 2010)
+        assertEquals(listOf(0, 0, 1), tally.levels(log).dong.toList())
     }
 
     @Test

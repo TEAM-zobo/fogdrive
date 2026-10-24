@@ -451,6 +451,8 @@ fun FogMap(
     /** Region to frame (from the dex); [onFocusShown] is called once the camera has moved there. */
     focus: TileBox? = null,
     onFocusShown: () -> Unit = {},
+    /** Past trip to draw (record screen). */
+    route: TripRoute? = null,
 ) {
     val context = LocalContext.current
     val holder = remember {
@@ -515,10 +517,10 @@ fun FogMap(
 
     LaunchedEffect(version) {
         // Light fog over the 읍·면·동 already entered, boundaries, and the rates in the labels.
-        holder.overlay.regions = withContext(Dispatchers.Default) {
-            val tally = FogRuntime.regions
-            RegionLayer(tally.atlas, tally.levels(FogRuntime.repo.cellsAtLevel(0)))
+        val layer = withContext(Dispatchers.Default) {
+            FogRuntime.regions?.let { RegionLayer(it.atlas, it.levels(FogRuntime.repo)) }
         }
+        if (layer == null) holder.overlay.regionsUnavailable = true else holder.overlay.regions = layer
     }
     LaunchedEffect(version, current, landings, detour) {
         holder.overlay.current = current
@@ -541,6 +543,10 @@ fun FogMap(
         } else if (follow) {
             map.animateCamera(CameraUpdateFactory.newLatLng(LatLng(current.first, current.second)), 600)
         }
+    }
+    LaunchedEffect(route) {
+        holder.overlay.route = route
+        holder.overlay.invalidate()
     }
     LaunchedEffect(focus) {
         holder.pendingFocus = focus

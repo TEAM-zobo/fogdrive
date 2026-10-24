@@ -72,7 +72,10 @@ fun FogApp(
             Box(Modifier.fillMaxSize()) {
                 when (Tab.entries[tab]) {
                     Tab.MAP -> MapScreen(viewModel)
-                    Tab.RECORD -> RecordScreen(viewModel)
+                    Tab.RECORD -> RecordScreen(viewModel, onShowTrip = { trip ->
+                        viewModel.showTrip(trip)
+                        tab = Tab.MAP.ordinal
+                    })
                     Tab.DEX -> DexScreen(viewModel, onShowOnMap = { region ->
                         viewModel.mapFocus.value = region.bounds
                         tab = Tab.MAP.ordinal
