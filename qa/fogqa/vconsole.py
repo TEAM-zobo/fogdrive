@@ -108,11 +108,13 @@ class VConsole:
         return self.put("/vehicle/controls", speed=str(kph), accelerator="10" if kph else "0", brake="0", steering="0")
 
     def reset(self):
-        """Parked, doors closed, wipers/lights off, no passengers, 80% battery, standing still."""
+        """Parked, doors/frunk/trunk closed, wipers/lights off, no passengers, 80% battery, standing still."""
         self.speed(0)
         self.gear("Park")
         for area in DOORS:
             self.door(area, False)
+        # The emulator boots with the frunk open (cluster warning "프렁크를 닫으세요").
+        self.put("/vehicle/body", frunk="false", trunk="false")
         self.wiper("Off")
         self.headlamp("Off")
         for area in ("passenger", "rear_left", "rear_right"):
