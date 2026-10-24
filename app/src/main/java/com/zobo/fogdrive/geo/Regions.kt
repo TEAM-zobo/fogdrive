@@ -1,7 +1,9 @@
 package com.zobo.fogdrive.geo
 
 import android.content.Context
+import java.io.FileInputStream
 import java.io.InputStream
+import java.nio.channels.FileChannel
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.max
@@ -95,14 +97,26 @@ class RegionAtlas(
         const val ASSET = "regions/kr_regions.bin"
         private const val FORMAT_VERSION = 2
 
-        fun load(context: Context): RegionAtlas = context.assets.open(ASSET).use { read(it) }
+        /** Memory-maps the atlas (stored uncompressed in the APK); falls back to reading the stream. */
+        fun load(context: Context): RegionAtlas {
+            val mapped = runCatching {
+                context.assets.openFd(ASSET).use { fd ->
+                    FileInputStream(fd.fileDescriptor).channel.use { ch ->
+                        ch.map(FileChannel.MapMode.READ_ONLY, fd.startOffset, fd.length)
+                    }
+                }
+            }.getOrNull()
+            return if (mapped != null) read(mapped) else context.assets.open(ASSET).use { read(it) }
+        }
 
         /**
          * Reads the binary layout documented in build_regions.py. The whole file is read at once and
          * ring coordinates are bulk-copied (about a million ints), not read one stream call at a time.
          */
-        fun read(stream: InputStream): RegionAtlas {
-            val buf = ByteBuffer.wrap(stream.readBytes()).order(ByteOrder.BIG_ENDIAN)
+        fun read(stream: InputStream): RegionAtlas = read(ByteBuffer.wrap(stream.readBytes()))
+
+        fun read(bytes: ByteBuffer): RegionAtlas {
+            val buf = bytes.order(ByteOrder.BIG_ENDIAN)
             val magic = ByteArray(4).also { buf.get(it) }
             require(String(magic, Charsets.US_ASCII) == "FGRG") { "not a region atlas" }
             require(buf.int == FORMAT_VERSION) { "unsupported region atlas version" }

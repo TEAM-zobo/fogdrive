@@ -42,7 +42,7 @@ object Progress {
     }
 }
 
-/** One challenge goal: progress toward [target], shown through [label] (m², km or a count). */
+/** One challenge goal: progress toward [target], shown through [label] (km², km or a count). */
 data class ChallengeGoal(val title: String, val current: Int, val target: Int, val label: (Int) -> String = { "$it" }) {
     val done: Boolean get() = current >= target
 }

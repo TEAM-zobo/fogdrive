@@ -65,6 +65,10 @@ android {
         compose = true
         buildConfig = true
     }
+    androidResources {
+        // The region atlas is read once at start-up; stored, it is memory-mapped instead of inflated.
+        noCompress += "bin"
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

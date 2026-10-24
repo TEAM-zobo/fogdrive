@@ -46,4 +46,14 @@ class ChallengesTest {
         assertEquals("42 km", outing[1].label(outing[1].current))
         assertEquals("1,500 km", Challenges.goals(ChallengePeriod.SEASON, PeriodStats()).last().label(1_500_000))
     }
+
+    @Test
+    fun areasAlwaysInKm2() {
+        assertEquals("0 km²", com.zobo.fogdrive.geo.Area.format(0.0))
+        assertEquals("0.0026 km²", com.zobo.fogdrive.geo.Area.format(2_600.0))
+        assertEquals("0.045 km²", com.zobo.fogdrive.geo.Area.format(45_000.0))
+        assertEquals("0.5 km²", com.zobo.fogdrive.geo.Area.format(500_000.0))
+        assertEquals("2.31 km²", com.zobo.fogdrive.geo.Area.format(2_310_000.0))
+        assertEquals("15 km²", com.zobo.fogdrive.geo.Area.format(15_000_000.0))
+    }
 }

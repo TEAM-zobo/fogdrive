@@ -67,7 +67,7 @@ def value_after(texts, label):
 
 
 def area_m2(s):
-    """'8,400 m²' or '0.63 km²' -> square metres."""
+    """'0.63 km²' (older builds also showed '8,400 m²') -> square metres."""
     m = re.search(r"([\d.,]+)\s*(k?m)²", s or "")
     if not m:
         return None
@@ -156,14 +156,14 @@ def tc_seed(ctx):
     ctx.shot("map")
     r = read_record(ctx)
     ctx.log(f"기록: {r}")
-    ctx.check((r["area"] or 0) > 0, f"밝힌 면적 {r['area']} m² > 0")
+    ctx.check((r["area"] or 0) > 0, f"밝힌 면적 {(r['area'] or 0) / 1e6:.4f} km² > 0")
     ctx.check(r["trips"] == 0, "주행 기록 없음")
 
 
 @case("TC-03", "자동 안개 걷기", "D단으로 주행하면 지나간 길의 안개가 걷히고 주행 기록이 생긴다",
       "앱 초기화, 차량 P단",
       ["기어 D", "실제 도로 경로 25개 지점 위치 주입", "기록 탭 확인"],
-      ["밝힌 면적 증가(+40,000 m² 이상, 약 50칸)", "주행 기록 1건", "새 길 비율 90% 이상"])
+      ["밝힌 면적 증가(+0.04 km² 이상, 약 50칸)", "주행 기록 1건", "새 길 비율 90% 이상"])
 def tc_drive_reveal(ctx):
     fresh(ctx)
     before = read_record(ctx)
@@ -174,7 +174,7 @@ def tc_drive_reveal(ctx):
     ctx.shot("map_after_drive")
     after = read_record(ctx)
     ctx.log(f"전 {before} → 후 {after}")
-    ctx.check(after["area"] - before["area"] >= 40_000, f"밝힌 면적 +{after['area'] - before['area']:.0f} m²")
+    ctx.check(after["area"] - before["area"] >= 40_000, f"밝힌 면적 +{(after['area'] - before['area']) / 1e6:.3f} km²")
     ctx.check(after["trips"] == 1, f"주행 기록 {after['trips']}건")
     ctx.check((after["new_ratio"] or 0) >= 90, f"새 길 비율 {after['new_ratio']}%")
 
