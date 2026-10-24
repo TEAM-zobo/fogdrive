@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">안개지도</string>
+    <string name="notif_channel">주행 기록</string>
+    <string name="notif_title">안개지도 기록 중</string>
+    <string name="notif_text">달린 길의 안개를 걷고 있어요</string>
+</resources>
