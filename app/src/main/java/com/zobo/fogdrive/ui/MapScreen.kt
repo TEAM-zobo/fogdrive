@@ -170,9 +170,19 @@ fun MapScreen(viewModel: MainViewModel) {
             }
         }
 
+        // Cards switched off in Settings, or dismissed with "오늘 안 보기" today, stay hidden.
+        // Per composition entry, not per frame: the cards re-check the day when the map is reopened.
+        val today = remember { MapPrefs.today() }
+        val detourOn by viewModel.detourCard.enabled.collectAsState()
+        val detourHiddenOn by viewModel.detourCard.hiddenOn.collectAsState()
+        val suggestionOn by viewModel.suggestionCard.enabled.collectAsState()
+        val suggestionHiddenOn by viewModel.suggestionCard.hiddenOn.collectAsState()
+        val detourAllowed = detourOn && detourHiddenOn != today
+        val showDetour = detourAllowed && visibleDetour != null && destination != null && vehicle.parked && shownTrip == null
+
         // "Go explore": nearest unexplored 동, while parked with nothing else in that corner.
-        val showSuggestion = suggestion != null && !suggestionHidden && vehicle.parked && shownTrip == null &&
-            !(visibleDetour != null && destination != null)
+        val showSuggestion = suggestion != null && !suggestionHidden && suggestionOn && suggestionHiddenOn != today &&
+            vehicle.parked && shownTrip == null && !showDetour
         if (showSuggestion) suggestion?.let { sg ->
             FogCard(
                 modifier = Modifier.padding(24.dp).width(640.dp).align(Alignment.BottomStart),
@@ -183,6 +193,9 @@ fun MapScreen(viewModel: MainViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text("안 가본 동네 가보기", style = MaterialTheme.typography.titleSmall, color = FogColors.Accent)
                         Text("${sg.district} ${sg.name} · ${formatKm(sg.distanceM)}", style = MaterialTheme.typography.titleLarge)
+                    }
+                    TextButton(onClick = { viewModel.suggestionCard.hideToday() }) {
+                        Text("오늘 안 보기", color = FogColors.TextSub, style = MaterialTheme.typography.bodyMedium)
                     }
                     TextButton(onClick = { suggestionHidden = true }) {
                         Text("닫기", color = FogColors.TextSub, style = MaterialTheme.typography.titleMedium)
@@ -208,7 +221,7 @@ fun MapScreen(viewModel: MainViewModel) {
         }
 
         // Detour suggestion (shown while parked, before departure).
-        if (visibleDetour != null && destination != null && vehicle.parked && shownTrip == null) {
+        if (showDetour && visibleDetour != null && destination != null) {
             FogCard(
                 modifier = Modifier.padding(24.dp).width(620.dp).align(Alignment.BottomStart),
                 color = FogColors.Surface.copy(alpha = 0.97f),
@@ -241,6 +254,9 @@ fun MapScreen(viewModel: MainViewModel) {
                     ) { Text("경유지 추가", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) }
                     TextButton(onClick = { dismissedFor = destination }) {
                         Text("괜찮아요", color = FogColors.TextSub, modifier = Modifier.padding(8.dp))
+                    }
+                    TextButton(onClick = { viewModel.detourCard.hideToday() }) {
+                        Text("오늘 안 보기", color = FogColors.TextSub, modifier = Modifier.padding(8.dp))
                     }
                 }
             }

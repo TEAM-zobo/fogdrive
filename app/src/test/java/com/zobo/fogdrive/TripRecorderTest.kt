@@ -18,6 +18,7 @@ class TripRecorderTest {
         val cells = HashSet<Long>()
         override fun reveal(newCells: Collection<Long>, source: Int): Int = newCells.count { cells.add(it) }
         override fun isExplored(cell: Long): Boolean = cell in cells
+        override fun noTripsYet(): Boolean = cells.isEmpty()
         val visits = HashMap<Long, Int>()
         override fun revisit(cells: Collection<Long>) {
             for (c in cells) visits.merge(c, 1, Int::plus)
@@ -39,6 +40,50 @@ class TripRecorderTest {
         rec.onFix(fix(37.5, 127.0, 3), drive)
         assertEquals(9, sink.visits.size)
         assertTrue(sink.visits.values.all { it == 1 })
+    }
+
+    @Test
+    fun pioneerAndLongDriveStamps() {
+        val rec = TripRecorder(MemorySink())
+        val codes = mutableListOf<StampCode>()
+        var lng = 127.0
+        // ~35 km east in ~300 m steps: every step clears new road.
+        repeat(120) {
+            rec.onFix(fix(37.5, lng, it * 1000L), drive).filterIsInstance<RecorderEvent.Stamp>().forEach { s -> codes += s.code }
+            lng += 0.0034
+        }
+        assertTrue(StampCode.PIONEER in codes)
+        assertTrue(StampCode.LONG_DRIVE in codes)
+        assertEquals(1, codes.count { it == StampCode.PIONEER })  // once per trip
+    }
+
+    @Test
+    fun dawnStampFromLocalTime() {
+        val rec = TripRecorder(MemorySink())
+        val dawn = java.util.Calendar.getInstance().apply { set(2026, 9, 21, 5, 30) }.timeInMillis  // a Wednesday
+        val events = rec.onFix(fix(37.5, 127.0, dawn), drive)
+        assertTrue(events.any { it is RecorderEvent.Stamp && it.code == StampCode.DAWN })
+        assertFalse(events.any { it is RecorderEvent.Stamp && it.code == StampCode.WEEKEND })
+    }
+
+    @Test
+    fun firstDriveAndHomecomingStamps() {
+        val rec = TripRecorder(MemorySink())
+        val codes = mutableListOf<StampCode>()
+        fun collect(events: List<RecorderEvent>) = events.filterIsInstance<RecorderEvent.Stamp>().forEach { codes += it.code }
+        var lng = 127.0
+        // 6 km out and back in 300 m steps on new road, then park at the start and open the door.
+        // The trip is started first, as the service does, before onFix sees the fix.
+        val first = fix(37.5, lng, 0L)
+        assertTrue(rec.startTripIfNeeded(first, drive) != null)
+        repeat(20) { collect(rec.onFix(fix(37.5, lng, it * 1000L), drive)); lng += 0.0034 }
+        repeat(20) { lng -= 0.0034; collect(rec.onFix(fix(37.5001, lng, 20_000L + it * 1000L), drive)) }
+        val park = VehicleState(gear = Gear.PARK)
+        rec.onVehicle(park, 50_000)
+        collect(rec.onVehicle(park.copy(doorsOpen = setOf("ROW_1_LEFT")), 51_000))
+        assertTrue(StampCode.FIRST_DRIVE in codes)
+        assertTrue(StampCode.HOMECOMING in codes)
+        assertFalse(rec.tripActive)
     }
 
     @Test

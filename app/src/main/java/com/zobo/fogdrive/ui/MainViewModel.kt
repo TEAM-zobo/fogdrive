@@ -10,7 +10,10 @@ import com.zobo.fogdrive.explore.DetourPlanner
 import com.zobo.fogdrive.explore.Progress
 import com.zobo.fogdrive.explore.ProvinceProgress
 import com.zobo.fogdrive.explore.RegionCounts
-import com.zobo.fogdrive.explore.SeasonGoal
+import com.zobo.fogdrive.explore.ChallengeGroup
+import com.zobo.fogdrive.explore.ChallengePeriod
+import com.zobo.fogdrive.explore.Challenges
+import com.zobo.fogdrive.explore.PeriodStats
 import com.zobo.fogdrive.geo.Area
 import com.zobo.fogdrive.geo.TileBox
 import com.zobo.fogdrive.geo.Tiles
@@ -28,7 +31,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 data class Summary(
     val totalCells: Int = 0,
@@ -69,14 +71,13 @@ class MainViewModel : ViewModel() {
     val trips: StateFlow<List<TripEntity>> = repo.trips.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val landings: StateFlow<List<LandingEntity>> = repo.landings.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val stamps: StateFlow<List<StampEntity>> = repo.stamps.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    private val monthCells: StateFlow<Int> = repo.cellsSince(monthStart()).stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val summary: StateFlow<Summary> = combine(version, landings, stamps, trips, live) { _, l, s, t, lv ->
         val cells = repo.count()
         // Cell size only depends on latitude; 0.1° steps keep the summary from changing on every fix.
         val lat = lv.location?.lat?.let { Math.round(it * 10) / 10.0 } ?: 37.5
         val cellKm = Tiles.cellSizeMeters(lat) / 1000.0
-        val xp = Progress.xp(cells, l.size, s.size)
+        val xp = Progress.xp(cells, l.size, s.size, s.map { it.code }.distinct().size)
         val dist = t.sumOf { it.distanceMeters }
         val newDist = t.sumOf { it.newDistanceMeters }
         Summary(
@@ -91,14 +92,36 @@ class MainViewModel : ViewModel() {
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, Summary())
 
-    val season: StateFlow<List<SeasonGoal>> = combine(monthCells, landings, stamps) { cells, l, s ->
-        val since = monthStart()
-        listOf(
-            SeasonGoal("이번 달 0.3 km² 밝히기", Area.ofCells(cells).toInt(), 300_000, Area::formatInt),
-            SeasonGoal("이번 달 하차 지점 3곳", l.count { it.at >= since }, 3),
-            SeasonGoal("이번 달 스탬프 2종 모으기", s.filter { it.at >= since }.map { it.code }.distinct().size, 2),
-        )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    /**
+     * Today / this week / this month / this season, each with its goals. Computed only while the dex
+     * shows them; the cells cleared since the earliest window start are read once and split per window.
+     */
+    val challenges: StateFlow<List<ChallengeGroup>> = combine(version, trips, landings, stamps) { _, _, l, s ->
+        val now = System.currentTimeMillis()
+        val tally = FogRuntime.regions
+        val counts = tally?.levels(repo)
+        val starts = ChallengePeriod.entries.associateWith { it.start(now) }
+        // A week can start before the month or season does, so read from the earliest start.
+        val allCleared = repo.clearedSince(starts.values.min())
+        ChallengePeriod.entries.map { period ->
+            val since = starts.getValue(period)
+            val cleared = allCleared.mapNotNull { c -> c.cell.takeIf { c.firstSeenAt >= since } }
+            val (newDongs, newDistricts, newProvinces) =
+                if (tally != null && counts != null) tally.firstEnteredLevels(cleared, counts) else Triple(0, 0, 0)
+            val tripTotals = repo.tripTotalsSince(since)
+            val stats = PeriodStats(
+                areaM2 = Area.ofCells(cleared.size).toInt(),
+                newDongs = newDongs,
+                newDistricts = newDistricts,
+                newProvinces = newProvinces,
+                trips = tripTotals.count,
+                distanceM = tripTotals.distanceMeters.toInt(),
+                landings = l.count { it.at >= since },
+                stampKinds = s.filter { it.at >= since }.map { it.code }.distinct().size,
+            )
+            ChallengeGroup(period, period.label(now), Challenges.goals(period, stats))
+        }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Region dex; computed only while a screen shows it. Null until loaded, empty if the atlas failed. */
     val regions: StateFlow<List<ProvinceProgress>?> = combine(version, landings) { _, l ->
@@ -246,6 +269,9 @@ class MainViewModel : ViewModel() {
 
     fun setShowWornRoads(on: Boolean) = FogRuntime.mapPrefs.setShowWornRoads(on)
 
+    val detourCard = FogRuntime.mapPrefs.detourCard
+    val suggestionCard = FogRuntime.mapPrefs.suggestionCard
+
     val demoCourse = FogRuntime.demoPrefs.courseId
     val demoSpeed = FogRuntime.demoPrefs.speedKmh
 
@@ -309,13 +335,5 @@ class MainViewModel : ViewModel() {
         /** Unexplored 동 farther than this are not suggested; the nearest few are offered in turn. */
         const val SUGGEST_MAX_M = 30_000.0
         const val SUGGEST_CHOICES = 8
-
-        fun monthStart(): Long = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
     }
 }

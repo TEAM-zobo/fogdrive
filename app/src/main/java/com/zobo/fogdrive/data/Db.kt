@@ -34,6 +34,11 @@ data class CellEntity(
     @ColumnInfo(defaultValue = "1") val visits: Int = 1,
 )
 
+data class TripTotals(val count: Int, val distanceMeters: Double)
+
+/** A cell cleared by driving or a drop-off, with when (for the challenge windows). */
+data class ClearedCell(val cell: Long, val firstSeenAt: Long)
+
 /** A cell driven more than once, with how many trips passed it. */
 data class CellVisits(val cell: Long, val visits: Int)
 
@@ -93,14 +98,22 @@ interface FogDao {
     @Query("SELECT cell, visits FROM cells WHERE visits > 1")
     suspend fun revisited(): List<CellVisits>
 
-    @Query("SELECT COUNT(*) FROM cells WHERE firstSeenAt >= :since AND source != 2")
-    fun countCellsSince(since: Long): Flow<Int>
+    /** Cells cleared by driving or drop-offs since [since] (not the navi seed), for the challenges. */
+    @Query("SELECT cell, firstSeenAt FROM cells WHERE firstSeenAt >= :since AND source != 2")
+    suspend fun clearedSince(since: Long): List<ClearedCell>
 
     @Insert
     suspend fun insertTrip(trip: TripEntity): Long
 
     @Update
     suspend fun updateTrip(trip: TripEntity)
+
+    /** Trip count and distance since [since] (the list below stops at 100 trips; a season has more). */
+    @Query("SELECT COUNT(*) AS count, COALESCE(SUM(distanceMeters), 0) AS distanceMeters FROM trips WHERE startedAt >= :since")
+    suspend fun tripTotalsSince(since: Long): TripTotals
+
+    @Query("SELECT COUNT(*) FROM trips")
+    suspend fun tripCount(): Int
 
     @Query("SELECT * FROM trips ORDER BY startedAt DESC LIMIT 100")
     fun trips(): Flow<List<TripEntity>>

@@ -346,7 +346,7 @@ class FogOverlayView(context: Context) : View(context) {
         for (level in WORN_LEVELS.indices) wornCount[level] = 0
         fun collect(cx: Int, cy: Int, n: Int) {
             var level = WORN_LEVELS.size - 1
-            while (level >= 0 && n < WORN_LEVELS[level].first) level--
+            while (level >= 0 && n < WORN_LEVELS[level].minTrips) level--
             if (level < 0) return
             val i = wornCount[level]
             if (i + 2 > wornXy[level].size) wornXy[level] = wornXy[level].copyOf(wornXy[level].size * 2)
@@ -371,7 +371,8 @@ class FogOverlayView(context: Context) : View(context) {
             val count = wornCount[level]
             if (count == 0) continue
             val xy = wornXy[level]
-            val layer = c.saveLayerAlpha(null, WORN_LEVELS[level].second)
+            wornPaint.color = WORN_LEVELS[level].color
+            val layer = c.saveLayerAlpha(null, WORN_LEVELS[level].alpha)
             var i = 0
             while (i < count) {
                 c.drawCircle(xy[i], xy[i + 1], r, wornPaint)
@@ -559,8 +560,18 @@ class FogOverlayView(context: Context) : View(context) {
         const val DISTRICT_LINES_PX = 0.25
         /** Screen px per cell from which worn roads are drawn (single cells visible, zoom ~13). */
         const val WORN_MIN_PX = 3.0
-        /** Worn-road tints as (from this many trips, layer alpha): 2, 3-4, 5+. */
-        val WORN_LEVELS = listOf(2 to 60, 3 to 105, 5 to 160)
+        /**
+         * Worn-road levels: the blue deepens over the first few repeats, then the hue walks on
+         * (indigo → purple → orange → red), so daily commutes still read apart from weekly routes.
+         */
+        val WORN_LEVELS = listOf(
+            WornLevel(2, Color.rgb(0x00, 0x81, 0xF8), 60),
+            WornLevel(3, Color.rgb(0x00, 0x71, 0xE0), 110),
+            WornLevel(5, Color.rgb(0x3D, 0x3A, 0xE8), 130),
+            WornLevel(10, Color.rgb(0x8E, 0x2D, 0xC8), 140),
+            WornLevel(20, Color.rgb(0xF0, 0x7A, 0x00), 150),
+            WornLevel(50, Color.rgb(0xE0, 0x30, 0x30), 165),
+        )
         /** Drop-off pins closer than this on screen are shown as one numbered pin. */
         const val CLUSTER_DP = 44f
         /** ln(2) / 8: dash lengths are refreshed every eighth of a zoom level. */
@@ -634,3 +645,6 @@ object OutlinePaths {
         path
     }
 }
+
+/** One worn-road tint: roads driven on at least [minTrips] trips, drawn in [color] at layer [alpha]. */
+class WornLevel(val minTrips: Int, val color: Int, val alpha: Int)

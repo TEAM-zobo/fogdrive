@@ -127,19 +127,30 @@ fun SettingsScreen(
             }
         }
 
-        SectionHeader("지도 표시", Modifier.padding(top = 16.dp))
+        SectionHeader("지도 표시 · 제안", Modifier.padding(top = 16.dp))
         FogCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("자주 다닌 길 표시", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "여러 번 달린 길을 파랗게 칠해요. 많이 달릴수록 진해져요. 지도와 주행 화면의 버튼으로도 켜고 끌 수 있어요.",
+                        "여러 번 달린 길에 색을 칠해요. 2~4번은 파란색이 짙어지고, 5번부터 남색 → 10번 보라 → 20번 주황 → " +
+                            "50번 이상 빨강으로 바뀌어요. 지도와 주행 화면의 버튼으로도 켜고 끌 수 있어요.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FogColors.TextSub,
                     )
                 }
                 FogSwitch(checked = showWornRoads, onCheckedChange = { viewModel.setShowWornRoads(it) })
             }
+            CardToggle(
+                "탐험 우회 경로 제안",
+                "목적지가 있을 때, 출발 전에 안 가본 동네를 지나는 경유지를 제안해요.",
+                viewModel.detourCard,
+            )
+            CardToggle(
+                "안 가본 동네 추천",
+                "정차 중에 가까운 안 가본 동네를 추천하고 내비 안내를 보내요.",
+                viewModel.suggestionCard,
+            )
         }
 
         SectionHeader("데이터 동기화", Modifier.padding(top = 16.dp))
@@ -275,5 +286,23 @@ private fun ConnectionCard(viewModel: MainViewModel) {
             }.ifEmpty { listOf("-") }.joinToString(" · "),
         )
         naviMessage?.let { StatusLine("내비 메시지", it) }
+    }
+}
+
+/** On/off for one map suggestion card; mentions when it was hidden just for today. */
+@Composable
+private fun CardToggle(title: String, description: String, card: MapPrefs.CardPref) {
+    val on by card.enabled.collectAsState()
+    val hiddenOn by card.hiddenOn.collectAsState()
+    Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                description + if (on && hiddenOn == MapPrefs.today()) " (오늘은 숨김)" else "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = FogColors.TextSub,
+            )
+        }
+        FogSwitch(checked = on, onCheckedChange = { card.setEnabled(it) })
     }
 }

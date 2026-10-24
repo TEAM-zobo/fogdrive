@@ -110,6 +110,18 @@ class RegionTally(val atlas: RegionAtlas) {
         const val MEMO_LIMIT = 50_000
     }
 
+    /** 읍·면·동 / 시·군·구 / 시·도 whose every explored cell is in [cells] (first entered since those were cleared). */
+    fun firstEnteredLevels(cells: Collection<Long>, all: RegionCounts): Triple<Int, Int, Int> {
+        val dong = IntArray(atlas.dongs.size)
+        for (c in cells) atlas.dongOf(c).takeIf { it >= 0 }?.let { dong[it]++ }
+        val district = IntArray(atlas.districts.size)
+        dong.forEachIndexed { i, n -> district[atlas.dongs[i].district] += n }
+        val province = IntArray(atlas.provinces.size)
+        district.forEachIndexed { i, n -> province[atlas.districts[i].province] += n }
+        fun firsts(part: IntArray, whole: IntArray) = part.indices.count { part[it] > 0 && part[it] == whole[it] }
+        return Triple(firsts(dong, all.dong), firsts(district, all.district), firsts(province, all.province))
+    }
+
     /** Indices into [RegionAtlas.dongs] holding at least one explored cell. */
     fun visitedDongs(cells: Set<Long>): Set<Int> = levels(cells).visitedDongs
 

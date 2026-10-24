@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -134,6 +135,7 @@ class RecordingService : Service() {
         events.forEach { apply(it) }
         lastFix = fix
         recordTrack(fix)
+        stampRegions(fix)
         FogRuntime.live.update {
             it.copy(location = fix, tripActive = recorder.tripActive, trip = recorder.stats)
         }
@@ -141,6 +143,46 @@ class RecordingService : Service() {
     }
 
     private var lastFix: Fix? = null
+    /** Regions explored before this trip and what the trip has crossed, for the region stamps. */
+    private class TripRegions(
+        val knownDongs: MutableSet<Int>,
+        val knownDistricts: MutableSet<Int>,
+        val knownProvinces: MutableSet<Int>,
+    ) {
+        var newDongs = 0
+        var startProvince = -1
+    }
+    private var tripRegions: TripRegions? = null
+
+    /**
+     * Region stamps, from the 동 under the car: "새 동네 첫발" (a 시·군·구 never explored), "새 땅 밟기"
+     * (a 시·도 never explored), "동네 순례" (5 new 동 in one trip), "경계 넘어" (left the start 시·도).
+     * Each is awarded once per trip; the recorder's per-trip set already drops repeats of a code.
+     */
+    private suspend fun stampRegions(fix: Fix) {
+        val t = tripRegions ?: return
+        if (!recorder.tripActive) return
+        // Same accuracy gate as the recorder: a stray fix must not cross a border it never reached.
+        if ((fix.accuracyM ?: 0f) > TripRecorder.MAX_ACCURACY_M) return
+        val atlas = FogRuntime.regions?.atlas ?: return
+        val dong = atlas.dongOf(Tiles.cellOf(fix.lat, fix.lng)).takeIf { it >= 0 } ?: return
+        val district = atlas.dongs[dong].district
+        val province = atlas.districts[district].province
+        val earned = ArrayList<Pair<StampCode, String>>(0)
+        fun stamp(code: StampCode, message: String) {
+            if (awardedRegionStamps.add(code)) earned += code to message
+        }
+        if (t.startProvince < 0) t.startProvince = province
+        if (t.knownDongs.add(dong) && ++t.newDongs >= DONG_HOPPER_COUNT) stamp(StampCode.DONG_HOPPER, "동네 순례: 이번 주행에서 새 동 ${t.newDongs}곳")
+        if (t.knownDistricts.add(district)) stamp(StampCode.NEW_DISTRICT, "새 동네 첫발: ${atlas.districts[district].name}")
+        if (t.knownProvinces.add(province)) stamp(StampCode.NEW_PROVINCE, "새 땅 밟기: ${atlas.provinces[province].name}")
+        if (province != t.startProvince) stamp(StampCode.PROVINCE_CROSS, "경계 넘어: ${atlas.provinces[province].name}")
+        for ((code, message) in earned) {
+            apply(RecorderEvent.Stamp(code, fix.lat, fix.lng, fix.timeMs))
+            note(message)  // after the generic "스탬프 획득" note, so the region name stays on screen
+        }
+    }
+    private val awardedRegionStamps = HashSet<StampCode>()
     private var trackTrip = 0L
     private var trackLat = 0.0
     private var trackLng = 0.0
@@ -183,6 +225,15 @@ class RecordingService : Service() {
                 val id = repo.startTrip(event.at)
                 repo.currentTripId = id
                 tripRow = TripEntity(id = id, startedAt = event.at)
+                // Regions explored before this trip, for the region stamps (off the main thread: the
+                // first call may load the region atlas).
+                tripRegions = withContext(Dispatchers.Default) {
+                    FogRuntime.regions?.levels(repo)?.let { n ->
+                        fun visited(a: IntArray) = a.indices.filterTo(HashSet()) { a[it] > 0 }
+                        TripRegions(visited(n.dong), visited(n.district), visited(n.province))
+                    }
+                }
+                awardedRegionStamps.clear()
                 note("새 주행 기록을 시작했어요")
             }
             is RecorderEvent.TripEnded -> {
@@ -332,6 +383,7 @@ class RecordingService : Service() {
         const val KEY_SEEDED = "seeded_from_navi"
         private const val CHANNEL = "recording"
         private const val NOTIF_ID = 19
+        private const val DONG_HOPPER_COUNT = 5
         /** Route sampling step: dense enough to follow streets, ~50 points per km at most. */
         private const val TRACK_STEP_M = 20.0
         private const val SEED_RADIUS = 4

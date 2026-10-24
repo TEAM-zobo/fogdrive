@@ -64,7 +64,6 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     val trips: Flow<List<TripEntity>> = db.dao().trips()
     val landings: Flow<List<LandingEntity>> = db.dao().landings()
     val stamps: Flow<List<StampEntity>> = db.dao().stamps()
-    fun cellsSince(since: Long): Flow<Int> = db.dao().countCellsSince(since)
 
     @Volatile
     var currentTripId: Long = 0L
@@ -73,6 +72,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         val all = withContext(Dispatchers.IO) { db.dao().allCellIds() }
         synchronized(lock) { for (c in all) if (cells.add(c)) append(c) }
         withContext(Dispatchers.IO) { db.dao().revisited() }.forEach { visitCounts[it.cell] = it.visits }
+        hasTrips = withContext(Dispatchers.IO) { db.dao().tripCount() } > 0
         bump()
         _loaded.value = true
     }
@@ -80,6 +80,10 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     fun count(): Int = synchronized(lock) { cells.size }
 
     override fun isExplored(cell: Long): Boolean = cell in cells  // concurrent set: no lock needed
+
+    @Volatile private var hasTrips = true
+
+    override fun noTripsYet(): Boolean = !hasTrips
 
     /** Cells driven by more than one trip, with their trip count (read live by the map). */
     private val visitCounts = ConcurrentHashMap<Long, Int>()
@@ -158,7 +162,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     suspend fun startTrip(at: Long): Long = withContext(Dispatchers.IO) {
         db.dao().insertTrip(TripEntity(startedAt = at))
-    }
+    }.also { hasTrips = true }
 
     suspend fun saveTrip(trip: TripEntity) = withContext(Dispatchers.IO) { db.dao().updateTrip(trip) }
 
@@ -176,6 +180,10 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     }
 
     suspend fun trackOf(tripId: Long): List<TrackPointEntity> = withContext(Dispatchers.IO) { db.dao().trackOf(tripId) }
+
+    suspend fun clearedSince(since: Long): List<ClearedCell> = withContext(Dispatchers.IO) { db.dao().clearedSince(since) }
+
+    suspend fun tripTotalsSince(since: Long): TripTotals = withContext(Dispatchers.IO) { db.dao().tripTotalsSince(since) }
 
     /** Stored cells of a past trip, without touching the current-trip cache behind [cellsOfTrip]. */
     suspend fun storedCellsOfTrip(tripId: Long): List<Long> = withContext(Dispatchers.IO) { db.dao().cellsOfTrip(tripId) }
@@ -196,6 +204,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     }
 
     private fun forgetAll() {
+        hasTrips = false
         synchronized(lock) {
             resetGeneration++
             cells.clear()
