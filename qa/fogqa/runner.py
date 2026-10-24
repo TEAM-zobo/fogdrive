@@ -7,7 +7,7 @@ import traceback
 from datetime import datetime
 
 from .cases import CASES, CaseFailed
-from .device import ROOT, Device
+from .device import ROOT, SCREEN_SERIAL, Device
 from .vconsole import VConsole
 
 REPORTS = os.path.join(ROOT, "qa", "reports")
@@ -47,15 +47,16 @@ def select(ids=None):
     return [c for c in CASES if c.id in wanted]
 
 
-def run(ids=None, dev=None, vc=None, emit=print, stop_flag=None):
-    """Runs the cases and returns (results, report_dir). `stop_flag()` true stops before the next case."""
+def run(ids=None, dev=None, vc=None, emit=print, stop_flag=None, vc_port=8088):
+    """Runs the cases and returns (results, report_dir). `stop_flag()` true stops before the next case.
+    `vc_port` is the local port forwarded to this emulator's Virtual Console (8088 on the device)."""
     dev = dev or Device()
     own_vc = vc is None
-    vc = vc or VConsole()
-    dev.forward(8088, 8088)
+    vc = vc or VConsole(base=f"http://127.0.0.1:{vc_port}")
+    dev.forward(vc_port, 8088)
     if own_vc:
         vc.start()
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S") + (f"-{dev.serial}" if dev.serial != SCREEN_SERIAL else "")
     out_dir = os.path.join(REPORTS, stamp)
     os.makedirs(out_dir, exist_ok=True)
     results = []

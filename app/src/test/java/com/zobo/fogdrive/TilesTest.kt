@@ -13,9 +13,9 @@ class TilesTest {
     }
 
     @Test
-    fun cellIsAboutSixtyMetresInSeoul() {
+    fun cellIsAboutThirtyMetresInSeoul() {
         val size = Tiles.cellSizeMeters(37.5)
-        assertTrue("size=$size", size in 55.0..65.0)
+        assertTrue("size=$size", size in 27.0..33.0)
     }
 
     @Test

@@ -34,8 +34,9 @@ data class TripStats(
 
 /**
  * Pure recording rules (no Android dependencies, unit-tested):
- * - while not parked, each fix reveals the cells along the path plus a 1-cell margin (~180 m swath);
- * - P + a door opening = a landing that reveals a wider 7x7 block and ends the trip;
+ * - while not parked, each fix reveals the cells along the path plus a 1-cell margin (~90 m swath:
+ *   the road and what is visible from it);
+ * - P + a door opening = a landing that reveals a 7x7 block (~210 m, a walk around) and ends the trip;
  * - new cells revealed under rain / headlights / rear passengers earn situation stamps.
  */
 class TripRecorder(private val sink: ExploreSink) {

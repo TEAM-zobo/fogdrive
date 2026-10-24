@@ -163,7 +163,7 @@
     <ul>
       <li><b>FusedLocation SDK</b>: 초안은 "준비 중(로드맵)"으로 적었지만 공개 Maven에 1.1.3이 있고 에뮬레이터에서 <code>isSupported()</code>가 참입니다. 앱은 이미 FusedLocation을 우선 사용하고, 미지원 차량에서는 Android GPS로 대체합니다. 다만 Playground 프로젝트 화면에는 아직 "준비 중"으로 표시되므로 표현은 "지원 차량에서 사용, 미지원 시 대체"로 씁니다.</li>
       <li><b>기어(P단)</b>: Vehicle SDK에는 기어 도메인이 없어 AAOS 표준 <code>CarPropertyManager(GEAR_SELECTION)</code>를 씁니다. 초안과 동일합니다.</li>
-      <li><b>격자 크기</b>: 50m → 약 60m(웹 메르카토르 19레벨 타일). 구역 정복률은 현재 약 2km 정사각 구역 기준이며, 시군구·읍면동 경계 적용은 계획표에 있습니다.</li>
+      <li><b>격자 크기</b>: 50m → 약 30m(웹 메르카토르 20레벨 타일). 주행 중에는 도로 양쪽 약 45m만 걷혀 넓은 지역이 한 번에 해금되지 않습니다. 구역 정복률은 현재 약 2km 정사각 구역 기준이며, 시군구·읍면동 경계 적용은 계획표에 있습니다.</li>
       <li><b>MAU·리텐션 수치</b>는 모두 가정입니다. 설명회에서 탑재 차량 수 공개 자료를 문의한 뒤 근거를 보완합니다.</li>
     </ul>
     <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">접수양식 DOCX</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/FusedLocation/intro">FusedLocation SDK 소개</a> · <a href="https://document.pleos.ai/docs/pleos-only/create-my-project">SDK 사용 신청(상태 표시)</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro">Vehicle SDK 도메인 목록</a></p>
@@ -245,7 +245,7 @@
       <table>
         <thead><tr><th>기능</th><th>사용 API</th><th>상태</th></tr></thead>
         <tbody>
-          <tr><td>자동 안개 걷기(약 60m 격자, 주변 1칸 포함)</td><td>FusedLocation → 미지원 시 Android GPS</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>자동 안개 걷기(약 30m 격자, 도로 양쪽 약 45m)</td><td>FusedLocation → 미지원 시 Android GPS</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>상륙 지점(P단 + 도어 열림)</td><td>AAOS GEAR_SELECTION, Vehicle Door</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>첫 실행 지도 채우기</td><td>NaviHelper 최근 목적지·즐겨찾기</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>탐험 우회 경로 → 경유지 추가</td><td>NaviHelper getDestinationInfo · addWaypoint</td><td><span class="tag done">구현</span></td></tr>

@@ -91,13 +91,16 @@ interface FogDao {
 
 @Database(
     entities = [CellEntity::class, TripEntity::class, LandingEntity::class, StampEntity::class],
-    version = 1,
+    version = 2,
 )
 abstract class FogDb : RoomDatabase() {
     abstract fun dao(): FogDao
 
     companion object {
         fun create(context: Context): FogDb =
-            Room.databaseBuilder(context, FogDb::class.java, "fogdrive.db").build()
+            Room.databaseBuilder(context, FogDb::class.java, "fogdrive.db")
+                // v2 moved the grid from zoom 19 to 20; pre-release data is simply discarded.
+                .fallbackToDestructiveMigration()
+                .build()
     }
 }

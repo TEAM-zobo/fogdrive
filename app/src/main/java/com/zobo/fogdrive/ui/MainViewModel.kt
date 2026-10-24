@@ -99,8 +99,8 @@ class MainViewModel : ViewModel() {
     }
 
     companion object {
-        /** A "zone" for the live conquest rate = parent tile 5 levels up (~2 km square). */
-        const val ZONE_DZ = 5
+        /** A "zone" for the live conquest rate = parent tile 6 levels up (~2 km square). */
+        const val ZONE_DZ = 6
 
         fun monthStart(): Long = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)

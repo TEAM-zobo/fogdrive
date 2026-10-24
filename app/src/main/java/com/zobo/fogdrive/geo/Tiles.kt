@@ -14,11 +14,12 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
- * Exploration grid = Web Mercator tiles at zoom 19 (about 60 m per side in Korea).
+ * Exploration grid = Web Mercator tiles at zoom 20 (about 30 m per side in Korea), so a drive
+ * clears roughly the road and what is visible from it, not whole neighbourhoods.
  * A cell id packs the tile x/y into one Long. Coarser levels are the same tiles shifted by `dz`.
  */
 object Tiles {
-    const val Z = 19
+    const val Z = 20
     private const val EARTH_RADIUS_M = 6_371_008.8
 
     fun pack(x: Int, y: Int): Long = (x.toLong() shl 32) or (y.toLong() and 0xffffffffL)

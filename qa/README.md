@@ -29,6 +29,17 @@ python3 -m fogqa run TC-03 TC-05 # 일부 실행
 python3 -m fogqa tc-doc          # docs/test-cases.html 갱신
 ```
 
+### 백그라운드 실행 (화면 에뮬레이터와 분리)
+
+QA 전용 AVD `Pleos_Connect_QA`를 창 없이(`-no-window`) 띄워 TC를 돌립니다. 화면에 띄운 에뮬레이터(`emulator-5554`)와 저장 공간이 분리되어 있어서, 대시보드로 앱을 보거나 조작하는 동안에도 서로 간섭하지 않습니다.
+
+```bash
+python3 -m fogqa run --headless              # QA 에뮬레이터 부팅(필요 시) → 최신 디버그 APK 설치 → 전체 실행
+python3 -m fogqa run --headless --shutdown   # 끝나면 QA 에뮬레이터 종료
+```
+
+대시보드의 TC 실행 탭에서 대상을 "백그라운드 에뮬레이터"로 고르면 같은 방식으로 실행됩니다. QA 에뮬레이터는 `emulator-5556`, Virtual Console은 로컬 `18088` 포트로 연결합니다. 같은 AVD를 `-read-only`로 두 개 띄우는 방법은 화면 에뮬레이터까지 읽기 전용이어야 해서(재시작 시 데이터 소실) 쓰지 않습니다.
+
 리포트는 `qa/reports/<시각>/index.html`에 스크린샷과 함께 저장됩니다(git 제외). 각 TC는 앱 데이터 초기화와 차량 상태 초기화에서 시작하므로 순서와 무관합니다.
 
 ## 주의

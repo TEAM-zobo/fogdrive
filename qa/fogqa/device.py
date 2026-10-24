@@ -34,10 +34,15 @@ class UiNode:
         return (x1 + x2) // 2, (y1 + y2) // 2
 
 
+SCREEN_SERIAL = "emulator-5554"  # the emulator shown on screen (first instance)
+
+
 class Device:
     def __init__(self, adb=None, serial=None):
         self.adb = adb or os.environ.get("ADB") or DEFAULT_ADB
-        self.serial = serial
+        # Always address one emulator explicitly: with the headless QA instance running,
+        # serial-less adb commands fail with "more than one device".
+        self.serial = serial or os.environ.get("FOGQA_SERIAL") or SCREEN_SERIAL
 
     def _cmd(self, *args):
         base = [self.adb] + (["-s", self.serial] if self.serial else [])
@@ -185,6 +190,37 @@ class Device:
         self.shell("am", "start", "--user", "current", "-n", ACTIVITY)
         if wait and not self.wait_text("지도", timeout=15, exact=True):
             raise AssertionError("앱 화면이 뜨지 않음")
+
+
+EMULATOR = os.path.expanduser("~/Library/Android/sdk/emulator/emulator")
+QA_AVD = "Pleos_Connect_QA"
+QA_SERIAL = "emulator-5556"
+
+
+def boot_headless(avd=QA_AVD, serial=QA_SERIAL, timeout=300, emit=print):
+    """Boots a separate AVD without a window so TC runs never touch the emulator on screen.
+    A separate AVD (own userdata) is used instead of -read-only, which would force every
+    instance, including the one on screen, to discard its data."""
+    dev = Device(serial=serial)
+    if serial in dev.run("devices", timeout=10):
+        return dev
+    port = serial.split("-")[1]
+    emit(f"{avd} 창 없이 부팅 ({serial})")
+    subprocess.Popen(
+        [EMULATOR, "-avd", avd, "-no-window", "-port", port, "-no-snapshot", "-no-boot-anim", "-gpu", "host", "-no-audio"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+    )
+    end = time.time() + timeout
+    while time.time() < end:
+        if dev.shell("getprop", "sys.boot_completed", timeout=10).strip() == "1":
+            time.sleep(5)  # vehicle/navi services finish starting after boot_completed
+            return dev
+        time.sleep(5)
+    raise RuntimeError(f"{avd} 부팅 시간 초과")
+
+
+def shutdown(dev):
+    dev.run("emu", "kill", timeout=30)
 
 
 def demo_route():

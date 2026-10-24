@@ -16,7 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import runner
 from .cases import CASES, ROUTE
-from .device import ROOT, Device
+from .device import QA_SERIAL, ROOT, Device, boot_headless
 from .vconsole import VConsole
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -48,6 +48,7 @@ class State:
         self.results = []
         self.report_dir = None
         self.stop_requested = False
+        self.run_target = "screen"
         self.route_stop = threading.Event()
         self.route_progress = None
         self.screen = None       # cached `wm size` of the connected emulator
@@ -144,7 +145,7 @@ def stop_route():
 
 
 def emulator_running():
-    return "emulator-" in S.dev.run("devices", timeout=10)
+    return f"{S.dev.serial}\tdevice" in S.dev.run("devices", timeout=10)
 
 
 def start_emulator():
@@ -169,11 +170,20 @@ def build_and_install():
     S.emit(S.dev.install(os.path.join(ROOT, "app/build/outputs/apk/debug/app-debug.apk")).strip()[-200:])
 
 
-def run_cases(ids):
+def run_cases(ids, target="screen"):
     stop_route()  # a playing route would keep injecting locations into the cases
     S.results = []
     S.report_dir = None
-    results, out = runner.run(ids, dev=S.dev, vc=S.vc, emit=S.emit, stop_flag=lambda: S.stop_requested)
+    if target == "headless":
+        # Separate AVD without a window: the emulator on screen stays free for manual checks.
+        dev = boot_headless(emit=S.emit)
+        apk = os.path.join(ROOT, "app/build/outputs/apk/debug/app-debug.apk")
+        if os.path.exists(apk):
+            S.emit("백그라운드 에뮬레이터에 최신 디버그 APK 설치")
+            dev.install(apk)
+        results, out = runner.run(ids, dev=dev, emit=S.emit, stop_flag=lambda: S.stop_requested, vc_port=18088)
+    else:
+        results, out = runner.run(ids, dev=S.dev, vc=S.vc, emit=S.emit, stop_flag=lambda: S.stop_requested)
     S.results = results
     S.report_dir = os.path.basename(out)
     passed = sum(r["status"] == "PASS" for r in results)
@@ -294,6 +304,7 @@ class Handler(BaseHTTPRequestHandler):
                 "app": connected and S.dev.app_installed(),
                 "vehicle": vehicle_summary(),
                 "job": S.job,
+                "headless": f"{QA_SERIAL}\tdevice" in S.dev.run("devices", timeout=10),
                 "route": S.route_progress,
             })
         if path == "/api/cases":
@@ -350,13 +361,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "message": start_emulator()})
             if path == "/api/run":
                 ids = b.get("ids") or []
-                S.start_job("TC 실행", lambda: run_cases(ids))
+                target = b.get("target", "screen")
+                S.run_target = target
+                S.start_job("TC 실행", lambda: run_cases(ids, target))
                 return self._json({"ok": True})
             if path == "/api/build":
                 S.start_job("빌드·설치", build_and_install)
                 return self._json({"ok": True})
             # Manual controls are blocked while a TC run drives the emulator.
-            if S.job == "TC 실행":
+            if S.job == "TC 실행" and S.run_target == "screen":
                 raise BusyError("TC 실행 중에는 수동 조작을 막아 둡니다")
             if path == "/api/tap":
                 S.dev.tap(b["x"], b["y"])

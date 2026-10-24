@@ -15,8 +15,8 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 
 | 기능 | 내용 | 사용 SDK/API |
 | --- | --- | --- |
-| 자동 안개 걷기 | 주행 경로를 약 60m 격자로 기록해 지나간 칸(주변 1칸 포함)의 안개를 걷음 | Pleos FusedLocation (미지원 시 Android GPS) |
-| 상륙 지점 | P단 전환 후 도어가 열린 곳을 넓게(7×7칸) 걷고 핀 표시 | AAOS `GEAR_SELECTION`, Pleos Vehicle Door |
+| 자동 안개 걷기 | 주행 경로를 약 30m 격자로 기록해 도로와 눈에 보이는 범위(도로 양쪽 약 45m)만 안개를 걷음 | Pleos FusedLocation (미지원 시 Android GPS) |
+| 상륙 지점 | P단 전환 후 도어가 열린 곳 주변(약 210m)을 걷고 핀 표시 | AAOS `GEAR_SELECTION`, Pleos Vehicle Door |
 | 첫 실행 지도 채우기 | 내비 최근 목적지·즐겨찾기 주변을 미리 걷음 | Pleos NaviHelper |
 | 탐험 우회 경로 | 출발 전 목적지 근처의 안개 구역을 찾아 경유지로 추가 | Pleos NaviHelper `getDestinationInfo`, `addWaypoint` |
 | 상황 스탬프 | 빗속·야간·가족 탐험·충전소 깃발 | Pleos Vehicle Wiper, Light, Seat, EvBattery |

@@ -42,6 +42,7 @@
   button.active { border-color: var(--accent); color: var(--accent); }
   button:disabled { opacity: .5; cursor: default; }
   input[type=range] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+  select { font: inherit; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; min-height: 36px; flex: 1; }
   input[type=number], input[type=text] { font: inherit; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; width: 120px; }
   .tabs { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
   .tabs button { flex: 1; }
@@ -145,6 +146,12 @@
     </div>
 
     <div class="panel" id="tab-tc">
+      <div class="row">
+        <select id="runTarget" title="실행 대상">
+          <option value="headless">백그라운드 에뮬레이터 (화면과 분리)</option>
+          <option value="screen">화면 에뮬레이터</option>
+        </select>
+      </div>
       <div class="row">
         <button class="primary" id="runSel">선택 실행</button><button id="runAll">전체 실행</button>
         <button id="runStop">중지</button><a href="#" id="reportLink" target="_blank" hidden>리포트 열기</a>
@@ -296,9 +303,9 @@ async function loadCases() {
 $("#runSel").onclick = () => {
   const ids = $$("#cases input:checked").map((i) => i.value);
   if (!ids.length) return toast("TC를 선택하세요");
-  post("/api/run", { ids });
+  post("/api/run", { ids, target: $("#runTarget").value });
 };
-$("#runAll").onclick = () => post("/api/run", { ids: [] });
+$("#runAll").onclick = () => post("/api/run", { ids: [], target: $("#runTarget").value });
 $("#runStop").onclick = () => post("/api/job/stop");
 async function loadReports() {
   const rs = await (await fetch("/api/reports")).json();
@@ -317,6 +324,7 @@ async function refresh() {
       pill(s.emulator ? "에뮬레이터 연결" : "에뮬레이터 꺼짐", s.emulator ? "on" : "off") +
       pill(s.vconsole ? "Virtual Console" : "Virtual Console 없음", s.vconsole ? "on" : "off") +
       pill(s.app ? "앱 설치됨" : "앱 없음", s.app ? "on" : "off") +
+      pill(s.headless ? "백그라운드 에뮬레이터 실행 중" : "백그라운드 에뮬레이터 꺼짐", s.headless ? "on" : "") +
       (s.job ? pill(s.job + " 중", "busy") : "") + (s.route ? pill("경로 재생 " + s.route, "busy") : "");
     $("#routeProg").textContent = s.route || "";
     const v = s.vehicle;
