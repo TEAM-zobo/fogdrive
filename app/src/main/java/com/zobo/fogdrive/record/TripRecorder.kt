@@ -136,7 +136,8 @@ class TripRecorder(private val sink: ExploreSink) {
         // Charging: state of charge rising while parked.
         if (vehicle.parked && vehicle.evSocPercent != null) {
             val start = socAtPark
-            if (start == null) {
+            // Baseline = lowest value seen while parked, so a drain before plugging in still counts.
+            if (start == null || vehicle.evSocPercent < start) {
                 socAtPark = vehicle.evSocPercent
             } else if (!chargeStamped && vehicle.evSocPercent - start >= CHARGE_STAMP_DELTA && fix != null) {
                 chargeStamped = true

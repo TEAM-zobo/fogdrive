@@ -110,6 +110,18 @@ class TripRecorderTest {
     }
 
     @Test
+    fun chargeBaselineFollowsTheLowestParkedValue() {
+        // Parked at 100%, battery drained to 40% (e.g. HVAC), then charged to 43%: still a charge.
+        val rec = TripRecorder(MemorySink())
+        rec.onFix(fix(37.5, 127.0), drive)
+        val parked = VehicleState(gear = Gear.PARK, evSocPercent = 100)
+        rec.onVehicle(parked, 0)
+        rec.onVehicle(parked.copy(evSocPercent = 40), 1_000)
+        val events = rec.onVehicle(parked.copy(evSocPercent = 43), 2_000)
+        assertTrue(events.any { it is RecorderEvent.Stamp && it.code == StampCode.CHARGE })
+    }
+
+    @Test
     fun chargingWhileParkedAwardsChargeStamp() {
         val rec = TripRecorder(MemorySink())
         rec.onFix(fix(37.5, 127.0), drive)
