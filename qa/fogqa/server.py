@@ -16,7 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import runner
 from .cases import CASES, ROUTE
-from .device import PACKAGE, ROOT, Device
+from .device import ROOT, Device
 from .vconsole import VConsole
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -29,9 +29,10 @@ GRADLE_JAVA_HOME = os.path.expanduser("~/Library/Java/JavaVirtualMachines/corret
 
 def load_password():
     if not os.path.exists(PASSWORD_FILE):
-        with open(PASSWORD_FILE, "w") as f:
+        # Created 0600 up front so the secret is never readable by others, even briefly.
+        fd = os.open(PASSWORD_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as f:
             f.write(secrets.token_urlsafe(12))
-        os.chmod(PASSWORD_FILE, 0o600)
     with open(PASSWORD_FILE) as f:
         return f.read().strip()
 
@@ -43,17 +44,21 @@ class State:
         self.lock = threading.Lock()
         self.job = None          # name of the running long task (TC run / build)
         self.log = []
+        self.log_base = 0        # absolute index of log[0]; clients poll with absolute cursors
         self.results = []
         self.report_dir = None
         self.stop_requested = False
-        self.route_thread = None
         self.route_stop = threading.Event()
         self.route_progress = None
+        self.screen = None       # cached `wm size` of the connected emulator
 
     def emit(self, msg):
         line = f"{time.strftime('%H:%M:%S')} {msg}"
         self.log.append(line)
-        del self.log[:-400]
+        drop = len(self.log) - 400
+        if drop > 0:
+            del self.log[:drop]
+            self.log_base += drop
 
     def start_job(self, name, target):
         with self.lock:
@@ -89,7 +94,7 @@ def vehicle_summary():
         return None
     if not isinstance(st, dict):
         return None
-    body = st.get("body", {})
+    body = st.get("body") or {}
     return {
         "gear": ((st.get("gear") or {}).get("actual") or {}).get("value") or "-",
         "speed": (st.get("controls") or {}).get("speed_kph", 0),
@@ -103,9 +108,8 @@ def vehicle_summary():
 
 
 def route_points(step_m=15.0):
-    from .device import demo_route
     import math
-    pts = demo_route()
+    pts = ROUTE
     out = []
     for (a, b), (c, d) in zip(pts, pts[1:]):
         dist = math.hypot((c - a) * 111_000, (d - b) * 88_000)
@@ -116,21 +120,22 @@ def route_points(step_m=15.0):
 
 def start_route(speed_kmh):
     stop_route()
-    S.route_stop.clear()
+    # A fresh event per playback: a previous thread still sleeping keeps seeing its own (set) event.
+    stop = S.route_stop = threading.Event()
     pts = route_points()
     delay = 15.0 / (max(5.0, speed_kmh) / 3.6)
 
     def play():
         for i, (lat, lng) in enumerate(pts):
-            if S.route_stop.is_set():
-                break
+            if stop.is_set():
+                return
             S.dev.geo(lat, lng)
             S.route_progress = f"{i + 1}/{len(pts)}"
-            time.sleep(delay)
+            if stop.wait(delay):
+                return
         S.route_progress = None
 
-    S.route_thread = threading.Thread(target=play, daemon=True)
-    S.route_thread.start()
+    threading.Thread(target=play, daemon=True).start()
 
 
 def stop_route():
@@ -165,6 +170,7 @@ def build_and_install():
 
 
 def run_cases(ids):
+    stop_route()  # a playing route would keep injecting locations into the cases
     S.results = []
     S.report_dir = None
     results, out = runner.run(ids, dev=S.dev, vc=S.vc, emit=S.emit, stop_flag=lambda: S.stop_requested)
@@ -213,7 +219,7 @@ class Handler(BaseHTTPRequestHandler):
             user, _, pw = base64.b64decode(header[6:]).decode().partition(":")
         except Exception:
             return False
-        return secrets.compare_digest(user, USER) and secrets.compare_digest(pw, PASSWORD)
+        return secrets.compare_digest(user.encode(), USER.encode()) and secrets.compare_digest(pw.encode(), PASSWORD.encode())
 
     def _deny(self):
         self.send_response(401)
@@ -249,6 +255,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self._authorized():
             return self._deny()
+        try:
+            return self._get()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:  # adb timeouts etc.: answer instead of dropping the connection
+            return self._json({"error": f"{type(e).__name__}: {e}"}, 500)
+
+    def _get(self):
         path = urllib.parse.urlparse(self.path).path
         if path == "/":
             return self._file(os.path.join(STATIC, "dashboard.html"), "text/html; charset=utf-8")
@@ -264,6 +278,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.wfile.write(data)
         if path == "/api/status":
             connected = emulator_running()
+            if not connected:
+                S.screen = None
+            elif S.screen is None:
+                S.screen = S.dev.screen_size()
             vconsole = S.vc.available()
             if connected and not vconsole:
                 # Emulator restarted: the port forward is gone.
@@ -271,7 +289,7 @@ class Handler(BaseHTTPRequestHandler):
                 vconsole = S.vc.available()
             return self._json({
                 "emulator": connected,
-                "screen": S.dev.screen_size() if connected else None,
+                "screen": S.screen,
                 "vconsole": vconsole,
                 "app": connected and S.dev.app_installed(),
                 "vehicle": vehicle_summary(),
@@ -282,15 +300,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._json([{k: getattr(c, k) for k in ("id", "feature", "title", "pre", "steps", "expected")} for c in CASES])
         if path == "/api/job":
             since = int(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("since", ["0"])[0])
-            return self._json({"job": S.job, "log": S.log[since:], "next": len(S.log),
+            base, log = S.log_base, list(S.log)
+            return self._json({"job": S.job, "log": log[max(0, since - base):], "next": base + len(log),
                                "results": S.results, "report": S.report_dir})
         if path == "/api/reports":
             return self._json(list_reports())
         if path.startswith("/reports/"):
-            rel = os.path.normpath(urllib.parse.unquote(path[len("/reports/"):]))
-            if rel.startswith(".."):
+            root = os.path.realpath(runner.REPORTS)
+            target = os.path.realpath(os.path.join(root, urllib.parse.unquote(path[len("/reports/"):])))
+            if not target.startswith(root + os.sep):
                 return self._json({"error": "bad path"}, 400)
-            return self._file(os.path.join(runner.REPORTS, rel))
+            return self._file(target)
         return self._json({"error": "not found"}, 404)
 
     def _stream(self):
@@ -314,6 +334,7 @@ class Handler(BaseHTTPRequestHandler):
             pass
         finally:
             proc.kill()
+            proc.wait()
 
     # ---- POST ----
     def do_POST(self):

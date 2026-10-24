@@ -77,6 +77,8 @@ class Device:
         w = int.from_bytes(raw[0:4], "little")
         h = int.from_bytes(raw[4:8], "little")
         header = len(raw) - w * h * 4  # 12 or 16 bytes depending on Android version
+        if len(raw) < 12 or not w or not h or header < 12:
+            raise RuntimeError(f"raw screencap unreadable ({len(raw)} bytes)")
         values = []
         for y in range(max(0, y1), min(h, y2), step):
             row = header + y * w * 4
