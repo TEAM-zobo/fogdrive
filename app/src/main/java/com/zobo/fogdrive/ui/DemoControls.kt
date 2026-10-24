@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import com.zobo.fogdrive.demo.DemoCourse
 import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.demo.DemoDrive
@@ -125,8 +126,11 @@ fun DemoControls(viewModel: MainViewModel, modifier: Modifier = Modifier, compac
 }
 
 /** What a course shows on the way, as short tags for the course select box. */
-private fun DemoCourse.tags(): List<String> = buildList {
+private fun DemoCourse.tags(speedKmh: Int): List<String> = buildList {
     add(formatKm(lengthMeters))
+    // Demo minutes at the speed set now (demo time runs SPEED_UP x faster).
+    val minutes = lengthMeters / (speedKmh / 3.6) / DemoDrive.SPEED_UP / 60
+    add(if (minutes < 1) "1분 이내" else "약 ${minutes.roundToInt()}분")
     if (rain != null) add("비")
     if (lowBeam) add("야간")
     if (rearPassenger) add("동승자")
@@ -141,6 +145,7 @@ private fun DemoCourse.tags(): List<String> = buildList {
 @Composable
 fun DemoCourseSelect(viewModel: MainViewModel, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val courseId by viewModel.demoCourse.collectAsState()
+    val speed by viewModel.demoSpeed.collectAsState()
     var expanded by remember { mutableStateOf(false) }
     var anchorWidth by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -165,7 +170,7 @@ fun DemoCourseSelect(viewModel: MainViewModel, modifier: Modifier = Modifier, en
                 IconBadge(Icons.Outlined.Route, FogColors.Accent, size = 44.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(course.title, style = MaterialTheme.typography.titleMedium, color = FogColors.TextMain)
-                    Text(course.tags().joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+                    Text(course.tags(speed).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
                 }
                 Icon(
                     Icons.Outlined.KeyboardArrowDown,
@@ -204,7 +209,7 @@ fun DemoCourseSelect(viewModel: MainViewModel, modifier: Modifier = Modifier, en
                                 )
                                 Text(c.summary, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    c.tags().forEach { Pill(it, if (picked) FogColors.Accent else FogColors.TextSub) }
+                                    c.tags(speed).forEach { Pill(it, if (picked) FogColors.Accent else FogColors.TextSub) }
                                 }
                             }
                         },

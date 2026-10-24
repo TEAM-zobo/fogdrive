@@ -48,6 +48,8 @@ import kotlin.math.abs
 private const val TAG = "FogMap"
 private const val DRIVING_ZOOM = 16.0
 private const val DRIVING_MAX_FPS = 20
+/** Vsyncs between the engine's "frame rendered" and re-basing the slide (see onMapReady). */
+private const val ADOPT_DELAY_FRAMES = 2
 /** Extra map rendered around the viewport so the pre-rendered map can slide under the car. */
 private const val PAN_MARGIN_PX = 320
 /** Re-render the map once the slide uses this much of the margin. */
@@ -236,6 +238,8 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private var pxPerY = 0.0
     private var camReady = false
     private var recenterPending = false
+    private var cameraMoved = false
+    private var adoptQueued = false
     private var forceStep = false
     private var ticking = false
 
@@ -264,12 +268,22 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         // Default prefetch loads tiles 4 zoom levels coarser than shown; 2 still covers zooming out
         // a step but holds far fewer tiles in native memory and fetches less over the car's link.
         map.prefetchZoomDelta = 2
+        // A frame that was already being rendered when the camera moved still shows the old centre;
+        // adopting it made the map jump back and then forward. Only frames rendered after the engine
+        // applied the move count.
+        mapView.addOnCameraDidChangeListener { if (recenterPending) cameraMoved = true }
         mapView.addOnDidFinishRenderingFrameListener(object : MapView.OnDidFinishRenderingFrameListener {
             override fun onDidFinishRenderingFrame(fully: Boolean, frameEncodingTime: Double, frameRenderingTime: Double) {
-                // Any rendered frame already shows the new camera (partial frames are displayed too),
-                // so re-base now; waiting for `fully` misaligns the slide until all tiles load, and
-                // never re-bases at all when tiles fail to load (offline).
-                if (recenterPending) adoptRenderedCamera()
+                // A partial frame already shows the new camera (it is displayed too), so re-base now;
+                // waiting for `fully` misaligns the slide until all tiles load, and never re-bases at
+                // all when tiles fail to load (offline).
+                // The callback comes before the engine hands the frame to the TextureView. Re-basing
+                // right away showed the old map with the new slide for a frame (a ~190 px jump back,
+                // then forward); one frame later the new map and the new slide land together.
+                if (recenterPending && cameraMoved && !adoptQueued) {
+                    adoptQueued = true
+                    adoptAfterFrames(ADOPT_DELAY_FRAMES)
+                }
             }
         })
     }
@@ -374,9 +388,21 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private fun recenter(lat: Double, lng: Double) {
         val m = map ?: return
         recenterPending = true
+        cameraMoved = false
         startTicking()
         m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), DRIVING_ZOOM))
         if (!camReady) adoptRenderedCamera()
+    }
+
+    private fun adoptAfterFrames(frames: Int) {
+        Choreographer.getInstance().postFrameCallback {
+            if (frames > 1) {
+                adoptAfterFrames(frames - 1)
+            } else {
+                adoptQueued = false
+                if (recenterPending) adoptRenderedCamera()
+            }
+        }
     }
 
     /** The map now shows the new centre: re-base the slide and the fog on the same frame. */
