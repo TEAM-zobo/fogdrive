@@ -1,9 +1,14 @@
 package com.zobo.fogdrive.demo
 
+import com.zobo.fogdrive.car.Arrival
+import com.zobo.fogdrive.car.ArrivalKind
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.Gear
+import com.zobo.fogdrive.car.Guidance
 import com.zobo.fogdrive.car.LocationFeed
 import com.zobo.fogdrive.car.Place
+import com.zobo.fogdrive.car.TurnHint
+import com.zobo.fogdrive.car.TurnKind
 import com.zobo.fogdrive.car.VehicleState
 import com.zobo.fogdrive.geo.Tiles
 import kotlinx.coroutines.CoroutineScope
@@ -15,12 +20,15 @@ import kotlinx.coroutines.launch
 /**
  * Scripted drive for demos and the submission video: a weekend trip from Seongsu
  * past Seoul Forest to the Han river park, with rain, a rear passenger and a landing at the end.
- * It feeds the same recorder pipeline as real vehicle data.
+ * It feeds the same recorder pipeline as real vehicle data, and stands in for the navigation's
+ * guidance (next turn, speed limit) and destination arrival, which the emulator cannot produce.
  */
 class DemoDrive(
     private val scope: CoroutineScope,
     private val onFix: (Fix) -> Unit,
     private val onVehicle: (VehicleState) -> Unit,
+    private val onGuidance: (Guidance?) -> Unit,
+    private val onArrival: (Arrival) -> Unit,
     private val onFinished: () -> Unit,
 ) {
     private var job: Job? = null
@@ -42,14 +50,18 @@ class DemoDrive(
             for ((i, p) in points.withIndex()) {
                 if (!isActive) return@launch
                 val progress = i.toDouble() / points.size
+                onGuidance(guidanceAt(p.along, progress))
                 val wiper = progress in 0.30..0.62
                 if (wiper != vehicle.wiperOn) {
                     vehicle = vehicle.copy(wiperOn = wiper)
                     onVehicle(vehicle)
                 }
-                onFix(fix(p))
+                onFix(fix(p.latLng))
                 delay(stepDelayMs)
             }
+            onGuidance(null)
+            onArrival(Arrival(ArrivalKind.DESTINATION, DESTINATION.name))
+            delay(1_200)
             vehicle = vehicle.copy(gear = Gear.PARK, drivingRestricted = false, wiperOn = false)
             onVehicle(vehicle)
             delay(1_200)
@@ -68,19 +80,29 @@ class DemoDrive(
 
     private fun fix(p: Pair<Double, Double>) = Fix(p.first, p.second, System.currentTimeMillis(), 5f, LocationFeed.SOURCE_DEMO)
 
-    private fun densify(route: List<Pair<Double, Double>>, stepMeters: Double): List<Pair<Double, Double>> {
-        val out = ArrayList<Pair<Double, Double>>()
+    private class RoutePoint(val latLng: Pair<Double, Double>, val along: Double)
+
+    private fun densify(route: List<Pair<Double, Double>>, stepMeters: Double): List<RoutePoint> {
+        val out = ArrayList<RoutePoint>()
         for (i in 0 until route.size - 1) {
             val (a, b) = route[i] to route[i + 1]
             val d = Tiles.distanceMeters(a.first, a.second, b.first, b.second)
             val n = kotlin.math.max(1, (d / stepMeters).toInt())
             for (k in 0 until n) {
                 val t = k.toDouble() / n
-                out += (a.first + (b.first - a.first) * t) to (a.second + (b.second - a.second) * t)
+                out += RoutePoint((a.first + (b.first - a.first) * t) to (a.second + (b.second - a.second) * t), ALONG[i] + d * t)
             }
         }
-        out += route.last()
+        out += RoutePoint(route.last(), ALONG.last())
         return out
+    }
+
+    /** Next turn ahead of [along] metres into the route; 30 km/h once inside the park roads. */
+    private fun guidanceAt(along: Double, progress: Double): Guidance {
+        val turn = TURNS.firstOrNull { it.first > along + 1 }
+        val hint = if (turn != null) TurnHint(turn.second, (turn.first - along).toInt())
+        else TurnHint(TurnKind.ARRIVE, (ALONG.last() - along).toInt())
+        return Guidance(routing = true, speedLimitKmh = if (progress > 0.88) 30 else 50, nextTurn = hint)
     }
 
     companion object {
@@ -156,5 +178,30 @@ class DemoDrive(
             37.53124 to 127.06655,
             37.53160 to 127.06681,
         )
+
+        /** Distance along [ROUTE] at each of its points, in metres. */
+        private val ALONG: List<Double> = ROUTE.indices.runningFold(0.0) { acc, i ->
+            if (i == 0) acc else acc + Tiles.distanceMeters(ROUTE[i - 1].first, ROUTE[i - 1].second, ROUTE[i].first, ROUTE[i].second)
+        }.drop(1)
+
+        /** Route points where the heading swings by more than 35°, as (distance along, turn). */
+        private val TURNS: List<Pair<Double, TurnKind>> = (1 until ROUTE.size - 1).mapNotNull { i ->
+            var delta = bearing(ROUTE[i], ROUTE[i + 1]) - bearing(ROUTE[i - 1], ROUTE[i])
+            if (delta > 180) delta -= 360
+            if (delta < -180) delta += 360
+            val kind = when {
+                kotlin.math.abs(delta) > 150 -> TurnKind.UTURN
+                delta > 35 -> TurnKind.RIGHT
+                delta < -35 -> TurnKind.LEFT
+                else -> null
+            }
+            kind?.let { ALONG[i] to it }
+        }
+
+        private fun bearing(a: Pair<Double, Double>, b: Pair<Double, Double>): Double {
+            val dy = b.first - a.first
+            val dx = (b.second - a.second) * kotlin.math.cos(Math.toRadians(a.first))
+            return Math.toDegrees(kotlin.math.atan2(dx, dy))
+        }
     }
 }

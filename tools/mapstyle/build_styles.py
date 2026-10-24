@@ -83,10 +83,13 @@ WATER_LABELS = {"waterway_line_label", "water_name_point_label", "water_name_lin
 WIDEN = {"highway_minor": 1.4, "highway_major_casing": 1.25, "highway_major_inner": 1.25,
          "highway_motorway_casing": 1.2, "highway_motorway_inner": 1.2}
 KOREAN = ["coalesce", ["get", "name:ko"], ["get", "name"]]
+# Positron's 9-14 px labels are phone-sized; the head unit is 160 dpi viewed from arm's length,
+# where they turned soft and hard to read under the fog.
+TEXT_SCALE = 1.4
 
 
 def scale_width(value, factor):
-    """Scales numbers inside a line-width value (plain number, stops object or expression)."""
+    """Scales numbers inside a width/size value (plain number, stops object or expression)."""
     if isinstance(value, (int, float)):
         return round(value * factor, 2)
     if isinstance(value, dict) and "stops" in value:
@@ -110,6 +113,12 @@ def build(base, theme):
             paint["line-width"] = scale_width(paint["line-width"], WIDEN[lid])
         if layer["type"] == "symbol" and "text-field" in layer.get("layout", {}):
             layer["layout"]["text-field"] = KOREAN
+            if "text-size" in layer["layout"]:
+                layer["layout"]["text-size"] = scale_width(layer["layout"]["text-size"], TEXT_SCALE)
+            # Two font stacks instead of three: Italic (water names) uses Regular, so one less set
+            # of glyph ranges is downloaded and kept in the glyph atlas.
+            if layer["layout"].get("text-font") == ["Noto Sans Italic"]:
+                layer["layout"]["text-font"] = ["Noto Sans Regular"]
             if lid in ROAD_LABELS:
                 paint.update({"text-color": pal["road_text"], "text-halo-color": pal["road_halo"], "text-halo-width": 1.4})
             elif lid in WATER_LABELS:

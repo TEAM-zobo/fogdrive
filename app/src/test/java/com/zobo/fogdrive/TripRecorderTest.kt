@@ -1,5 +1,6 @@
 package com.zobo.fogdrive
 
+import com.zobo.fogdrive.car.ArrivalKind
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.Gear
 import com.zobo.fogdrive.car.VehicleState
@@ -129,5 +130,57 @@ class TripRecorderTest {
         rec.onVehicle(parked, 0)
         val events = rec.onVehicle(parked.copy(evSocPercent = 43), 60_000)
         assertTrue(events.any { it is RecorderEvent.Stamp && it.code == StampCode.CHARGE })
+    }
+
+    @Test
+    fun destinationArrivalRevealsBlockAndStamps() {
+        val sink = MemorySink()
+        val rec = TripRecorder(sink)
+        rec.onFix(fix(37.5, 127.0), drive)
+        val before = sink.cells.size
+        val events = rec.onArrival(ArrivalKind.DESTINATION, "공원", 1_000)
+        assertEquals(25, sink.cells.size) // 5x5 block around the car, 3x3 of it already open
+        assertEquals(StampCode.ARRIVAL, (events.first() as RecorderEvent.Stamp).code)
+        val arrival = events.last() as RecorderEvent.Arrival
+        assertEquals(25 - before, arrival.newCells)
+        // A second arrival in the same trip reveals nothing new and earns no second stamp.
+        val again = rec.onArrival(ArrivalKind.DESTINATION, "공원", 2_000)
+        assertEquals(1, again.size)
+        assertEquals(0, (again.single() as RecorderEvent.Arrival).newCells)
+    }
+
+    @Test
+    fun detourArrivalRevealsWiderBlock() {
+        val sink = MemorySink()
+        val rec = TripRecorder(sink)
+        rec.onFix(fix(37.5, 127.0), drive)
+        val events = rec.onArrival(ArrivalKind.DETOUR, "안개 구역 탐험", 1_000)
+        assertEquals(49, sink.cells.size)
+        assertTrue(events.any { it is RecorderEvent.Stamp && it.code == StampCode.EXPEDITION })
+    }
+
+    @Test
+    fun plainWaypointRevealsWithoutStamp() {
+        val rec = TripRecorder(MemorySink())
+        rec.onFix(fix(37.5, 127.0), drive)
+        val events = rec.onArrival(ArrivalKind.WAYPOINT, "카페", 1_000)
+        assertTrue(events.none { it is RecorderEvent.Stamp })
+    }
+
+    @Test
+    fun arrivalAfterGpsDropoutIsIgnored() {
+        val sink = MemorySink()
+        val rec = TripRecorder(sink)
+        rec.onFix(fix(37.5, 127.0, t = 0), drive)
+        val before = sink.cells.size
+        assertTrue(rec.onArrival(ArrivalKind.DESTINATION, "공원", TripRecorder.MAX_ARRIVAL_FIX_AGE_MS + 1).isEmpty())
+        assertEquals(before, sink.cells.size)
+    }
+
+    @Test
+    fun arrivalWithoutFixIsIgnored() {
+        val sink = MemorySink()
+        assertTrue(TripRecorder(sink).onArrival(ArrivalKind.DESTINATION, "공원", 0).isEmpty())
+        assertTrue(sink.cells.isEmpty())
     }
 }

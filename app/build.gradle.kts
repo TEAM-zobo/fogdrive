@@ -45,7 +45,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 drops unused code, most of all the icon library (only a few dozen of its ~7,000
+            // icons are used): about 35 MB less dex to ship, map and page in.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }

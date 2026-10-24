@@ -42,3 +42,18 @@ data class Place(
     val lng: Double,
     val address: String? = null,
 )
+
+enum class TurnKind { STRAIGHT, LEFT, RIGHT, KEEP_LEFT, KEEP_RIGHT, UTURN, ROUNDABOUT, ARRIVE }
+
+data class TurnHint(val kind: TurnKind, val distanceM: Int)
+
+/** What the built-in navigation is guiding right now; shown on the driving screen. */
+data class Guidance(
+    val routing: Boolean = false,
+    val speedLimitKmh: Int? = null,
+    val nextTurn: TurnHint? = null,
+)
+
+enum class ArrivalKind { DESTINATION, WAYPOINT, DETOUR }
+
+data class Arrival(val kind: ArrivalKind, val name: String)

@@ -27,11 +27,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zobo.fogdrive.FogRuntime
+import com.zobo.fogdrive.geo.TileBox
 import com.zobo.fogdrive.geo.Tiles
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
@@ -51,6 +55,9 @@ private const val RECENTER_AT_PX = PAN_MARGIN_PX * 0.6f
 private const val MIN_STEP_PX = 0.5f
 /** A fix this far from the shown position is a jump (demo start, GPS reset): snap instead of gliding. */
 private const val SNAP_METERS = 500.0
+private const val ZOOM_ANIM_MS = 250
+/** Margin around a region framed from the dex. */
+private const val FOCUS_PADDING_PX = 120
 /** Detail hidden while driving for a glanceable map (and fewer symbols to place per render). */
 private val DRIVING_HIDDEN_LAYERS = listOf(
     "building", "highway-name-path", "highway-name-minor", "waterway_line_label", "label_other", "airport",
@@ -145,8 +152,8 @@ private class CarMarkerView(context: Context) : View(context) {
                 invalidate()
             }
         }
-    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x5E, 0xE6, 0xB8) }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5EE6B8") }
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x00, 0x81, 0xF8) }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0081F8") }
     private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.STROKE
@@ -231,11 +238,31 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private var forceStep = false
     private var ticking = false
 
+    /** Region waiting to be framed until the map is ready. */
+    var pendingFocus: TileBox? = null
+
+    /** Fits the pending region on screen; false while there is none or the map is not ready yet. */
+    fun showFocus(animate: Boolean): Boolean {
+        val map = map ?: return false
+        val box = pendingFocus ?: return false
+        pendingFocus = null
+        val bounds = LatLngBounds.from(
+            Tiles.yToLat(box.y0.toDouble()), Tiles.xToLng(box.x1.toDouble()),
+            Tiles.yToLat(box.y1.toDouble()), Tiles.xToLng(box.x0.toDouble()),
+        )
+        val update = CameraUpdateFactory.newLatLngBounds(bounds, FOCUS_PADDING_PX)
+        if (animate) map.animateCamera(update, 800) else map.moveCamera(update)
+        return true
+    }
+
     fun onMapReady(map: MapLibreMap) {
         this.map = map
         // The fog covers the engine's logo/attribution; our own credit label is drawn above the fog.
         map.uiSettings.isLogoEnabled = false
         map.uiSettings.isAttributionEnabled = false
+        // Default prefetch loads tiles 4 zoom levels coarser than shown; 2 still covers zooming out
+        // a step but holds far fewer tiles in native memory and fetches less over the car's link.
+        map.prefetchZoomDelta = 2
         mapView.addOnDidFinishRenderingFrameListener(object : MapView.OnDidFinishRenderingFrameListener {
             override fun onDidFinishRenderingFrame(fully: Boolean, frameEncodingTime: Double, frameRenderingTime: Double) {
                 // Any rendered frame already shows the new camera (partial frames are displayed too),
@@ -281,6 +308,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         applyMode()
         car.visibility = if (value) View.VISIBLE else View.GONE
         overlay.showCurrent = !value
+        overlay.showLabels = !value
         if (value) {
             startTicking()
         } else {
@@ -417,6 +445,12 @@ fun FogMap(
     onUserMoved: () -> Unit,
     /** Driving: no gestures; the car stays centred and the map glides under it. */
     driving: Boolean = false,
+    /** Bumped by the zoom buttons. */
+    zoomInSignal: Int = 0,
+    zoomOutSignal: Int = 0,
+    /** Region to frame (from the dex); [onFocusShown] is called once the camera has moved there. */
+    focus: TileBox? = null,
+    onFocusShown: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val holder = remember {
@@ -468,6 +502,7 @@ fun FogMap(
             })
             holder.setDriving(driving)
             current?.let { holder.onFix(it.first, it.second) }
+            if (holder.showFocus(animate = false)) onFocusShown()
         }
         onDispose {
             holder.stopTicking()
@@ -478,6 +513,13 @@ fun FogMap(
         }
     }
 
+    LaunchedEffect(version) {
+        // Light fog over the 읍·면·동 already entered, boundaries, and the rates in the labels.
+        holder.overlay.regions = withContext(Dispatchers.Default) {
+            val tally = FogRuntime.regions
+            RegionLayer(tally.atlas, tally.levels(FogRuntime.repo.cellsAtLevel(0)))
+        }
+    }
     LaunchedEffect(version, current, landings, detour) {
         holder.overlay.current = current
         holder.overlay.landings = landings
@@ -499,6 +541,16 @@ fun FogMap(
         } else if (follow) {
             map.animateCamera(CameraUpdateFactory.newLatLng(LatLng(current.first, current.second)), 600)
         }
+    }
+    LaunchedEffect(focus) {
+        holder.pendingFocus = focus
+        if (holder.showFocus(animate = true)) onFocusShown()
+    }
+    LaunchedEffect(zoomInSignal) {
+        if (zoomInSignal > 0) holder.map?.animateCamera(CameraUpdateFactory.zoomIn(), ZOOM_ANIM_MS)
+    }
+    LaunchedEffect(zoomOutSignal) {
+        if (zoomOutSignal > 0) holder.map?.animateCamera(CameraUpdateFactory.zoomOut(), ZOOM_ANIM_MS)
     }
     LaunchedEffect(recenterSignal) {
         val map = holder.map ?: return@LaunchedEffect

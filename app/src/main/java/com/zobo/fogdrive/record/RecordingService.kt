@@ -14,12 +14,15 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.zobo.fogdrive.FogRuntime
 import com.zobo.fogdrive.R
+import com.zobo.fogdrive.car.Arrival
+import com.zobo.fogdrive.car.ArrivalKind
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.LocationFeed
 import com.zobo.fogdrive.car.VehicleState
 import com.zobo.fogdrive.data.CellSource
 import com.zobo.fogdrive.data.TripEntity
 import com.zobo.fogdrive.demo.DemoDrive
+import com.zobo.fogdrive.geo.Area
 import com.zobo.fogdrive.geo.Tiles
 import com.zobo.fogdrive.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +68,9 @@ class RecordingService : Service() {
             FogRuntime.vehicle.state.collect { v -> handleVehicle(v) }
         }
         scope.launch { seedFromNavigation() }
+        scope.launch {
+            FogRuntime.navi.arrivals.collect { handleArrival(it) }
+        }
         scope.launch {
             // 기록 전체 삭제: the active trip row is gone, so close it and start fresh on the next fix.
             repo.resets.drop(1).collect {
@@ -127,6 +133,13 @@ class RecordingService : Service() {
         }
     }
 
+    private suspend fun handleArrival(arrival: Arrival) = mutex.withLock {
+        repo.loaded.first { it }
+        val events = recorder.onArrival(arrival.kind, arrival.name, System.currentTimeMillis())
+        events.forEach { apply(it) }
+        if (events.isNotEmpty()) FogRuntime.live.update { it.copy(trip = recorder.stats) }
+    }
+
     private suspend fun apply(event: RecorderEvent) {
         when (event) {
             is RecorderEvent.TripStarted -> {
@@ -141,7 +154,15 @@ class RecordingService : Service() {
             }
             is RecorderEvent.Landing -> {
                 repo.addLanding(event.lat, event.lng, event.at, repo.currentTripId)
-                note("상륙 지점을 기록했어요 (+${event.newCells}칸)")
+                note("상륙 지점을 기록했어요 (+${Area.formatCells(event.newCells)})")
+            }
+            is RecorderEvent.Arrival -> {
+                val what = when (event.kind) {
+                    ArrivalKind.DESTINATION -> "목적지 도착"
+                    ArrivalKind.WAYPOINT -> "경유지 도착"
+                    ArrivalKind.DETOUR -> "안개 구역 원정 성공"
+                }
+                note("$what: ${event.name} 주변을 밝혔어요 (+${Area.formatCells(event.newCells)})")
             }
             is RecorderEvent.Stamp -> {
                 repo.addStamp(event.code.name, event.lat, event.lng, event.at, repo.currentTripId)
@@ -181,7 +202,7 @@ class RecordingService : Service() {
             added += repo.reveal(Tiles.neighborhood(Tiles.cellOf(p.lat, p.lng), SEED_RADIUS), CellSource.SEED)
         }
         prefs.edit().putBoolean(KEY_SEEDED, true).apply()
-        note("내비 최근 목적지·즐겨찾기 ${places.size}곳 주변을 밝혔어요 (+${added}칸)")
+        note("내비 최근 목적지·즐겨찾기 ${places.size}곳 주변을 밝혔어요 (+${Area.formatCells(added)})")
     }
 
     private fun startDemo() {
@@ -192,6 +213,8 @@ class RecordingService : Service() {
             scope = scope,
             onFix = { fix -> scope.launch { handleFix(fix) } },
             onVehicle = { v -> FogRuntime.vehicle.setDemoOverride(v) },
+            onGuidance = { g -> FogRuntime.navi.setDemoGuidance(g) },
+            onArrival = { a -> FogRuntime.navi.emitDemoArrival(a) },
             onFinished = { FogRuntime.live.update { it.copy(lastEvent = "시연 주행 완료 · 설정에서 시연 중지를 누르면 실제 위치로 돌아가요") } },
         )
         demo = d
@@ -211,6 +234,7 @@ class RecordingService : Service() {
             }
         }
         FogRuntime.navi.setDemoDestination(null)
+        FogRuntime.navi.setDemoGuidance(null)
         FogRuntime.vehicle.setDemoOverride(null)
         FogRuntime.live.update { it.copy(demo = false, locationSource = locationFeed.sourceName) }
     }

@@ -20,6 +20,11 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     private val lock = Any()
     private val cells = HashSet<Long>()
     private val levelCache = HashMap<Int, Pair<Int, Set<Long>>>()
+    /** Cells first cleared on trip [tripCellsOf]: the stored ones (once [tripCellsLoaded]) plus every
+     *  later reveal, so a lookup never misses cells whose async insert hasn't landed yet. */
+    private val tripCells = HashSet<Long>()
+    private var tripCellsOf = 0L
+    private var tripCellsLoaded = false
 
     private val _version = MutableStateFlow(0)
     /** Bumped whenever the explored set changes; UI redraws the fog on change. */
@@ -53,11 +58,21 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     override fun reveal(newCells: Collection<Long>, source: Int): Int {
         val added = ArrayList<Long>()
-        synchronized(lock) { for (c in newCells) if (cells.add(c)) added.add(c) }
+        val trip = currentTripId
+        synchronized(lock) {
+            for (c in newCells) if (cells.add(c)) added.add(c)
+            if (added.isNotEmpty()) {
+                if (trip != tripCellsOf) {
+                    tripCells.clear()
+                    tripCellsOf = trip
+                    tripCellsLoaded = false
+                }
+                tripCells.addAll(added)
+            }
+        }
         if (added.isNotEmpty()) {
             bump()
             val now = System.currentTimeMillis()
-            val trip = currentTripId
             scope.launch(Dispatchers.IO) {
                 db.dao().insertCells(added.map { CellEntity(it, now, trip, source) })
             }
@@ -75,14 +90,21 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         }
     }
 
-    /** Explored child cells inside one parent tile [dz] levels up. */
-    fun exploredIn(parent: Long, dz: Int): Int = synchronized(lock) {
-        val side = 1 shl dz
-        val x0 = Tiles.x(parent) shl dz
-        val y0 = Tiles.y(parent) shl dz
-        var n = 0
-        for (dx in 0 until side) for (dy in 0 until side) if (Tiles.pack(x0 + dx, y0 + dy) in cells) n++
-        n
+    /** Cells first cleared on trip [tripId]. The table is read once per trip; later reveals come from memory. */
+    suspend fun cellsOfTrip(tripId: Long): Set<Long> {
+        synchronized(lock) { if (tripCellsLoaded && tripCellsOf == tripId) return HashSet(tripCells) }
+        val stored = withContext(Dispatchers.IO) { db.dao().cellsOfTrip(tripId) }
+        synchronized(lock) {
+            if (tripCellsOf != tripId) {
+                // A newer trip started while the table was read: don't drop its in-memory cells.
+                if (tripId != currentTripId) return HashSet(stored)
+                tripCells.clear()
+                tripCellsOf = tripId
+            }
+            tripCells.addAll(stored)
+            tripCellsLoaded = true
+            return HashSet(tripCells)
+        }
     }
 
     suspend fun startTrip(at: Long): Long = withContext(Dispatchers.IO) {
@@ -104,6 +126,9 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         synchronized(lock) {
             cells.clear()
             levelCache.clear()
+            tripCells.clear()
+            tripCellsOf = 0L
+            tripCellsLoaded = false
         }
         bump()
         _resets.update { it + 1 }

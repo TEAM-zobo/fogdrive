@@ -1,22 +1,34 @@
 package com.zobo.fogdrive.car
 
 import ai.pleos.playground.navi.constants.NaviErrorCode
+import ai.pleos.playground.navi.constants.NavigationStatus
+import ai.pleos.playground.navi.constants.TurnType
 import ai.pleos.playground.navi.constants.WaypointIndex
 import ai.pleos.playground.navi.data.BookmarkInfo
+import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.DestinationInfo
 import ai.pleos.playground.navi.data.RecentDestinationInfo
 import ai.pleos.playground.navi.data.RequestWaypointInfo
+import ai.pleos.playground.navi.data.RouteStartInfo
+import ai.pleos.playground.navi.data.TBTInfo
+import ai.pleos.playground.navi.data.WaypointArrivedInfo
 import ai.pleos.playground.navi.helper.NaviHelper
 import ai.pleos.playground.navi.helper.listener.NaviHelperEventListener
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Pleos NaviHelper bridge: reads recent destinations / bookmarks (first-run map seeding),
  * the active destination (detour suggestions) and adds the detour as a waypoint.
+ * While guiding it also relays arrivals (fog reveal + stamps) and the speed limit / next turn
+ * for the driving screen.
  * Info APIs answer through listener callbacks, so results are exposed as flows.
  */
 class NaviBridge(private val context: Context) : NaviHelperEventListener {
@@ -33,6 +45,15 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     private val _destination = MutableStateFlow<Place?>(null)
     val destination: StateFlow<Place?> = _destination.asStateFlow()
+
+    private val _guidance = MutableStateFlow(Guidance())
+    val guidance: StateFlow<Guidance> = _guidance.asStateFlow()
+
+    private val _arrivals = MutableSharedFlow<Arrival>(extraBufferCapacity = 8)
+    val arrivals: SharedFlow<Arrival> = _arrivals.asSharedFlow()
+
+    /** The fog detour went in as the first waypoint and has not been reached yet. */
+    @Volatile private var detourPending = false
 
     private val _lastMessage = MutableStateFlow<String?>(null)
     val lastMessage: StateFlow<String?> = _lastMessage.asStateFlow()
@@ -59,6 +80,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
         }
         helper = null
         _connected.value = false
+        _guidance.value = Guidance()
     }
 
     fun refresh() {
@@ -74,9 +96,9 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     /** Adds the detour point as the first waypoint of the active route. */
-    fun addDetourWaypoint(lat: Double, lng: Double, name: String): Boolean {
+    fun addDetourWaypoint(lat: Double, lng: Double, name: String = DETOUR_NAME): Boolean {
         val h = helper ?: return false
-        return call("addWaypoint") {
+        val ok = call("addWaypoint") {
             h.addWaypoint(
                 RequestWaypointInfo(
                     latitude = lat,
@@ -89,12 +111,24 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
                 )
             )
         }
+        if (ok) detourPending = true
+        return ok
     }
 
     /** Demo mode stand-in when no navigation destination exists in the emulator. */
     fun setDemoDestination(place: Place?) {
         _destination.value = place
         if (place == null) refreshDestination()
+    }
+
+    /** Demo mode stand-in for the guidance the emulator's navigation cannot produce. */
+    fun setDemoGuidance(guidance: Guidance?) {
+        _guidance.value = guidance ?: Guidance()
+    }
+
+    /** Demo mode stand-in for a navigation arrival. */
+    fun emitDemoArrival(arrival: Arrival) {
+        _arrivals.tryEmit(arrival)
     }
 
     private inline fun call(what: String, block: () -> Unit): Boolean = try {
@@ -124,13 +158,69 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     override fun onRouteCancelled() {
         _destination.value = null
+        endGuidance()
+    }
+
+    override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
+        _guidance.update { it.copy(routing = true) }
+        call("tbt") { helper?.getTBTInfo() }
+    }
+
+    override fun onRouteEnded() = endGuidance()
+
+    override fun onNavigationStatus(navigationStatus: NavigationStatus) {
+        if (navigationStatus == NavigationStatus.ROUTE_DRIVE) _guidance.update { it.copy(routing = true) } else endGuidance()
+    }
+
+    override fun onCurrentRoadSpeedLimit(speedLimit: Int) {
+        _guidance.update { it.copy(speedLimitKmh = speedLimit.takeIf { v -> v > 0 }) }
+    }
+
+    override fun onTBTInfo(tbtInfoList: List<TBTInfo>) {
+        val next = tbtInfoList.firstOrNull()
+        val kind = next?.type?.let(::turnKind)
+        _guidance.update { it.copy(nextTurn = if (next != null && kind != null) TurnHint(kind, next.distance.toInt()) else null) }
+    }
+
+    override fun onDestinationArrived(destinationArrivedInfo: DestinationArrivedInfo) {
+        _arrivals.tryEmit(Arrival(ArrivalKind.DESTINATION, destinationArrivedInfo.name ?: "목적지"))
+        endGuidance()
+    }
+
+    override fun onWayPointArrived(waypointArrivedInfo: WaypointArrivedInfo) {
+        val name = waypointArrivedInfo.name ?: "경유지"
+        // The navigation may report the waypoint under a geocoded name, so the slot counts as well.
+        val detour = name == DETOUR_NAME || (detourPending && waypointArrivedInfo.index == WaypointIndex.FIRST)
+        if (detour) detourPending = false
+        _arrivals.tryEmit(Arrival(if (detour) ArrivalKind.DETOUR else ArrivalKind.WAYPOINT, name))
+    }
+
+    private fun endGuidance() {
+        detourPending = false
+        _guidance.update { it.copy(routing = false, nextTurn = null) }
     }
 
     override fun onError(errorCode: NaviErrorCode) {
         _lastMessage.value = "내비 오류: $errorCode"
     }
 
-    private companion object {
-        const val TAG = "FogNavi"
+    companion object {
+        /** Waypoint name of the fog detour; arriving at a waypoint with this name counts as an expedition. */
+        const val DETOUR_NAME = "안개 구역 탐험"
+        private const val TAG = "FogNavi"
+
+        /** Collapses the navigation's ~45 turn types into the few arrows the driving screen draws. */
+        fun turnKind(type: TurnType): TurnKind? = when {
+            type == TurnType.TURN_UNKNOWN -> null
+            type == TurnType.TURN_ARRIVE || type == TurnType.TURN_WAY -> TurnKind.ARRIVE
+            type == TurnType.TURN_UTURN -> TurnKind.UTURN
+            type == TurnType.TURN_LEFT || type == TurnType.TURN_SHARP_L -> TurnKind.LEFT
+            type == TurnType.TURN_RIGHT || type == TurnType.TURN_SHARP_R -> TurnKind.RIGHT
+            type.name.contains("ROUNDABOUT") -> TurnKind.ROUNDABOUT
+            type.name.endsWith("_L") -> TurnKind.KEEP_LEFT
+            // Korean service / rest areas exit to the right.
+            type.name.endsWith("_R") || type == TurnType.TURN_ENTER_SERVICEAREA || type == TurnType.TURN_RESTAREA -> TurnKind.KEEP_RIGHT
+            else -> TurnKind.STRAIGHT
+        }
     }
 }

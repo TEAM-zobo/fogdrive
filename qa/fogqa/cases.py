@@ -66,6 +66,15 @@ def value_after(texts, label):
     return None
 
 
+def area_m2(s):
+    """'8,400 m²' or '0.63 km²' -> square metres."""
+    m = re.search(r"([\d.,]+)\s*(k?m)²", s or "")
+    if not m:
+        return None
+    v = float(m.group(1).replace(",", ""))
+    return v * 1_000_000 if m.group(2) == "km" else v
+
+
 def number(s):
     m = re.search(r"[\d.]+", s or "")
     return float(m.group()) if m else None
@@ -76,7 +85,7 @@ def read_record(ctx):
     time.sleep(1.2)
     t = ctx.dev.texts()
     return {
-        "cells": number(value_after(t, "개척한 칸")),
+        "area": area_m2(value_after(t, "밝힌 면적")),
         "landings": number(value_after(t, "상륙 지점")),
         "new_ratio": number(value_after(t, "새 길 비율")),
         "trips": sum(1 for x in t if re.match(r"\d+월 \d+일 \d\d:\d\d", x)),
@@ -139,22 +148,22 @@ def tc_connect(ctx):
 
 @case("TC-02", "첫 실행 지도 채우기", "첫 실행 때 내비 최근 목적지·즐겨찾기 주변 안개가 걷힌다",
       "앱 데이터 초기화, 에뮬레이터 내비에 최근 목적지/즐겨찾기 존재",
-      ["앱 첫 실행", "지도 헤더 메시지와 기록 탭 개척 칸 확인"],
-      ["'내비 최근 목적지·즐겨찾기 N곳 주변을 밝혔어요' 표시", "개척한 칸 > 0, 주행 기록 0건"])
+      ["앱 첫 실행", "지도 헤더 메시지와 기록 탭 밝힌 면적 확인"],
+      ["'내비 최근 목적지·즐겨찾기 N곳 주변을 밝혔어요' 표시", "밝힌 면적 > 0, 주행 기록 0건"])
 def tc_seed(ctx):
     fresh(ctx)
     ctx.check(ctx.dev.wait_text("주변을 밝혔어요", timeout=10), "시드 완료 메시지 표시")
     ctx.shot("map")
     r = read_record(ctx)
     ctx.log(f"기록: {r}")
-    ctx.check((r["cells"] or 0) > 0, f"개척한 칸 {r['cells']} > 0")
+    ctx.check((r["area"] or 0) > 0, f"밝힌 면적 {r['area']} m² > 0")
     ctx.check(r["trips"] == 0, "주행 기록 없음")
 
 
-@case("TC-03", "자동 안개 걷기", "D단으로 주행하면 지나간 길의 칸이 공개되고 주행 기록이 생긴다",
+@case("TC-03", "자동 안개 걷기", "D단으로 주행하면 지나간 길의 안개가 걷히고 주행 기록이 생긴다",
       "앱 초기화, 차량 P단",
       ["기어 D", "실제 도로 경로 25개 지점 위치 주입", "기록 탭 확인"],
-      ["개척한 칸 증가(+50칸 이상)", "주행 기록 1건", "새 길 비율 90% 이상"])
+      ["밝힌 면적 증가(+40,000 m² 이상, 약 50칸)", "주행 기록 1건", "새 길 비율 90% 이상"])
 def tc_drive_reveal(ctx):
     fresh(ctx)
     before = read_record(ctx)
@@ -165,29 +174,29 @@ def tc_drive_reveal(ctx):
     ctx.shot("map_after_drive")
     after = read_record(ctx)
     ctx.log(f"전 {before} → 후 {after}")
-    ctx.check(after["cells"] - before["cells"] >= 50, f"개척 칸 +{after['cells'] - before['cells']}")
+    ctx.check(after["area"] - before["area"] >= 40_000, f"밝힌 면적 +{after['area'] - before['area']:.0f} m²")
     ctx.check(after["trips"] == 1, f"주행 기록 {after['trips']}건")
     ctx.check((after["new_ratio"] or 0) >= 90, f"새 길 비율 {after['new_ratio']}%")
 
 
-@case("TC-04", "자동 안개 걷기", "P단에서 위치가 바뀌어도 칸이 공개되지 않는다",
+@case("TC-04", "자동 안개 걷기", "P단에서 위치가 바뀌어도 안개가 걷히지 않는다",
       "앱 초기화, 차량 P단",
       ["기어 P 유지", "다른 지역(여의도)으로 위치 3회 주입", "기록 탭 확인"],
-      ["개척한 칸 변화 없음", "주행 기록 0건"])
+      ["밝힌 면적 변화 없음", "주행 기록 0건"])
 def tc_parked_no_reveal(ctx):
     fresh(ctx)
     before = read_record(ctx)
     drive(ctx, FAR, delay=1.0)
     after = read_record(ctx)
     ctx.log(f"전 {before} → 후 {after}")
-    ctx.check(after["cells"] == before["cells"], "개척 칸 변화 없음")
+    ctx.check(after["area"] == before["area"], "밝힌 면적 변화 없음")
     ctx.check(after["trips"] == 0, "주행 기록 없음")
 
 
 @case("TC-05", "상륙 지점", "주행 후 P단에서 도어를 열면 상륙 지점이 기록된다",
       "앱 초기화",
       ["기어 D로 15개 지점 주행", "기어 P", "운전석 도어 열기"],
-      ["'상륙 지점을 기록했어요' 표시", "상륙 지점 1곳", "개척 칸 추가 증가(7×7 공개)"])
+      ["'상륙 지점을 기록했어요' 표시", "상륙 지점 1곳", "밝힌 면적 추가 증가(7×7칸 공개)"])
 def tc_landing(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -202,7 +211,7 @@ def tc_landing(ctx):
     after = read_record(ctx)
     ctx.log(f"주행 후 {mid} → 상륙 후 {after}")
     ctx.check(after["landings"] == 1, f"상륙 지점 {after['landings']}곳")
-    ctx.check(after["cells"] > mid["cells"], "상륙으로 칸 추가 공개")
+    ctx.check(after["area"] > mid["area"], "상륙으로 면적 추가 공개")
 
 
 @case("TC-06", "상륙 지점", "주행 중(D단) 도어가 열려도 상륙으로 기록하지 않는다",
@@ -354,7 +363,7 @@ def tc_demo(ctx):
 @case("TC-14", "기록 관리", "기록 전체 삭제 후 모든 기록이 0으로 돌아간다",
       "앱 초기화 후 한 번 주행",
       ["기어 D로 10개 지점 주행 후 P", "설정 → 기록 전체 삭제 → 정말 삭제", "기록 탭 확인"],
-      ["개척한 칸 0, 상륙 0곳, 주행 기록 0건"])
+      ["밝힌 면적 0, 상륙 0곳, 주행 기록 0건"])
 def tc_reset(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -367,7 +376,7 @@ def tc_reset(ctx):
     r = read_record(ctx)
     ctx.shot("record_after_reset")
     ctx.log(f"기록: {r}")
-    ctx.check(r["cells"] == 0 and r["landings"] == 0 and r["trips"] == 0, "모든 기록 0")
+    ctx.check(r["area"] == 0 and r["landings"] == 0 and r["trips"] == 0, "모든 기록 0")
 
 
 @case("TC-15", "내비게이션", "하위 탭에서 뒤로가기를 누르면 앱을 닫지 않고 지도로 돌아간다",

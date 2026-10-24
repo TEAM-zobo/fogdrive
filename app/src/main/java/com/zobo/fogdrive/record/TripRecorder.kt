@@ -1,5 +1,6 @@
 package com.zobo.fogdrive.record
 
+import com.zobo.fogdrive.car.ArrivalKind
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.Gear
 import com.zobo.fogdrive.car.VehicleState
@@ -16,12 +17,15 @@ enum class StampCode(val title: String, val description: String) {
     NIGHT("야간 개척", "전조등을 켜고 새 길을 달렸어요"),
     FAMILY("가족 탐험", "뒷좌석에 동승자를 태우고 새 길을 달렸어요"),
     CHARGE("충전소 깃발", "정차 중 충전으로 배터리가 올랐어요"),
+    ARRIVAL("목적지 정복", "내비 안내를 따라 목적지에 도착했어요"),
+    EXPEDITION("안개 원정", "안개 구역 탐험 경유지에 도착했어요"),
 }
 
 sealed interface RecorderEvent {
     data class TripStarted(val at: Long) : RecorderEvent
     data class TripEnded(val at: Long) : RecorderEvent
     data class Landing(val lat: Double, val lng: Double, val at: Long, val newCells: Int) : RecorderEvent
+    data class Arrival(val kind: ArrivalKind, val name: String, val lat: Double, val lng: Double, val at: Long, val newCells: Int) : RecorderEvent
     data class Stamp(val code: StampCode, val lat: Double, val lng: Double, val at: Long) : RecorderEvent
 }
 
@@ -37,7 +41,8 @@ data class TripStats(
  * - while not parked, each fix reveals the cells along the path plus a 1-cell margin (~90 m swath:
  *   the road and what is visible from it);
  * - P + a door opening = a landing that reveals a 7x7 block (~210 m, a walk around) and ends the trip;
- * - new cells revealed under rain / headlights / rear passengers earn situation stamps.
+ * - new cells revealed under rain / headlights / rear passengers earn situation stamps;
+ * - a navigation arrival reveals the block around the car (wider for the fog detour) and earns a stamp.
  */
 class TripRecorder(private val sink: ExploreSink) {
     var stats = TripStats()
@@ -154,6 +159,23 @@ class TripRecorder(private val sink: ExploreSink) {
         return events
     }
 
+    fun onArrival(kind: ArrivalKind, name: String, now: Long): List<RecorderEvent> {
+        // Without a recent fix (tunnel, underground car park) the car's position is unknown.
+        val fix = last?.takeIf { now - it.timeMs <= MAX_ARRIVAL_FIX_AGE_MS } ?: return emptyList()
+        val radius = if (kind == ArrivalKind.DETOUR) DETOUR_RADIUS else ARRIVAL_RADIUS
+        val added = sink.reveal(Tiles.neighborhood(Tiles.cellOf(fix.lat, fix.lng), radius), CellSource.ARRIVAL)
+        if (tripActive) stats = stats.copy(newCells = stats.newCells + added)
+        val events = mutableListOf<RecorderEvent>()
+        when (kind) {
+            ArrivalKind.DESTINATION -> award(StampCode.ARRIVAL, fix, events)
+            ArrivalKind.DETOUR -> award(StampCode.EXPEDITION, fix, events)
+            ArrivalKind.WAYPOINT -> Unit
+        }
+        // Arrival last, so its "+N칸" message is the one left on screen after the stamp's.
+        events += RecorderEvent.Arrival(kind, name, fix.lat, fix.lng, now, added)
+        return events
+    }
+
     /**
      * Closes the current trip without a landing (service stopping, demo stopped, records reset).
      * Also forgets the last fix so the next fix is not joined to a position from another session.
@@ -172,6 +194,9 @@ class TripRecorder(private val sink: ExploreSink) {
     companion object {
         const val DRIVE_RADIUS = 1
         const val LANDING_RADIUS = 3
+        const val ARRIVAL_RADIUS = 2
+        const val DETOUR_RADIUS = 3
+        const val MAX_ARRIVAL_FIX_AGE_MS = 2 * 60_000L
         const val MAX_ACCURACY_M = 60f
         const val MAX_JOIN_M = 1_000.0
         const val LANDING_MIN_GAP_M = 300.0

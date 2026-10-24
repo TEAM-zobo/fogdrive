@@ -1,22 +1,24 @@
 package com.zobo.fogdrive.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +27,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.BackHandler
@@ -57,36 +61,43 @@ fun FogApp(
 
     Surface(modifier = Modifier.fillMaxSize(), color = FogColors.Bg) {
         Row(Modifier.fillMaxSize()) {
-            NavigationRail(
-                modifier = Modifier.fillMaxHeight().padding(vertical = 24.dp),
-                containerColor = FogColors.Bg,
+            Column(
+                Modifier.fillMaxHeight().width(120.dp).background(FogColors.Surface).padding(top = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Spacer(Modifier.height(16.dp))
-                Tab.entries.forEachIndexed { i, t ->
-                    NavigationRailItem(
-                        selected = tab == i,
-                        onClick = { tab = i },
-                        icon = { Icon(t.icon, contentDescription = t.label, modifier = Modifier.size(40.dp)) },
-                        label = { Text(t.label) },
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = FogColors.Bg,
-                            indicatorColor = FogColors.Accent,
-                            unselectedIconColor = FogColors.TextSub,
-                            unselectedTextColor = FogColors.TextSub,
-                            selectedTextColor = FogColors.Accent,
-                        ),
-                    )
-                }
+                Tab.entries.forEachIndexed { i, t -> RailItem(t, selected = tab == i) { tab = i } }
             }
+            Box(Modifier.fillMaxHeight().width(1.dp).background(FogColors.Outline))
             Box(Modifier.fillMaxSize()) {
                 when (Tab.entries[tab]) {
                     Tab.MAP -> MapScreen(viewModel)
                     Tab.RECORD -> RecordScreen(viewModel)
-                    Tab.DEX -> DexScreen(viewModel)
+                    Tab.DEX -> DexScreen(viewModel, onShowOnMap = { region ->
+                        viewModel.mapFocus.value = region.bounds
+                        tab = Tab.MAP.ordinal
+                    })
                     Tab.SETTINGS -> SettingsScreen(viewModel, onStartDemo, onStopDemo, onRequestBackground)
                 }
             }
         }
+    }
+}
+
+/** Rail entry styled like the built-in dock: black when selected, with an orange bar under it. */
+@Composable
+private fun RailItem(tab: Tab, selected: Boolean, onClick: () -> Unit) {
+    val tint = if (selected) FogColors.TextMain else FogColors.TextSub
+    Column(
+        Modifier.width(120.dp).clickable(onClick = onClick).padding(vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(tab.icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(40.dp))
+        Text(tab.label, style = MaterialTheme.typography.labelMedium, color = tint)
+        Box(
+            Modifier.width(48.dp).height(4.dp)
+                .background(if (selected) FogColors.Amber else Color.Transparent),
+        )
     }
 }

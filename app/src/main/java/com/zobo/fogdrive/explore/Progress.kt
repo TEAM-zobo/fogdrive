@@ -26,6 +26,6 @@ object Progress {
 }
 
 /** Monthly season challenge targets. */
-data class SeasonGoal(val title: String, val current: Int, val target: Int) {
+data class SeasonGoal(val title: String, val current: Int, val target: Int, val label: (Int) -> String = { "$it" }) {
     val done: Boolean get() = current >= target
 }

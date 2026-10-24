@@ -17,6 +17,7 @@ object CellSource {
     const val DRIVE = 0
     const val LANDING = 1
     const val SEED = 2
+    const val ARRIVAL = 3
 }
 
 @Entity(tableName = "cells")
@@ -60,6 +61,9 @@ data class StampEntity(
 interface FogDao {
     @Query("SELECT cell FROM cells")
     suspend fun allCellIds(): List<Long>
+
+    @Query("SELECT cell FROM cells WHERE tripId = :tripId")
+    suspend fun cellsOfTrip(tripId: Long): List<Long>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCells(cells: List<CellEntity>)
