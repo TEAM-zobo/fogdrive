@@ -13,10 +13,9 @@
 | `{대표자명}` | 접수양식 01-A에 적은 대표자 성명 |
 | `{팀원 이메일}` | 팀 참가일 때 대표자를 뺀 팀원 전원의 이메일. 개인 참가면 참조(CC) 줄을 지웁니다 |
 | `{참가 단위}` | `개인` 또는 `팀(○명)` |
-| `{GitHub 저장소 주소}` | 접수양식 02-7과 같은 주소 |
 | `{시연 영상 링크}` | 일부 공개 영상 링크. 없으면 그 줄을 지웁니다 |
 | `{숏폼 링크}` | 게시한 세로 영상 링크. 없으면 그 줄을 지웁니다 |
-| 심사용 계정 초대 문장 | 운영국이 심사용 GitHub 계정을 공지하지 않았다면 "공지되는 대로 심사용 계정을 Collaborator로 초대하겠습니다."로 바꿉니다 |
+| 심사용 계정 초대 문장 | 운영국이 심사용 GitHub 계정을 공지하지 않았다면 "공지되는 대로 심사용 계정을 읽기 권한 협업자로 초대하겠습니다."로 바꿉니다 |
 
 ---
 
@@ -58,9 +57,9 @@ appdevchallenge@hyundai-partners.com
 2. zobo_안개지도_접수양식.docx — 같은 내용의 Word 원본
 
 ■ 참고자료 (선택 · 가산점)
-- GitHub 저장소: {GitHub 저장소 주소}
+- GitHub 저장소: https://github.com/TEAM-zobo/fogdrive
   · 소스 코드, release APK(apk/zobo_FogDrive_release.apk), README(실행 방법·테스트 환경)
-  · 비공개 저장소이며, 공지된 심사용 계정을 Collaborator로 초대해 두었습니다.
+  · 비공개 저장소이며, 공지된 심사용 계정을 읽기 권한 협업자로 초대해 두었습니다.
 - 시연 영상: {시연 영상 링크}
 
 ■ 숏폼 (선택)
@@ -112,7 +111,7 @@ appdevchallenge@hyundai-partners.com
 2. zobo_안개지도_접수양식.docx — Word 원본
 
 ■ 참고자료
-- GitHub 저장소: {GitHub 저장소 주소}
+- GitHub 저장소: https://github.com/TEAM-zobo/fogdrive
 - 시연 영상: {시연 영상 링크}
 
 ■ 숏폼 (선택)

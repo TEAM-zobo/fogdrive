@@ -141,7 +141,7 @@ MAU = 국내 Pleos 탑재 누적 차량(V) × 앱 설치율(I) × 월간 활성�
 
 ## 7. 참고자료
 
-- GitHub 저장소: 【기입 필요: 저장소 주소 — 계정 ID 노출 여부를 정한 뒤 기입(github.md 참고). 비공개, 심사용 계정 초대 예정】
+- GitHub 저장소: https://github.com/TEAM-zobo/fogdrive (비공개, 심사용 계정을 읽기 권한으로 초대)
 - Release APK: 저장소 `apk/zobo_FogDrive_release.apk` (v0.1.0, minSdk 28, arm64-v8a·x86_64)
 - 시연 영상: 【기입 필요: 시연 영상 링크】
 - 실행 방법: 저장소 `README.md`, 테스트 환경 셋팅 `docs/SETUP.md` (Pleos Connect Emulator v2.1.0)
