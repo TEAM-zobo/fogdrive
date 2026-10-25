@@ -219,6 +219,18 @@ Virtual Console에서 기어(P/D), 도어, 창문, 와이퍼, 전조등, 좌석,
 | 데이터 동기화 | 클라우드 동기화, 주행 종료 시 자동 동기화, 백업 내보내기·불러오기 |
 | 기록과 개인정보 | 시동 시 자동 기록 허용, 기록 전체 삭제 |
 
+## 시연·홍보 영상
+
+에뮬레이터에서 앱을 자동 조작하며 구간별로(소리 포함) 녹화하고, [HyperFrames](https://github.com/heygen-com/hyperframes)로 자막·카메라 워크·배경음악을 입혀 1분 46초 홍보 영상을 만듭니다. 결과물은 `tools/demo/promo/renders/fogdrive-promo.mp4`(git 제외)입니다.
+
+```bash
+tools/setup/setup.sh video        # 한 번: ffmpeg, Node.js 22+, HyperFrames 0.8.196 + Claude Code 스킬 (Windows: setup.ps1 video)
+tools/setup/setup.sh boot --record  # 녹화용 QA 에뮬레이터(소리 켬, 주간 시계)
+# 녹화 → 편집 → 렌더링 순서와 수정 방법: docs/VIDEO.md
+```
+
+자세한 절차, 장면 구성, 수정 방법, 라이선스, 문제 해결은 **[docs/VIDEO.md](docs/VIDEO.md)** 에 있습니다.
+
 ## QA
 
 Pleos 에뮬레이터에서 실제 SDK 경로로 기능별 TC 21개를 자동 실행하는 도구와 웹 대시보드가 `qa/`에 있습니다. 사용법은 [`qa/README.md`](qa/README.md), TC 목록은 [`docs/test-cases.html`](docs/test-cases.html)을 보세요.
@@ -241,7 +253,8 @@ tools/
   emulator/   에뮬레이터 기본 위치 설정
   setup/      테스트 환경 셋팅(macOS setup.sh, Windows setup.ps1)
   submission/ 접수양식 DOCX 생성(build_form.py)
-  demo/       시연 영상: 예시 기록 생성 · 시연 상태 준비 · 구간별 녹화 · 편집(docs/submission/demo-video.md)
+  demo/       시연 영상: 예시 기록 생성 · 시연 상태 준비 · 구간별 녹화(docs/VIDEO.md)
+    promo/    HyperFrames 홍보 영상 프로젝트(build.py가 장면 생성, SPEC.md 기획)
 qa/           에뮬레이터 자동 테스트·웹 대시보드
 docs/
   submission/ 공모전 제출물(접수양식, 02 원고, 제출 이메일, 시연 영상·숏폼 콘티, GitHub 제출 요건)
@@ -252,5 +265,6 @@ docs/
 
 - [공모전 제출물](docs/submission/README.md): 무엇을 내는지, 접수양식(02 작성 완료), 복사해 쓰는 제출 이메일, 시연 영상·숏폼 콘티, 최종 점검표
 - [테스트 환경 셋팅](docs/SETUP.md): macOS·Windows별 SDK·에뮬레이터 설치, 빌드·실행, 문제 해결
+- [시연·홍보 영상](docs/VIDEO.md): 영상 도구 설치, 구간별 녹화, HyperFrames 편집·렌더링, 라이선스
 - [공모전 준비 가이드](docs/index.html): 일정, 제출물, 접수양식 작성법, 일자별 계획, 개발 현황, 근거 링크
 - [테스트 케이스](docs/test-cases.html): 기능별 TC 21개 (`qa/fogqa/cases.py`에서 생성)

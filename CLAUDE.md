@@ -24,6 +24,14 @@ Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compo
 - `local.properties`, `keystore.properties`, `qa/.qa_password`는 git에 넣지 않습니다.
 - 앱 화면은 P단에서만 보입니다. 차량 신호는 Virtual Console(`adb forward tcp:8088 tcp:8088`, `qa/fogqa/vconsole.py`)로 바꿉니다.
 
+## 시연·홍보 영상
+
+"영상 만들어줘", "홍보 영상 수정해줘" 같은 요청은 `docs/VIDEO.md`를 따릅니다. HyperFrames 스킬(`/hyperframes`)이 없으면 먼저 `tools/setup/setup.sh video`로 설치하고 Claude Code를 다시 열라고 안내합니다.
+
+- 카피·장면·카메라·음악 수정은 `tools/demo/promo/build.py`만 고치고 `python3 build.py` → `npx hyperframes@0.8.196 check` → `snapshot`으로 프레임을 직접 본 뒤 `render`합니다. `index.html`과 `compositions/`는 생성물이라 직접 고치지 않습니다.
+- 녹화는 `boot --record`로 띄운 QA 에뮬레이터에서만 하고, 그동안 다른 에뮬레이터는 끕니다(같은 GPU를 써서 끊김).
+- 소리는 들을 수 없으니 `ffmpeg -af ebur128`로 측정해 보고(-16~-18 LUFS), 들어 보지 않았다고 말합니다.
+
 ## 자주 쓰는 명령
 
 ```bash

@@ -13,9 +13,9 @@ driven out and back a set number of times, so the map shows every worn-road colo
     김포공항         마중     4회 → 파랑 (3+)
     파주·김포 한 바퀴         2회 → 옅은 파랑 (2)
 
-The 성수 주말 나들이 course (the one driven live in the video) stays almost entirely in fog, so the
-video shows new fog lifting right after the coloured home roads. Stamps that the live drive earns
-(빗속 개척, 가족 탐험, 바람길 개척, 함께한 미션) are left out, so they arrive as new in the video.
+The video's first part drives 성수 주말 나들이 on a fresh install ("첫 시동"); its second part ("두 달
+뒤") loads this record. So the record starts with that same 성수 drive (out only, two months ago, with
+its stamps), and every other route stays clear of it.
 
 The file is format 1 (JSON), which the app still imports (설정 → 데이터 동기화 → 불러오기).
 It is a made-up record for the demo; the video says so in a caption.
@@ -49,6 +49,8 @@ PLAN = [
     ("GimpoRoute", "김포공항", 4, "evening"),
     ("PajuGimpoRoute", "파주·김포", 2, "weekend"),
 ]
+# The first drive of all: the course the video's first part drives live, two months back.
+FIRST = ("SEONGSU", "성수 주말 나들이")
 
 
 def routes():
@@ -137,6 +139,8 @@ def main():
             outbound = i % 2 == 0
             trips_plan.append((start, label, route if outbound else list(reversed(route)), outbound))
     trips_plan.sort(key=lambda t: t[0])
+    first_at = trips_plan[0][0].replace(hour=10, minute=5) - timedelta(days=1)
+    trips_plan.insert(0, (first_at, FIRST[1], all_routes[FIRST[0]], True))
 
     cells = {}            # cell -> [firstSeenAt, tripId, source, visits]
     trips, landings, stamps, track = [], [], [], []
@@ -177,7 +181,9 @@ def main():
         # Stamps a real two months would have given.
         s_lat, s_lng = route[0]
         if trip_id == 1:
-            stamp("FIRST_DRIVE", start_ms, trip_id, s_lat, s_lng)
+            # What the 성수 drive gives (the video's first part): window, rain, rear seat, mission.
+            for code in ("FIRST_DRIVE", "OPEN_AIR", "RAIN", "FAMILY", "CREW_MISSION", "DONG_HOPPER", "NEW_DISTRICT", "PROVINCE_CROSS"):
+                stamp(code, start_ms + 60_000 * len(stamps), trip_id, s_lat, s_lng)
         if start.weekday() < 5 and start.hour < 10 and "COMMUTE" not in stamp_seen:
             stamp("COMMUTE", start_ms, trip_id, s_lat, s_lng)
         if start.weekday() >= 5 and "WEEKEND" not in stamp_seen:
@@ -221,11 +227,8 @@ def main():
             if v[3] >= n:
                 counts[name] += 1
                 break
-    seongsu = swath(all_routes["SEONGSU"], DRIVE_RADIUS)
-    overlap = len(seongsu & cells.keys()) / len(seongsu)
     print(f"{os.path.relpath(OUT, ROOT)}: 칸 {len(cells):,} · 주행 {len(trips)} · 하차 {len(landings)} · 스탬프 {len(stamps)}종 · 경로 점 {len(track):,}")
     print("자주 다닌 길 칸 수: " + ", ".join(f"{k} {v:,}" for k, v in counts.items()))
-    print(f"성수 코스 중 이미 밝혀진 칸: {overlap:.0%} (나머지는 시연 주행에서 새로 걷힘)")
     first, last = trips[0][1], trips[-1][2]
     fmt = lambda ms: datetime.fromtimestamp(ms / 1000, KST).strftime("%m/%d %H:%M")
     print(f"기간: {fmt(first)} ~ {fmt(last)}")

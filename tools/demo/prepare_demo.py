@@ -3,6 +3,7 @@
 
     python3 tools/demo/make_demo_backup.py                 # once: builds tools/demo/out/fogdrive-backup.json
     python3 tools/demo/prepare_demo.py [--serial emulator-5556] [--apk app/build/outputs/apk/debug/app-debug.apk]
+    python3 tools/demo/prepare_demo.py --fresh             # part 1: a first-run app, not opened yet
 
 Steps: (install) → Virtual Console reset (P, doors shut, no passengers, wipers/lights off) → app data
 cleared and permissions granted → location 향기5로 66 → demo history copied into the app's files folder
@@ -38,8 +39,9 @@ def main():
     p.add_argument("--serial", default="emulator-5556")
     p.add_argument("--vc-port", type=int, default=None, help="Virtual Console local port (5554: 8088, 5556: 18088)")
     p.add_argument("--apk", help="install this APK first")
+    p.add_argument("--fresh", action="store_true", help="first run: no record, app left closed (tutorial on next open)")
     a = p.parse_args()
-    if not os.path.exists(BACKUP):
+    if not a.fresh and not os.path.exists(BACKUP):
         sys.exit("demo history missing: run python3 tools/demo/make_demo_backup.py first")
 
     dev = Device(serial=a.serial)
@@ -55,6 +57,9 @@ def main():
         dev.app_stop()
         dev.app_reset()
         dev.geo(*HOME)
+        if a.fresh:
+            print("ready: first run, parked at 향기5로 66, app closed")
+            return
         user = dev.shell("am", "get-current-user").strip()
         # The driver profile's external app folder is closed to adb; run-as writes the internal one,
         # which Import also reads (FogRuntime.importCandidates).

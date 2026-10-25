@@ -11,6 +11,8 @@
 #   tools/setup/setup.sh test              # unit tests
 #   tools/setup/setup.sh all [--headless]  # sdk → image → avd → boot → app
 #   tools/setup/setup.sh stop [--headless] # shut the emulator down
+#   tools/setup/setup.sh video             # demo/promo video tools: ffmpeg, Node.js 22+, HyperFrames skills
+#   tools/setup/setup.sh boot --record     # QA emulator for recording: no window, sound on, clock at 11:00 KST
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -79,6 +81,9 @@ cmd_doctor() {
   local jh; jh=$(java_home)
   if [ -n "$jh" ] && [ "$(java_major "$jh")" -ge 17 ] 2>/dev/null; then ok "JDK $(java_major "$jh"): $jh"
   else miss "JDK 17 이상 — mac: brew install --cask temurin@17 / linux: apt install openjdk-17-jdk"; fi
+  if command -v ffmpeg >/dev/null; then ok "ffmpeg (영상 제작용)"; else echo "  [선택] ffmpeg (영상 제작용) — setup.sh video"; fi
+  if command -v node >/dev/null && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ]; then ok "Node.js $(node -v) (HyperFrames용)"
+  else echo "  [선택] Node.js 22+ (HyperFrames 홍보 영상용) — setup.sh video"; fi
   if command -v python3 >/dev/null; then ok "python3 $(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])') (QA 도구용)"
   else miss "python3 (QA 도구용)"; fi
   [ -d "$SDK" ] && ok "Android SDK: $SDK" || miss "Android SDK ($SDK) — setup.sh sdk"
@@ -227,16 +232,24 @@ cmd_avd() {
 booted() { [ "$("$ADB" -s "$1" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; }
 
 cmd_boot() {
-  local headless=0 avd=$AVD_NAME serial=$SCREEN_SERIAL vc=8088
-  if [ "${1:-}" = "--headless" ]; then headless=1; avd=$QA_AVD_NAME; serial=$QA_SERIAL; vc=18088; fi
+  local headless=0 record=0 avd=$AVD_NAME serial=$SCREEN_SERIAL vc=8088
+  if [ "${1:-}" = "--headless" ] || [ "${1:-}" = "--record" ]; then headless=1; avd=$QA_AVD_NAME; serial=$QA_SERIAL; vc=18088; fi
+  [ "${1:-}" = "--record" ] && record=1
   [ -f "$AVD_HOME/$avd.ini" ] || die "AVD $avd 가 없습니다. setup.sh avd$([ $headless = 1 ] && echo ' --qa')"
   "$ADB" start-server >/dev/null 2>&1
   if booted "$serial"; then
+    [ $record = 1 ] && echo "  [주의] 이미 켜진 에뮬레이터는 소리·시계가 녹화용이 아닐 수 있습니다. setup.sh stop --record 후 다시 boot --record 하세요."
     ok "$serial 이미 실행 중"
   else
     local port=${serial#emulator-} log="${TMPDIR:-/tmp}/fogdrive-$avd.log"
     local args=(-avd "$avd" -port "$port" -no-snapshot -no-boot-anim -gpu host)
-    [ $headless = 1 ] && args+=(-no-window -no-audio)
+    if [ $record = 1 ]; then
+      # Recording: keep the sound, and start the clock at 11:00 KST today so the map is in day mode
+      # (the app follows the real sun at the car's position, and adb may not set the time).
+      args+=(-no-window -qemu -rtc "base=$(date -u +%Y-%m-%d)T02:00:00")
+    elif [ $headless = 1 ]; then
+      args+=(-no-window -no-audio)
+    fi
     say "$avd 부팅 ($serial$([ $headless = 1 ] && echo ', 창 없음')) · 로그 $log"
     nohup "$EMULATOR" "${args[@]}" >"$log" 2>&1 &
     local end=$(( $(date +%s) + 420 ))
@@ -247,13 +260,15 @@ cmd_boot() {
     sleep 5   # vehicle / navi services come up just after boot_completed
     ok "부팅 완료"
   fi
+  # Network time would pull the recording clock back to now.
+  [ $record = 1 ] && "$ADB" -s "$serial" shell settings put global auto_time 0 && ok "시계: $("$ADB" -s "$serial" shell date | tr -d '\r') (녹화용, 자동 시간 끔)"
   "$ADB" -s "$serial" emu geo fix "$HOME_LNG" "$HOME_LAT" >/dev/null
   "$ADB" -s "$serial" forward "tcp:$vc" tcp:8088 >/dev/null
   ok "위치: 향기5로 66 · Virtual Console: http://127.0.0.1:$vc/"
 }
 
 cmd_stop() {
-  local serial=$SCREEN_SERIAL; [ "${1:-}" = "--headless" ] && serial=$QA_SERIAL
+  local serial=$SCREEN_SERIAL; { [ "${1:-}" = "--headless" ] || [ "${1:-}" = "--record" ]; } && serial=$QA_SERIAL
   "$ADB" -s "$serial" emu kill >/dev/null 2>&1 && ok "$serial 종료" || ok "$serial 실행 중 아님"
 }
 
@@ -291,6 +306,26 @@ cmd_test() {
   ok "리포트: app/build/reports/tests/testDebugUnitTest/index.html"
 }
 
+# --- video tools ----------------------------------------------------------------------------
+
+cmd_video() {
+  say "영상 제작 도구 (docs/VIDEO.md)"
+  if ! command -v ffmpeg >/dev/null; then
+    [ "$OS" = mac ] && command -v brew >/dev/null || die "ffmpeg가 없습니다. https://ffmpeg.org 에서 설치하세요."
+    brew install ffmpeg
+  fi
+  ok "$(ffmpeg -version | head -1 | cut -d' ' -f1-3)"
+  if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
+    [ "$OS" = mac ] && command -v brew >/dev/null || die "Node.js 22 이상이 필요합니다. https://nodejs.org"
+    brew install node@22 && brew link --overwrite --force node@22
+    [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ] || die "PATH의 node가 아직 $(node -v)입니다(nvm 등). Node.js 22 이상을 먼저 쓰도록 바꾸세요."
+  fi
+  ok "Node.js $(node -v)"
+  # The CLI version the promo project pins (tools/demo/promo/package.json), and its agent skills.
+  (cd "$ROOT/tools/demo/promo" && npx -y hyperframes@0.8.196 --version >/dev/null && npx -y hyperframes@0.8.196 skills update >/dev/null)
+  ok "HyperFrames 0.8.196 + Claude Code 스킬(hyperframes, hyperframes-cli, hyperframes-registry, media-use)"
+}
+
 cmd_all() {
   cmd_sdk
   cmd_image
@@ -303,6 +338,6 @@ cmd_all() {
 
 cmd=${1:-doctor}; shift || true
 case "$cmd" in
-  doctor|sdk|image|avd|boot|stop|app|test|all) "cmd_$cmd" "$@" ;;
-  *) sed -n '2,14p' "$0"; exit 1 ;;
+  doctor|sdk|image|avd|boot|stop|app|test|all|video) "cmd_$cmd" "$@" ;;
+  *) sed -n '2,16p' "$0"; exit 1 ;;
 esac

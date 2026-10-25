@@ -29,6 +29,9 @@ doctor → sdk → image → avd → boot → app        (all = sdk ~ app + doct
 | `app` | 디버그 APK 빌드 → 권한 허용 설치(`-g`) → 실행 → 프로세스 확인 | 첫 빌드 3~5분 |
 | `test` | 단위 테스트 | 1분 |
 | `stop` | 에뮬레이터 종료 | 수 초 |
+| `video` | (선택) 시연·홍보 영상 도구: ffmpeg, Node.js 22+, HyperFrames 0.8.196과 Claude Code 스킬 설치. [VIDEO.md](VIDEO.md) | 수 분 |
+
+`boot --record`/`boot -record`는 영상 녹화용입니다. QA 에뮬레이터를 창 없이, 소리를 켜고, 시계를 오전 11시(KST)로 맞춰 띄웁니다(지도가 주간 모드).
 
 `--headless`/`-headless`를 붙이면 화면 없는 QA 에뮬레이터(`Pleos_Connect_QA`, `emulator-5556`, Virtual Console 포트 18088)로 같은 일을 합니다. 화면에 띄운 에뮬레이터와 데이터가 분리되어 서로 간섭하지 않습니다.
 

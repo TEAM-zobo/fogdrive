@@ -1,0 +1,44 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#111111; }
+.cam { position:absolute; left:0; top:0; width:2560px; height:1440px; transform-origin:0 0; }
+.cam video { position:absolute; left:0; top:0; width:2560px; height:1440px; }
+.cap { position:absolute; }
+.cap.bottom-left { left:96px; bottom:96px; }
+.cap.top-left { left:96px; top:96px; }
+.cap.top-right { right:96px; top:96px; }
+.cap-card { display:flex; gap:28px; align-items:center; background:rgba(255,255,255,0.97); border-radius:28px;
+  padding:34px 44px 36px; box-shadow:0 24px 64px rgba(17,17,17,0.22), 0 2px 6px rgba(17,17,17,0.08); max-width:1100px; }
+.cap-icon { color:#0081F8; width:84px; height:84px; border-radius:42px; background:#E8F2FE; display:flex;
+  align-items:center; justify-content:center; flex:none; }
+.cap h2 { font-size:56px; font-weight:800; letter-spacing:-0.035em; line-height:1.15; }
+.cap p { margin-top:12px; font-size:30px; font-weight:600; color:#4A5260; letter-spacing:-0.02em; }
+.legend { display:flex; gap:18px; margin-top:22px; }
+.lg { display:flex; align-items:center; gap:10px; font-size:26px; font-weight:700; color:#4A5260; }
+.lg i { display:block; width:44px; height:14px; border-radius:7px; }
+.title { position:absolute; }
+.tw { display:inline-block; transform-origin:50% 60%; }
+.title.top-left { left:120px; top:120px; }
+.title .tl { font-size:96px; font-weight:800; letter-spacing:-0.045em; line-height:1.12; }
+.title.on-dark { color:#FFFFFF; text-shadow:0 2px 6px rgba(0,0,0,0.35), 0 8px 40px rgba(0,0,0,0.55); }
+.stat { position:absolute; inset:0; }
+.stat-flood { position:absolute; inset:0; background:#0081F8; display:flex; align-items:center; justify-content:center; }
+.stat-in { text-align:center; color:#FFFFFF; }
+.stat-label { font-size:52px; font-weight:700; letter-spacing:-0.03em; opacity:0.9; }
+.stat-value { font-size:300px; font-weight:800; letter-spacing:-0.06em; line-height:1.0; font-variant-numeric:tabular-nums; margin:10px 0 18px; }
+.stat-value small { font-size:120px; margin-left:18px; letter-spacing:-0.03em; }
+.stat-sub { font-size:40px; font-weight:600; opacity:0.85; }
+#drive-wrap{position:absolute;inset:0;background:#0B0F14;transform-origin:50% 50%;}</style>
+  <div id="root" data-composition-id="drive" data-width="1920" data-height="1080" data-start="0" data-duration="10.6"><div id="drive-wrap" class="wrap"><div id="drive-cam" class="cam"><video id="drive-video" class="clip" data-start="0" data-duration="10.6" src="assets/shots/drive.mp4" muted playsinline></video></div><div id="drive-cap" class="clip cap bottom-left" data-start="1.0" data-duration="8.4"><div class="cap-card"><div class="cap-text"><h2><span class="w">달리는</span> <span class="w">모든</span> <span class="w">순간이,</span> <span class="w">지도가</span> <span class="w">됩니다</span></h2><p>지나온 길을 따라 안개가 걷히고, 나만의 지도가 그려집니다</p></div></div></div></div></div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#drive-cam",{"x": -1152.0, "y": -288.0, "scale": 1.2},{"x": -1152.0, "y": -288.0, "scale": 1.2},0);
+tl.fromTo("#drive-wrap",{opacity:0,scale:1.02},{opacity:1,scale:1,duration:0.6,ease:"sine.inOut"},0);
+tl.to("#drive-cam",{...{"x": -1250.0, "y": -357.0, "scale": 1.3},duration:2.0,ease:"sine.inOut"},2.5);
+tl.fromTo("#drive-cap .cap-card",{opacity:0,y:24,filter:"blur(10px)"},{opacity:1,y:0,filter:"blur(0px)",duration:0.45,ease:"expo.out"},1.0);
+tl.fromTo("#drive-cap .w",{opacity:0,filter:"blur(8px)"},{opacity:1,filter:"blur(0px)",duration:0.2,ease:"power4.out",stagger:0.067},1.12);
+tl.fromTo("#drive-cap p, #drive-cap .legend",{opacity:0},{opacity:1,duration:0.3,ease:"power2.out"},1.45);
+tl.to("#drive-cap .cap-card",{opacity:0,filter:"blur(8px)",duration:0.22,ease:"power3.in"},9.15);
+    window.__timelines["drive"] = tl;
+  </script>
+</template>

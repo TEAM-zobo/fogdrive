@@ -62,7 +62,8 @@ import com.zobo.fogdrive.record.RecordingService
  * Demo controls on the map and the driving view (Settings has the full set): the course playing,
  * its speed (applies mid-drive), stop, and once it finished, another run. On the map, with no demo
  * on, it folds into a "시연" chip that opens a course picker. [compact] (driving view) shows only
- * the running demo's controls.
+ * the running demo's controls, folded into a small chip until tapped, so the map stays clear while
+ * driving (and in screen recordings).
  */
 @Composable
 fun DemoControls(viewModel: MainViewModel, modifier: Modifier = Modifier, compact: Boolean = false) {
@@ -72,11 +73,18 @@ fun DemoControls(viewModel: MainViewModel, modifier: Modifier = Modifier, compac
     val courseId by viewModel.demoCourse.collectAsState()
     val speed by viewModel.demoSpeed.collectAsState()
     var open by remember { mutableStateOf(false) }
+    var unfolded by remember { mutableStateOf(false) }
     val course = DemoCourses.byId(courseId)
     fun start() = RecordingService.start(context, RecordingService.ACTION_DEMO_START)
     fun stop() = RecordingService.start(context, RecordingService.ACTION_DEMO_STOP)
 
     if (!session && compact) return
+    if (compact && !unfolded) {
+        TextButton(onClick = { unfolded = true }, modifier = modifier) {
+            Pill(if (playing) "시연 주행 중 · $speed km/h" else "시연 주행 완료", FogColors.Amber)
+        }
+        return
+    }
     if (!session && !open) {
         TextButton(onClick = { open = true }, modifier = modifier) {
             Pill("시연 주행", FogColors.Amber)
@@ -90,6 +98,7 @@ fun DemoControls(viewModel: MainViewModel, modifier: Modifier = Modifier, compac
                 Text(course.title, style = MaterialTheme.typography.titleMedium)
             }
             if (!session) TextButton(onClick = { open = false }) { Text("닫기", color = FogColors.TextSub) }
+            if (compact) TextButton(onClick = { unfolded = false }) { Text("접기", color = FogColors.TextSub) }
         }
         // Course picker while nothing plays (also after a drive finished, before the next one).
         if (!playing) DemoCourseSelect(viewModel, modifier = Modifier.fillMaxWidth())

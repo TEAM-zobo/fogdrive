@@ -3,12 +3,15 @@
 #
 #   powershell -ExecutionPolicy Bypass -File tools\setup\setup.ps1 doctor
 #   ... setup.ps1 sdk | image | avd [-qa] | boot [-headless] | app | test | all [-headless] | stop [-headless]
+#   ... setup.ps1 video          # demo/promo video tools: ffmpeg, Node.js 22+, HyperFrames skills
+#   ... setup.ps1 boot -record   # QA emulator for recording: no window, sound on, clock at 11:00 KST
 #
 # Saved as UTF-8 with BOM so Windows PowerShell 5.1 reads the Korean messages correctly.
 param(
   [Parameter(Position = 0)] [string] $Command = "doctor",
   [switch] $Headless,
-  [switch] $Qa
+  [switch] $Qa,
+  [switch] $Record
 )
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
@@ -234,16 +237,22 @@ function Cmd-Avd {
 
 function Cmd-Boot {
   $avd = $AvdName; $serial = $ScreenSerial; $vc = 8088
-  if ($Headless) { $avd = $QaAvdName; $serial = $QaSerial; $vc = 18088 }
-  if (-not (Test-Path "$AvdHome\$avd.ini")) { Die "AVD $avd 가 없습니다. setup.ps1 avd$(if ($Headless) { ' -qa' })" }
+  if ($Headless -or $Record) { $avd = $QaAvdName; $serial = $QaSerial; $vc = 18088 }
+  if (-not (Test-Path "$AvdHome\$avd.ini")) { Die "AVD $avd 가 없습니다. setup.ps1 avd$(if ($Headless -or $Record) { ' -qa' })" }
   Invoke-Adb start-server | Out-Null
-  if (Test-Booted $serial) { Ok "$serial 이미 실행 중" }
+  if (Test-Booted $serial) {
+    Ok "$serial 이미 실행 중"
+    if ($Record) { Write-Host "  [주의] 이미 켜진 에뮬레이터는 소리·시계 설정이 녹화용이 아닐 수 있습니다. setup.ps1 stop -record 후 다시 boot -record 하세요." }
+  }
   else {
     $port = $serial.Split("-")[1]
     $log = Join-Path $env:TEMP "fogdrive-$avd.log"
     $emuArgs = @("-avd", $avd, "-port", $port, "-no-snapshot", "-no-boot-anim", "-gpu", "host")
-    if ($Headless) { $emuArgs += @("-no-window", "-no-audio") }
-    Say "$avd 부팅 ($serial$(if ($Headless) { ', 창 없음' })) · 로그 $log"
+    if ($Record) {
+      # Recording: keep the sound; clock at 11:00 KST today so the map is in day mode.
+      $emuArgs += @("-no-window", "-qemu", "-rtc", "base=$((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))T02:00:00")
+    } elseif ($Headless) { $emuArgs += @("-no-window", "-no-audio") }
+    Say "$avd 부팅 ($serial$(if ($Headless -or $Record) { ', 창 없음' })) · 로그 $log"
     Start-Process -FilePath $Emulator -ArgumentList $emuArgs -RedirectStandardOutput $log -RedirectStandardError "$log.err"
     $end = (Get-Date).AddMinutes(7)
     while (-not (Test-Booted $serial)) {
@@ -253,13 +262,14 @@ function Cmd-Boot {
     Start-Sleep 5   # vehicle / navi services come up just after boot_completed
     Ok "부팅 완료"
   }
+  if ($Record) { Invoke-Adb -s $serial shell settings put global auto_time 0 | Out-Null; Ok "시계: $(Invoke-Adb -s $serial shell date) (녹화용, 자동 시간 끔)" }
   Invoke-Adb -s $serial emu geo fix $HomeLng $HomeLat | Out-Null
   Invoke-Adb -s $serial forward "tcp:$vc" tcp:8088 | Out-Null
   Ok "위치: 향기5로 66 · Virtual Console: http://127.0.0.1:$vc/"
 }
 
 function Cmd-Stop {
-  $serial = if ($Headless) { $QaSerial } else { $ScreenSerial }
+  $serial = if ($Headless -or $Record) { $QaSerial } else { $ScreenSerial }
   if (Test-Booted $serial) { Invoke-Adb -s $serial emu kill | Out-Null; Ok "$serial 종료" } else { Ok "$serial 실행 중 아님" }
 }
 
@@ -313,6 +323,19 @@ function Cmd-All {
   Cmd-Doctor
 }
 
+function Cmd-Video {
+  Say "영상 제작 도구 (docs\VIDEO.md)"
+  $ErrorActionPreference = "Continue"
+  if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements }
+  $node = Get-Command node -ErrorAction SilentlyContinue
+  if (-not $node -or [int]((& node -p "process.versions.node.split('.')[0]")) -lt 22) { winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements }
+  Write-Host "  새로 설치했다면 PowerShell을 다시 열어 PATH를 반영한 뒤 한 번 더 실행하세요."
+  Push-Location "$Root\tools\demo\promo"
+  try { & npx -y hyperframes@0.8.196 skills update | Out-Null; $code = $LASTEXITCODE } catch { $code = 1 } finally { Pop-Location }
+  if ($code -ne 0) { Die "HyperFrames 설치 실패: Node.js 22+와 npx가 PATH에 있는지 확인하세요." }
+  Ok "HyperFrames 0.8.196 + Claude Code 스킬"
+}
+
 switch ($Command) {
   "doctor" { Cmd-Doctor }
   "sdk" { Cmd-Sdk }
@@ -323,5 +346,6 @@ switch ($Command) {
   "app" { Cmd-App }
   "test" { Cmd-Test }
   "all" { Cmd-All }
+  "video" { Cmd-Video }
   default { Get-Content $PSCommandPath -TotalCount 5 | Select-Object -Skip 1; exit 1 }
 }
