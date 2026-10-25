@@ -296,7 +296,8 @@ cmd_all() {
   cmd_image
   if [ "${1:-}" = "--headless" ]; then cmd_avd --qa; else cmd_avd; fi
   cmd_boot "${1:-}"
-  cmd_app
+  # --headless installs on the QA emulator it just booted, never on a screen emulator the user has open.
+  if [ "${1:-}" = "--headless" ]; then FOG_SERIAL=$QA_SERIAL cmd_app; else cmd_app; fi
   cmd_doctor
 }
 

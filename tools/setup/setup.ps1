@@ -307,6 +307,8 @@ function Cmd-All {
   if ($Headless) { $script:Qa = $true }
   Cmd-Avd
   Cmd-Boot
+  # -headless installs on the QA emulator it just booted, never on a screen emulator the user has open.
+  if ($Headless) { $env:FOG_SERIAL = $QaSerial }
   Cmd-App
   Cmd-Doctor
 }

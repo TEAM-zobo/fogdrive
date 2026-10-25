@@ -23,7 +23,7 @@ doctor → sdk → image → avd → boot → app        (all = sdk ~ app + doct
 | --- | --- | --- |
 | `doctor` | 설치 상태 점검만 함(아무것도 바꾸지 않음) | 수 초 |
 | `sdk` | cmdline-tools가 없으면 받고, `platform-tools`·`emulator`·`platforms;android-35`·`build-tools;35.0.0` 설치, `local.properties` 생성 | 수 분 |
-| `image` | Pleos Connect v2.1.0 시스템 이미지 다운로드(약 4.7GB, 이어받기·SHA-1 확인) 후 SDK에 설치 | 네트워크에 따라 10분~1시간 |
+| `image` | Pleos Connect v2.1.0 시스템 이미지 다운로드(macOS arm64 약 4.7GB, Windows x86_64 약 4.1GB, 이어받기·SHA-1 확인) 후 SDK에 설치 | 네트워크에 따라 10분~1시간 |
 | `avd` | AVD `Pleos_Connect_v2.1` 생성(2560×1440, RAM 4GB, Cold boot). `--qa`/`-qa`는 QA용 `Pleos_Connect_QA`도 생성 | 수 초 |
 | `boot` | 에뮬레이터 부팅을 기다린 뒤 위치를 향기5로 66으로 옮기고 Virtual Console 포트(8088)를 연결 | 1~3분 |
 | `app` | 디버그 APK 빌드 → 권한 허용 설치(`-g`) → 실행 → 프로세스 확인 | 첫 빌드 3~5분 |
@@ -184,7 +184,7 @@ curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 
 | 증상 | 원인·해결 |
 | --- | --- |
-| `image`에서 체크섬 불일치 | 다운로드가 깨졌습니다. 캐시의 `crp_car_*_emulator.zip`을 지우고 다시 실행 |
+| `image`에서 체크섬 불일치 | 다운로드가 깨졌습니다. 캐시의 이미지 파일(macOS `crp_car_arm64_emulator.zip`, Windows `crp_car_emulator.zip`)을 지우고 다시 실행 |
 | `image`가 중간에 끊김 | 같은 명령을 다시 실행하면 이어받습니다 |
 | `boot`가 7분 넘게 안 끝남 | 로그(`$TMPDIR/fogdrive-<AVD>.log`, Windows `%TEMP%\fogdrive-<AVD>.log`) 확인. Windows는 대부분 하이퍼바이저 미설정 |
 | `emulator-5554`가 다른 에뮬레이터 | 다른 AVD가 먼저 5554를 잡고 있습니다. 끄고 다시 `boot`하거나 `FOG_SERIAL`로 대상 지정 |

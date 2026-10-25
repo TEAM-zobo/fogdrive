@@ -27,7 +27,7 @@
 ## 촬영 준비
 
 1. 테스트 환경을 띄웁니다: macOS `tools/setup/setup.sh all`, Windows `tools\setup\setup.ps1 all` ([`../SETUP.md`](../SETUP.md)).
-2. 앱을 초기화합니다: `adb shell pm clear com.zobo.fogdrive` 후 `tools/setup/setup.sh app` (권한 자동 허용으로 다시 설치·실행).
+2. 앱을 초기화합니다: `adb shell pm clear --user current com.zobo.fogdrive` 후(AAOS에서 앱은 운전자 사용자로 실행되므로 `--user current`가 꼭 필요합니다) `tools/setup/setup.sh app` (권한 자동 허용으로 다시 설치·실행).
 3. 에뮬레이터 위치가 향기5로 66(고양 향동)인지 확인합니다. 모든 시연 코스가 여기서 출발합니다.
 4. 기어는 P. 에뮬레이터는 P가 아니면 앱 화면을 가립니다(시연 모드는 실제 기어를 바꾸지 않으므로 P 그대로 둡니다).
 5. 소리: 에뮬레이터 오디오가 켜져 있어야 음성 안내가 녹음됩니다(`-no-audio`로 띄운 QA 에뮬레이터는 안 됨).
