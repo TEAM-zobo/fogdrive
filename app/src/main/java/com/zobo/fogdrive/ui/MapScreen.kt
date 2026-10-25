@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -96,8 +97,9 @@ fun MapScreen(viewModel: MainViewModel) {
 
         // Header: level and where the car is in the region dex. The nationwide count is in the dex
         // and this trip's progress on the driving view, so the map keeps to the essentials.
+        Column(Modifier.padding(24.dp).align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         FogCard(
-            modifier = Modifier.padding(24.dp).width(560.dp).align(Alignment.TopStart),
+            modifier = Modifier.width(560.dp),
             color = FogColors.Surface.copy(alpha = 0.95f),
             padding = 24.dp,
         ) {
@@ -133,8 +135,10 @@ fun MapScreen(viewModel: MainViewModel) {
                 }
             }
         }
+        // Notices (a stamp, a drop-off, a reset) briefly, right under the header: never over it.
+        EventToast(live.lastEvent, live.lastEventId, viewModel::eventShown, Modifier.widthIn(max = 560.dp))
+        }
 
-        EventToast(live.lastEvent, viewModel::eventShown, Modifier.padding(top = 24.dp).align(Alignment.TopCenter))
         DemoControls(viewModel, Modifier.padding(24.dp).align(Alignment.TopEnd))
 
         shownTrip?.let { t ->

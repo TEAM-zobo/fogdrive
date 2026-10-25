@@ -39,7 +39,7 @@ fun Modifier.clickSounds(): Modifier = pointerInput(Unit) {
             if (!change.pressed) {
                 val quick = change.uptimeMillis - down.uptimeMillis < viewConfiguration.longPressTimeoutMillis
                 // A control that made its own sound for this tap (tab, switch) is not ticked over.
-                val ownSound = Sfx.lastPlayedAt >= down.uptimeMillis
+                val ownSound = Sfx.lastOwnAt >= down.uptimeMillis
                 if (change.isConsumed && !moved && quick && down.id !in ClickSoundGate.muted && !ownSound) Sfx.play(Sound.TAP)
                 break
             }

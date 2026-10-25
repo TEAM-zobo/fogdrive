@@ -41,6 +41,8 @@ data class LiveStatus(
     val tripActive: Boolean = false,
     val trip: TripStats = TripStats(),
     val lastEvent: String? = null,
+    /** Distinct per notice, so the same text arriving again shows again (see EventToast). */
+    val lastEventId: Long = 0,
     /** Mission for the passengers on this trip, and its progress in the mission's unit. */
     val mission: CrewMission? = null,
     val missionProgress: Int = 0,

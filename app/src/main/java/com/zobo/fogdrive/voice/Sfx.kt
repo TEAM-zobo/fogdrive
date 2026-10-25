@@ -62,16 +62,22 @@ object Sfx {
         }
     }
 
-    /** When the last sound was asked for (uptime ms): a tap that already made its own sound skips the tick. */
-    val lastPlayedAt: Long get() = lastAt
+    /** When a control last made its own sound (uptime ms): that tap is not ticked over. */
+    @Volatile var lastOwnAt = 0L
+        private set
 
-    fun play(sound: Sound) {
+    /**
+     * Plays [sound]. [byControl]: a control made it for the tap being handled (a tab, a switch), so
+     * the generic tap tick is skipped for that tap; false for sounds not caused by a tap (driving).
+     */
+    fun play(sound: Sound, byControl: Boolean = true) {
         if (!enabled()) return
         val now = SystemClock.uptimeMillis()
         // Only a repeat is dropped: a chime right after a tap (driving starts) still plays.
         if (sound == lastSound && now - lastAt < MIN_GAP_MS) return
         lastAt = now
         lastSound = sound
+        if (byControl) lastOwnAt = now
         val gain = volume().coerceIn(0f, 1f)
         worker.post {
             val t = tracks[sound] ?: return@post

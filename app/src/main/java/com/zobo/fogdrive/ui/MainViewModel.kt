@@ -218,12 +218,6 @@ class MainViewModel : ViewModel() {
 
     fun routeToSuggestion(s: ExploreSuggestion): Boolean = navi.routeTo(s.lat, s.lng, "${s.district} ${s.name}")
 
-    /** Entered 읍·면·동 out of all of them, for the map header. */
-    val nationwide: StateFlow<Pair<Int, Int>?> = regionCounts
-        .map { n -> n?.let { it.visitedDongs.size to it.atlas.dongs.size } }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
     /** 읍·면·동 entered for the first time on the current trip (all their cleared cells are from it). */
     val tripNewDongs: StateFlow<Int> = combine(version, live.map { it.tripActive }.distinctUntilChanged()) { _, active ->
         val trip = repo.currentTripId
@@ -312,9 +306,9 @@ class MainViewModel : ViewModel() {
         FogRuntime.mapPrefs.setSoundVolume(percent)
     }
 
-    /** The event notice [message] has been shown: clear it unless a newer one replaced it meanwhile. */
-    fun eventShown(message: String) {
-        FogRuntime.live.update { if (it.lastEvent == message) it.copy(lastEvent = null) else it }
+    /** The event notice [id] has been shown: clear it unless a newer one replaced it meanwhile. */
+    fun eventShown(id: Long) {
+        FogRuntime.live.update { if (it.lastEventId == id) it.copy(lastEvent = null) else it }
     }
 
     fun setVoice(on: Boolean) {
@@ -421,7 +415,7 @@ class MainViewModel : ViewModel() {
         suggestionSkip.value = 0
         viewModelScope.launch {
             repo.reset()
-            FogRuntime.live.update { it.copy(lastEvent = "기록을 모두 지웠어요. 처음 상태에서 다시 시작해요") }
+            FogRuntime.live.update { it.copy(lastEvent = "기록을 모두 지웠어요. 처음 상태에서 다시 시작해요", lastEventId = System.nanoTime()) }
         }
     }
 

@@ -92,9 +92,7 @@ fun LoadingOverlay() {
             Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(FogColors.Bg, FogColors.SurfaceHigh)))
-                // Swallow touches meant for the app underneath while it is covered.
-                .muteClickSounds()
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+                .blockingCover(),
             contentAlignment = Alignment.Center,
         ) {
             DriftingFog()
@@ -222,8 +220,7 @@ fun MapLoadingCover(visible: Boolean) {
             Modifier
                 .fillMaxSize()
                 .background(FogColors.Bg)
-                .muteClickSounds()
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+                .blockingCover(),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -244,3 +241,8 @@ fun MapLoadingCover(visible: Boolean) {
         }
     }
 }
+
+/** A cover takes every touch meant for what is under it, silently (no ripple, no click sound). */
+@Composable
+private fun Modifier.blockingCover(): Modifier =
+    muteClickSounds().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}

@@ -256,6 +256,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     // The map view's lifecycle. The holder outlives the screens that show it: created once, started
     // and resumed while a screen shows it and the activity is in front, stopped when it leaves.
     private var created = false
+    private var destroyed = false
     private var started = false
     private var resumed = false
     private var lifecycle: Lifecycle? = null
@@ -271,7 +272,8 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
 
     /** Creates the map once; [setup] runs when it is ready. Later calls do nothing. */
     fun create(setup: (MapLibreMap) -> Unit) {
-        if (created) return
+        // Destroyed is final: a destroyed map view cannot be created again.
+        if (created || destroyed) return
         created = true
         mapView.onCreate(null)
         mapView.getMapAsync {
@@ -307,6 +309,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
 
     fun destroy() {
         detach()
+        destroyed = true
         if (created) {
             created = false
             map = null
@@ -806,9 +809,10 @@ fun FogMap(
     // The setup below runs once per map, possibly after this screen has left: it must not use this
     // screen's parameters beyond the starting camera (the effects keyed on mapReady apply them).
     DisposableEffect(holder, lifecycleOwner) {
-        val token = holder.attach(lifecycleOwner)
         holder.onUserMoved = { latestOnUserMoved() }
         holder.onFocusShown = { latestOnFocusShown() }
+        // Created before attaching: attach replays ON_START/ON_RESUME at once, and the map view must
+        // see onCreate before them.
         holder.create { map ->
             holder.onMapReady(map)
             holder.overlay.map = map
@@ -827,7 +831,9 @@ fun FogMap(
             map.setMaxZoomPreference(18.0)
             map.cameraPosition = CameraPosition.Builder()
                 .target(LatLng(current?.first ?: DemoCourses.START.lat, current?.second ?: DemoCourses.START.lng))
-                .zoom(if (driving) DRIVING_ZOOM else PARKED_ZOOM)
+                // Always the parked view: if this screen is (or later becomes) the driving view,
+                // setDriving(true) moves in to the driving zoom once the map is ready.
+                .zoom(PARKED_ZOOM)
                 .build()
             holder.setNight(context, isNight(context))
             // While driving the fog is re-based only when a re-render lands (adoptRenderedCamera).
@@ -840,6 +846,7 @@ fun FogMap(
             })
             if (holder.showFocus(animate = false)) holder.onFocusShown()
         }
+        val token = holder.attach(lifecycleOwner)
         onDispose {
             if (shared == null) holder.destroy() else holder.detach(token)
         }

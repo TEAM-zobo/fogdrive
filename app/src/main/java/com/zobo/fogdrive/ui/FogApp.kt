@@ -68,7 +68,7 @@ fun FogApp(
     val lastRestricted = remember { arrayOf(restricted) }
     LaunchedEffect(restricted) {
         val was = lastRestricted[0]
-        if (was != null && restricted != null && was != restricted) Sfx.play(if (restricted) Sound.START else Sound.STOP)
+        if (was != null && restricted != null && was != restricted) Sfx.play(if (restricted) Sound.START else Sound.STOP, byControl = false)
         lastRestricted[0] = restricted
     }
 

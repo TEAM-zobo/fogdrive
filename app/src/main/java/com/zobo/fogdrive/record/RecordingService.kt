@@ -414,7 +414,7 @@ class RecordingService : Service() {
             onArrival = { a -> FogRuntime.navi.emitDemoArrival(a) },
             onFinished = {
                 FogRuntime.live.update {
-                    it.copy(demoPlaying = false, lastEvent = "시연 주행 완료 · 다른 코스를 바로 시작하거나, 시연 중지로 실제 위치로 돌아가요")
+                    it.copy(demoPlaying = false, lastEvent = "시연 주행 완료 · 다른 코스를 바로 시작하거나, 시연 중지로 실제 위치로 돌아가요", lastEventId = System.nanoTime())
                 }
             },
         )
@@ -446,7 +446,7 @@ class RecordingService : Service() {
     }
 
     private fun note(message: String) {
-        FogRuntime.live.update { it.copy(lastEvent = message) }
+        FogRuntime.live.update { it.copy(lastEvent = message, lastEventId = System.nanoTime()) }
     }
 
     private fun startAsForeground() {

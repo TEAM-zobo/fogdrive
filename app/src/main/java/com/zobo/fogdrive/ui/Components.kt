@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -224,32 +225,31 @@ fun WornRoadsButton(on: Boolean, onToggle: () -> Unit) {
  * arriving again later (a second demo run, a second reset) is shown again.
  */
 @Composable
-fun EventToast(message: String?, onShown: (String) -> Unit, modifier: Modifier = Modifier) {
+fun EventToast(message: String?, id: Long, onShown: (Long) -> Unit, modifier: Modifier = Modifier) {
     var visible by remember { mutableStateOf(false) }
     // Kept after hiding so the card keeps its text while it fades out.
     var text by remember { mutableStateOf("") }
-    LaunchedEffect(message) {
+    LaunchedEffect(id) {
         if (message == null) return@LaunchedEffect
         text = message
         visible = true
         delay(TOAST_MS)
         visible = false
-        onShown(message)
+        onShown(id)
     }
     AnimatedVisibility(visible = visible, modifier = modifier, enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
-        Surface(
-            shape = CardShape,
-            color = FogColors.Surface.copy(alpha = 0.97f),
-            border = BorderStroke(1.dp, FogColors.Outline),
-            shadowElevation = 4.dp,
-        ) {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = FogColors.TextMain,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
-            )
-        }
+        // A plain box, not a Surface: a notice must not take the taps meant for what is under it.
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = FogColors.TextMain,
+            modifier = Modifier
+                .shadow(4.dp, CardShape)
+                .clip(CardShape)
+                .background(FogColors.Surface.copy(alpha = 0.97f))
+                .border(1.dp, FogColors.Outline, CardShape)
+                .padding(horizontal = 24.dp, vertical = 14.dp),
+        )
     }
 }
 
