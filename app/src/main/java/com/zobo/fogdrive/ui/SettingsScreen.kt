@@ -160,7 +160,7 @@ fun SettingsScreen(
             val voice by viewModel.voice.collectAsState()
             PrefToggle(
                 "음성 안내",
-                "주행 중 새 동네, 스탬프, 도착, 동승자 미션, 주행 요약을 짧게 말해 줘요. 화면을 보지 않아도 돼요.",
+                "처음 들어선 동네, 동네 개척률 단계, 하차 후 주행 요약을 짧게 말해 줘요. 화면을 보지 않아도 돼요.",
                 voice,
             ) { viewModel.setVoice(it) }
             val sound by viewModel.sound.collectAsState()

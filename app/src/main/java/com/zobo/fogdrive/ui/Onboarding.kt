@@ -59,7 +59,7 @@ private val pages: List<TutorialPage>
         ),
         TutorialPage(
             Icons.Outlined.RecordVoiceOver, FogColors.Accent, "주행 중에는 소리로",
-            "달리는 동안 화면은 지도와 숫자 몇 개만 보여 주고, 새 동네·스탬프·주행 요약은 음성으로 알려 줘요. " +
+            "달리는 동안 화면은 지도와 숫자 몇 개만 보여 주고, 처음 들어선 동네·개척률 단계·주행 요약은 음성으로 알려 줘요. " +
                 "동승자가 있으면 이번 주행 미션도 생겨요.",
         ),
         TutorialPage(

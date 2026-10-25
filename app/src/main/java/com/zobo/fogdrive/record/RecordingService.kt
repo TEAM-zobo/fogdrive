@@ -236,7 +236,6 @@ class RecordingService : Service() {
             missionDone = true
             apply(RecorderEvent.Stamp(StampCode.CREW_MISSION, fix.lat, fix.lng, fix.timeMs))
             note("동승자 미션 성공: ${m.title()}")
-            FogRuntime.announcer.say("동승자 미션 성공! ${m.title()}", important = true)
         }
     }
     private var trackTrip = 0L
@@ -298,7 +297,6 @@ class RecordingService : Service() {
                 mission = if (FogRuntime.vehicle.state.value.hasPassenger) CrewMission.pick(event.at) else null
                 FogRuntime.live.update { it.copy(mission = mission, missionProgress = 0, lastTrip = null) }
                 note("새 주행 기록을 시작했어요")
-                mission?.let { FogRuntime.announcer.say("동승자 미션: ${it.title()}", important = true) }
             }
             is RecorderEvent.TripEnded -> {
                 // Close the route where the car stopped (points are otherwise only every 20 m).
@@ -324,13 +322,11 @@ class RecordingService : Service() {
                     ArrivalKind.DETOUR -> "안개 구역 원정 성공"
                 }
                 note("$what: ${event.name} 주변을 밝혔어요 (+${Area.formatCells(event.newCells)})")
-                FogRuntime.announcer.say("$what. ${event.name} 주변 안개를 걷었어요", important = true)
             }
             is RecorderEvent.Stamp -> {
                 repo.addStamp(event.code.name, event.lat, event.lng, event.at, repo.currentTripId)
                 note("스탬프 획득: ${event.code.title}")
                 tripStamps += event.code
-                if (event.code != StampCode.CREW_MISSION) FogRuntime.announcer.say("${event.code.title} 스탬프")
             }
         }
     }

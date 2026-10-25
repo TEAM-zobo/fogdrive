@@ -241,7 +241,7 @@
           <tr><td>주간 주행 리텐션(W1/W4/W12): 기록이 1건 이상인 주의 비율</td><td>자동 기록(시동만 걸면 됨), 오늘·이번 주·이번 달·시즌 챌린지</td><td>Adjust D7 13% / D30 7%</td></tr>
           <tr><td>월 신규 개척 읍·면·동 수, 도감 진행률</td><td>지역 도감, 안 가본 동네 추천, 탐험 우회 경로, 동네 이야기</td><td>정체되면 추천·이야기 카드 노출 강화</td></tr>
           <tr><td>챌린지 완료율, 연속 달성 주차</td><td>기간별 챌린지, 스탬프 29종, 레벨 곡선</td><td>Duolingo 7일 스트릭 효과</td></tr>
-          <tr><td>주행 요약 조회율, 음성 안내 유지율</td><td>하차 후 주행 요약 카드, 음성 안내(새 동네·스탬프·요약)</td><td>주행 1회당 가치 체감</td></tr>
+          <tr><td>주행 요약 조회율, 음성 안내 유지율</td><td>하차 후 주행 요약 카드, 음성 안내(새 동네·개척률 단계·요약)</td><td>주행 1회당 가치 체감</td></tr>
           <tr><td>동승자 미션 참여율, 공유 카드 생성 수</td><td>동승자 미션, 내 안개지도 카드</td><td>가족 세그먼트·바이럴, 지자체 스탬프 투어 제휴 성과</td></tr>
         </tbody>
       </table>
@@ -287,12 +287,14 @@
       <figure><img src="images/02-driving.jpg" alt="주행 모드: 회전 안내·제한속도, 도로 양쪽만 걷힘"><figcaption>주행 모드: 회전 안내·제한속도, 도로 양쪽만 걷힘</figcaption></figure>
       <figure><img src="images/03-trip-summary.jpg" alt="도착: 이번 주행 요약, 처음 가 본 동네"><figcaption>도착: 이번 주행 요약, 처음 가 본 동네</figcaption></figure>
       <figure><img src="images/04-map.jpg" alt="정차 중 지도: 2단계 안개, 안 가본 동네 추천"><figcaption>정차 중 지도: 2단계 안개, 안 가본 동네 추천</figcaption></figure>
-      <figure><img src="images/05-record.jpg" alt="기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율"><figcaption>기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율</figcaption></figure>
+      <figure><img src="images/05-record.jpg" alt="기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율, 이번 주/이번 달 리포트, 개척 타임랩스"><figcaption>기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율, 이번 주/이번 달 리포트, 개척 타임랩스</figcaption></figure>
       <figure><img src="images/06-dex.jpg" alt="지역 도감: 시·도별 달성률"><figcaption>지역 도감: 시·도별 달성률</figcaption></figure>
       <figure><img src="images/07-stamps.jpg" alt="스탬프 29종"><figcaption>스탬프 29종</figcaption></figure>
       <figure><img src="images/08-settings.jpg" alt="설정: SDK 연결 상태, 시연 모드"><figcaption>설정: SDK 연결 상태, 시연 모드</figcaption></figure>
       <figure><img src="images/09-share-card.jpg" alt="내 안개지도 카드"><figcaption>내 안개지도 카드</figcaption></figure>
       <figure><img src="images/10-tutorial.jpg" alt="첫 실행 튜토리얼"><figcaption>첫 실행 튜토리얼</figcaption></figure>
+      <figure><img src="images/11-dex-dong.jpg" alt="도감 동 카드: 개척 단계 배지"><figcaption>도감 동 카드: 개척 단계 배지</figcaption></figure>
+      <figure><img src="images/12-settings-privacy.jpg" alt="설정: 운전자 프로필별 기록, 동기화"><figcaption>설정: 운전자 프로필별 기록, 동기화</figcaption></figure>
     </div>
     <div class="table-wrap" style="margin-top:12px">
       <table>
@@ -311,7 +313,7 @@
           <tr><td>행정구역 정복률·지역 도감(시·도→시·군·구→읍·면·동), 두 단계 안개, 하차 지역 표시</td><td>admdongkor 행정구역 경계 (CC BY 4.0, 통계청)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>백업 내보내기·불러오기, 클라우드 동기화</td><td>Pleos Sync SDK 미공개 → 기기 내 보낼 함 대체 구현</td><td><span class="tag todo">SDK 대기</span></td></tr>
           <tr><td>시연 모드: 코스 17개(서울·수도권·부산·강릉), 20~200km/h, 왕복, 회전 안내·도착 대체 생성</td><td>OSRM 실제 도로 경로</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>음성 안내(새 동네·스탬프·도착·미션·주행 요약)</td><td>Pleos TextToSpeech SDK 3.3.1 온디바이스 합성, 내비 안내 오디오로 재생 (10/25 교체, 에뮬레이터에서 재생 확인)</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>음성 안내(새 동네·개척률 단계·주행 요약)</td><td>Pleos TextToSpeech SDK 3.3.1 온디바이스 합성, 내비 안내 오디오로 재생 (10/25 교체, 에뮬레이터에서 재생 확인)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>첫 실행 튜토리얼(5장, 설정에서 다시 보기)</td><td>앱 내부</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>주행 요약 카드(면적·거리·새 길·처음 가 본 동네·스탬프·미션)</td><td>앱 내부 계산</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>동승자 미션(주행 화면엔 진행 한 줄, 성공 시 스탬프)</td><td>Vehicle Seat</td><td><span class="tag done">구현</span></td></tr>

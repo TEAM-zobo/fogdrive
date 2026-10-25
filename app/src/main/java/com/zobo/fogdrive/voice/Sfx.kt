@@ -5,6 +5,7 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import kotlin.math.PI
@@ -41,8 +42,15 @@ object Sfx {
     private const val SAMPLE_RATE = 48_000
     /** The same sound closer together than this plays once (a fast double tap shouldn't stack). */
     private const val MIN_GAP_MS = 45L
+    /**
+     * A sound that would start this long after its tap is dropped: when the app stalls (a heavy map
+     * frame, the 10x demo), late sounds would otherwise come out after the fact and pile up back to
+     * back, which sounds dragged out. About the point where a click stops feeling attached to a tap.
+     */
+    private const val MAX_LATE_MS = 150L
 
-    private val worker = Handler(HandlerThread("Sfx").apply { start() }.looper)
+    // Audio priority: plays are not held up behind the map's render and decode threads.
+    private val worker = Handler(HandlerThread("Sfx", Process.THREAD_PRIORITY_URGENT_AUDIO).apply { start() }.looper)
     private val tracks = HashMap<Sound, AudioTrack>()
     private var enabled: () -> Boolean = { false }
     private var volume: () -> Float = { 1f }
@@ -71,10 +79,15 @@ object Sfx {
     /**
      * Plays [sound]. [byControl]: a control made it for the tap being handled (a tab, a switch), so
      * the generic tap tick is skipped for that tap; false for sounds not caused by a tap (driving).
+     * [at]: when the tap happened (uptime ms, e.g. the finger lifting; default: now for a control's
+     * sound); a tap sound that can't start within [MAX_LATE_MS] of it is skipped rather than played
+     * late. Sounds not caused by a tap (driving starts, a milestone) always play.
      */
-    fun play(sound: Sound, byControl: Boolean = true) {
+    fun play(sound: Sound, byControl: Boolean = true, at: Long? = null) {
         if (!enabled()) return
         val now = SystemClock.uptimeMillis()
+        val since = at ?: now.takeIf { byControl }
+        if (since != null && now - since > MAX_LATE_MS) return
         // Only a repeat is dropped: a chime right after a tap (driving starts) still plays.
         if (sound == lastSound && now - lastAt < MIN_GAP_MS) return
         lastAt = now
@@ -83,6 +96,11 @@ object Sfx {
         val gain = volume().coerceIn(0f, 1f)
         worker.post {
             val t = tracks[sound] ?: return@post
+            val late = if (since == null) 0L else SystemClock.uptimeMillis() - since
+            if (late > MAX_LATE_MS) {
+                Log.d(TAG, "$sound dropped, ${late} ms late")
+                return@post
+            }
             runCatching {
                 t.setVolume(gain)
                 // A static track replays from the start after stop + reload.
@@ -109,6 +127,8 @@ object Sfx {
                     .build(),
             )
             .setTransferMode(AudioTrack.MODE_STATIC)
+            // Fast track: mixed by the real-time FastMixer, so system load doesn't stretch or stutter it.
+            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
             .setBufferSizeInBytes(pcm.size * 2)
             .build()
         track.write(pcm, 0, pcm.size)
