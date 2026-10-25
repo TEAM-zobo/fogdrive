@@ -337,14 +337,15 @@ def tc_driving_mode(ctx):
 
 @case("TC-12", "탐험 우회 경로", "출발 전 목적지가 있으면 우회 제안 카드가 뜨고, 주행이 시작되면 숨겨진다",
       "앱 초기화, 시연 모드(목적지: 뚝섬한강공원)",
-      ["설정 → 시연 시작 → 지도", "출발 전(P단) 카드 확인", "주행 시작 후 카드 확인"],
+      ["지도 → 시연 주행 → 시연 시작", "출발 전(P단) 카드 확인", "주행 시작 후 카드 확인"],
       ["P단: '탐험 우회 경로' 카드와 경유지 추가 버튼", "주행 중: 카드 숨김"])
 def tc_detour(ctx):
     fresh(ctx)
-    ctx.dev.tap_text("설정")
-    ctx.dev.tap_text("시연 시작")
+    # Started from the map's own demo panel: the demo stays parked for only ~1 s, too short to also
+    # switch tabs, so card and button are checked from one UI dump right after the start.
     ctx.dev.tap_text("지도")
-    # The demo stays parked for only ~1 s, so card and button are checked from one UI dump.
+    ctx.dev.tap_text("시연 주행")
+    ctx.dev.tap_text("시연 시작")
     end = time.time() + 3
     nodes = []
     while time.time() < end:

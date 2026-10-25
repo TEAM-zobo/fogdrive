@@ -43,8 +43,10 @@ class FogOverlayView(context: Context) : View(context) {
     var showWornRoads = true
     /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
     var revisits: () -> Map<Long, Int> = { emptyMap() }
-    /** Changes whenever explored cells or revisit counts change (the fog is redrawn then). */
-    var dataVersion: () -> Long = { 0L }
+    /** Changes whenever explored cells change (the fog is redrawn then). */
+    var cellsVersion: () -> Int = { 0 }
+    /** Changes whenever revisit counts change (the worn roads are redrawn then, if shown). */
+    var revisitVersion: () -> Int = { 0 }
     var current: Pair<Double, Double>? = null
     var landings: List<Pair<Double, Double>> = emptyList()
     var detour: Pair<Double, Double>? = null
@@ -66,8 +68,16 @@ class FogOverlayView(context: Context) : View(context) {
     var regions: RegionLayer? = null
         set(value) {
             field = value
+            // A new layer comes with every explored-cells change; the fog only depends on the atlas and
+            // the visited 읍·면·동, so keep the old one in the fog key while those are unchanged.
+            val fog = fogRegions
+            if (value == null || fog == null || fog.atlas !== value.atlas || fog.counts.visitedDongs != value.counts.visitedDongs) {
+                fogRegions = value
+            }
             invalidate()
         }
+    /** [regions] as the fog tile's key sees it (see the setter). */
+    private var fogRegions: RegionLayer? = null
     /** The region atlas could not be loaded: draw light fog everywhere instead of waiting for it. */
     var regionsUnavailable = false
         set(value) {
@@ -272,31 +282,33 @@ class FogOverlayView(context: Context) : View(context) {
         val cellPx = px / MASK_DIV
         var dz = 0
         while (dz < MAX_DZ && cellPx * (1 shl dz) < 1.5) dz++
-        val key = FogMaskKey(dataVersion(), dz, night, regions, regionsUnavailable, showWornRoads && px >= WORN_MIN_PX)
+        val worn = showWornRoads && px >= WORN_MIN_PX
+        // Revisit counts only matter while worn roads are drawn: otherwise driving over known roads
+        // would re-render an unchanged fog every few hundred ms.
+        val data = (cellsVersion().toLong() shl 32) or (if (worn) revisitVersion().toLong() and 0xFFFFFFFFL else 0L)
+        val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable, worn)
         val t = tile
+        if (t == null || !t.covers(x0, y0, x1, y1)) {
+            // Before the first tile, or past the rendered area until the new tile lands: plain dark
+            // fog, never the bare map.
+            fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
+            canvas.drawPaint(fogFallback)
+        }
         if (t != null) {
             val s = px / t.cellPx
             tileMatrix.setScale(s.toFloat(), s.toFloat())
             tileMatrix.postTranslate(((t.x0 - x0) * px).toFloat(), ((t.y0 - y0) * px).toFloat())
-            if (!t.covers(x0, y0, x1, y1)) {
-                // Past the rendered area until the new tile lands: plain dark fog, never the bare map.
-                fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
-                canvas.drawPaint(fogFallback)
-            }
             canvas.drawBitmap(t.bitmap, tileMatrix, maskPaint)
             if (drawn !== t) {
                 drawn?.let { retire(it) }
                 drawn = t
             }
             t.worn?.let { worn ->
-                val ws = s / FogMaskRenderer.WORN_SHARPER
+                val ws = s / t.wornScale
                 tileMatrix.setScale(ws.toFloat(), ws.toFloat())
                 tileMatrix.postTranslate(((t.x0 - x0) * px).toFloat(), ((t.y0 - y0) * px).toFloat())
                 canvas.drawBitmap(worn, tileMatrix, maskPaint)
             }
-        } else {
-            fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
-            canvas.drawPaint(fogFallback)
         }
         fun fits(k: FogMaskKey, jx0: Double, jy0: Double, jx1: Double, jy1: Double, jCellPx: Double) = k.dz == dz &&
             x0 >= jx0 && y0 >= jy0 && x1 <= jx1 && y1 <= jy1 && (cellPx / jCellPx) in 0.6..1.6
@@ -312,8 +324,11 @@ class FogOverlayView(context: Context) : View(context) {
         }
         lastDataRequest = now
         // Render a margin around the view so panning and driving re-renders reuse the tile.
-        val mx = (x1 - x0) * TILE_MARGIN
-        val my = (y1 - y0) * TILE_MARGIN
+        // Driving: the view already includes the slide margin and the tile is redrawn for new cells
+        // every few hundred ms anyway, so a small extra margin keeps the bitmaps (and uploads) small.
+        val margin = if (freezeTransform) DRIVING_TILE_MARGIN else TILE_MARGIN
+        val mx = (x1 - x0) * margin
+        val my = (y1 - y0) * margin
         val wantDz = dz
         val job = FogMaskRenderer.Job(
             key, x0 - mx, y0 - my, x1 + mx, y1 + my, cellPx,
@@ -381,8 +396,7 @@ class FogOverlayView(context: Context) : View(context) {
         }
     }
 
-    private fun visible(o: Outline, x0: Double, y0: Double, x1: Double, y1: Double): Boolean =
-        o.bbox[2] >= x0 && o.bbox[0] <= x1 && o.bbox[3] >= y0 && o.bbox[1] <= y1
+    private fun visible(o: Outline, x0: Double, y0: Double, x1: Double, y1: Double): Boolean = o.intersects(x0, y0, x1, y1)
 
     /**
      * Boundary lines are built in screen pixels from only the on-screen part of each outline (see
@@ -491,7 +505,9 @@ class FogOverlayView(context: Context) : View(context) {
         private val dash = if (dashDp > 0) floatArrayOf(dashDp * density, dashDp * density * 0.8f) else null
         /** Length of one dash and gap, or 0 for a solid line. */
         val dashPeriod = dash?.sum() ?: 0f
-        fun dashAt(phase: Float) = DashPathEffect(dash, phase)
+        /** Dash effects for [DASH_PHASES] phases, made once: a pan frame strokes many dashed pieces. */
+        private val dashes = dash?.let { d -> Array(DASH_PHASES) { DashPathEffect(d, dashPeriod * it / DASH_PHASES) } }
+        fun dashAt(phase: Float) = dashes!![(phase / dashPeriod * DASH_PHASES).toInt().coerceIn(0, DASH_PHASES - 1)]
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = argb
             style = Paint.Style.STROKE
@@ -532,8 +548,6 @@ class FogOverlayView(context: Context) : View(context) {
     }
 
     companion object {
-        const val PROVINCE = 0
-        const val DISTRICT = 1
         const val DONG = 2
         /** Screen px per grid cell from which 읍·면·동 (zoom ~13) / 시·군·구 (zoom ~9) are drawn. */
         const val DONG_LINES_PX = 4.0
@@ -556,9 +570,12 @@ class FogOverlayView(context: Context) : View(context) {
         const val CLUSTER_DP = 44f
         /** Boundary points closer than this (screen px, Manhattan) are merged when stroking. */
         private const val MIN_SEGMENT_PX = 1.5f
+        /** Dash phases a dashed boundary snaps to (one dash period / 16 is under 1 px). */
+        private const val DASH_PHASES = 16
         const val MASK_DIV = 3
         /** Extra fog rendered on each side of the view, as a share of its size. */
         private const val TILE_MARGIN = 0.3
+        private const val DRIVING_TILE_MARGIN = 0.1
         /** At most one fog redraw this often for new cells alone (driving reveals cells every fix). */
         private const val DATA_REDRAW_MS = 300L
         /** How long a replaced tile's bitmaps stay untouched before the renderer may reuse them. */

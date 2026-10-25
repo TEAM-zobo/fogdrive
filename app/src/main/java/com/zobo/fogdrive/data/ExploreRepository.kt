@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Explored cells live in memory (fast lookups for the fog overlay and detour planner)
@@ -89,15 +90,14 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     private val visitCounts = ConcurrentHashMap<Long, Int>()
     val revisits: Map<Long, Int> get() = visitCounts
     /** Bumped when [revisits] changes (no [version] bump for that, see [revisit]): the fog redraws on it. */
-    @Volatile
-    var revisitVersion = 0
-        private set
+    private val revisitCounter = AtomicInteger()
+    val revisitVersion: Int get() = revisitCounter.get()
 
     override fun revisit(cells: Collection<Long>) {
         // No version bump: that would rebuild the coarse fog levels on every fix over a known road.
         // [revisitVersion] tells the map to redraw the worn roads instead.
         for (c in cells) visitCounts.merge(c, 2) { old, _ -> old + 1 }
-        revisitVersion++
+        revisitCounter.incrementAndGet()
         val list = cells.toList()
         scope.launch(Dispatchers.IO) { list.chunked(SQL_IN_LIMIT).forEach { db.dao().addVisit(it) } }
     }
@@ -214,7 +214,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             resetGeneration++
             cells.clear()
             visitCounts.clear()
-            revisitVersion++
+            revisitCounter.incrementAndGet()
             orderSize = 0
             levelCache.clear()
             tripCells.clear()

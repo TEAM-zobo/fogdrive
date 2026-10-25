@@ -3,13 +3,16 @@ package com.zobo.fogdrive.ui
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.content.res.Configuration
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.SurfaceTexture
 import android.os.SystemClock
 import android.util.Log
 import android.view.Choreographer
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -49,8 +52,8 @@ import kotlin.math.abs
 private const val TAG = "FogMap"
 private const val DRIVING_ZOOM = 16.0
 private const val DRIVING_MAX_FPS = 20
-/** Vsyncs between the engine's "frame rendered" and re-basing the slide (see onMapReady). */
-private const val ADOPT_DELAY_FRAMES = 2
+/** Re-base anyway if the re-rendered map hasn't reached the screen by then (no frame, lost surface). */
+private const val ADOPT_TIMEOUT_MS = 400L
 /** Extra map rendered around the viewport so the pre-rendered map can slide under the car. */
 private const val PAN_MARGIN_PX = 320
 /** Re-render the map once the slide uses this much of the margin. */
@@ -252,8 +255,20 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private var pxPerY = 0.0
     private var camReady = false
     private var recenterPending = false
-    private var cameraMoved = false
-    private var adoptQueued = false
+    /** Bumped per re-render, so late callbacks of an earlier one are ignored. */
+    private var recenterGen = 0
+    /** The render thread passed the marker queued after the camera move (see [recenter]). */
+    private var markerPassed = false
+    /** A frame rendered after the marker: drawn with the new camera. */
+    private var newFrameRendered = false
+    /** The new frame is on screen, held in place by a texture offset until [adoptRenderedCamera]. */
+    private var compensated = false
+    // The camera the next re-base moves to, in tile units.
+    private var nextCamX = 0.0
+    private var nextCamY = 0.0
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val textureShift = Matrix()
+    private val adoptTimeout = Runnable { if (recenterPending) adoptRenderedCamera() }
     private var forceStep = false
     private var ticking = false
 
@@ -282,24 +297,57 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         // Default prefetch loads tiles 4 zoom levels coarser than shown; 2 still covers zooming out
         // a step but holds far fewer tiles in native memory and fetches less over the car's link.
         map.prefetchZoomDelta = 2
-        // A frame that was already being rendered when the camera moved still shows the old centre;
-        // adopting it made the map jump back and then forward. Only frames rendered after the engine
-        // applied the move count.
-        mapView.addOnCameraDidChangeListener { if (recenterPending) cameraMoved = true }
-        mapView.addOnDidFinishRenderingFrameListener(object : MapView.OnDidFinishRenderingFrameListener {
-            override fun onDidFinishRenderingFrame(fully: Boolean, frameEncodingTime: Double, frameRenderingTime: Double) {
-                // A partial frame already shows the new camera (it is displayed too), so re-base now;
-                // waiting for `fully` misaligns the slide until all tiles load, and never re-bases at
-                // all when tiles fail to load (offline).
-                // The callback comes before the engine hands the frame to the TextureView. Re-basing
-                // right away showed the old map with the new slide for a frame (a ~190 px jump back,
-                // then forward); one frame later the new map and the new slide land together.
-                if (recenterPending && cameraMoved && !adoptQueued) {
-                    adoptQueued = true
-                    adoptAfterFrames(ADOPT_DELAY_FRAMES)
+        // Re-basing must land on the very frame that first shows the re-rendered map. Guessing it
+        // (a fixed 2 vsyncs after "frame rendered") was sometimes a frame late: the new map was shown
+        // with the old slide for one frame, a ~190 px jump and back. Now the frame is identified
+        // exactly. These callbacks all arrive through the main looper in the order they happened:
+        // the marker (queued on the render thread after the move) passes after any frame that was
+        // already being rendered, so the next "frame rendered" (the FPS callback) is the first with
+        // the new camera, and the texture update after it shows that frame.
+        map.setOnFpsChangedListener { if (recenterPending && markerPassed) newFrameRendered = true }
+        (mapView.renderView as? TextureView)?.let { tv ->
+            val engine = tv.surfaceTextureListener
+            tv.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                    engine?.onSurfaceTextureAvailable(st, w, h)
+                }
+                override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {
+                    engine?.onSurfaceTextureSizeChanged(st, w, h)
+                }
+                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean = engine?.onSurfaceTextureDestroyed(st) ?: true
+                override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+                    engine?.onSurfaceTextureUpdated(st)
+                    onMapFrameShown(tv)
                 }
             }
-        })
+        }
+    }
+
+    /**
+     * setTransform only invalidates the parent, and the texture view applies a new transform when
+     * it is itself redrawn, which otherwise waits for the next map frame: the slide was already
+     * re-based, so the map jumped by the shift until then.
+     */
+    private fun clearTextureShift() {
+        (mapView.renderView as? TextureView)?.let {
+            it.setTransform(null)
+            it.invalidate()
+        }
+    }
+
+    /**
+     * Called while the map texture is being drawn with a new frame. If that frame is the first one
+     * with the new camera, it is shifted back to where the old map was (this same draw applies the
+     * transform), so nothing moves on screen; the slide and fog are re-based on the next frame,
+     * together with removing the shift.
+     */
+    private fun onMapFrameShown(tv: TextureView) {
+        if (!recenterPending || !newFrameRendered || compensated) return
+        compensated = true
+        textureShift.setTranslate(((nextCamX - camX) * pxPerX).toFloat(), ((nextCamY - camY) * pxPerY).toFloat())
+        tv.setTransform(textureShift)
+        val gen = recenterGen
+        Choreographer.getInstance().postFrameCallback { if (recenterPending && gen == recenterGen) adoptRenderedCamera() }
     }
 
     private var night: Boolean? = null
@@ -350,6 +398,11 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             fixCount = 0
             camReady = false
             recenterPending = false
+            main.removeCallbacks(adoptTimeout)
+            if (compensated) {
+                compensated = false
+                clearTextureShift()
+            }
             overlay.freezeTransform = false
             mapFrame.slide(0f, 0f)
             overlay.invalidate()
@@ -504,21 +557,20 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private fun recenter(lat: Double, lng: Double) {
         val m = map ?: return
         recenterPending = true
-        cameraMoved = false
+        val gen = ++recenterGen
+        markerPassed = false
+        newFrameRendered = false
+        nextCamX = Tiles.lngToX(lng)
+        nextCamY = Tiles.latToY(lat)
         startTicking()
         m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), DRIVING_ZOOM))
-        if (!camReady) adoptRenderedCamera()
-    }
-
-    private fun adoptAfterFrames(frames: Int) {
-        Choreographer.getInstance().postFrameCallback {
-            if (frames > 1) {
-                adoptAfterFrames(frames - 1)
-            } else {
-                adoptQueued = false
-                if (recenterPending) adoptRenderedCamera()
-            }
+        if (!camReady) {
+            adoptRenderedCamera()
+            return
         }
+        mapView.queueEvent { main.post { if (gen == recenterGen) markerPassed = true } }
+        main.removeCallbacks(adoptTimeout)
+        main.postDelayed(adoptTimeout, ADOPT_TIMEOUT_MS)
     }
 
     /** The map now shows the new centre: re-base the slide and the fog on the same frame. */
@@ -534,6 +586,11 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         pxPerY = (p1.y - p0.y) / (Tiles.latToY(probe.latitude) - camY)
         camReady = true
         recenterPending = false
+        main.removeCallbacks(adoptTimeout)
+        if (compensated) {
+            compensated = false
+            clearTextureShift()
+        }
         Log.d(TAG, "re-rendered around the car")
         // Apply the slide relative to the new base on this frame, even if the step looks small.
         forceStep = true
@@ -640,7 +697,8 @@ fun FogMap(
             holder.overlay.map = map
             holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
             holder.overlay.revisits = { FogRuntime.repo.revisits }
-            holder.overlay.dataVersion = { FogRuntime.repo.version.value.toLong() shl 32 or FogRuntime.repo.revisitVersion.toLong() }
+            holder.overlay.cellsVersion = { FogRuntime.repo.version.value }
+            holder.overlay.revisitVersion = { FogRuntime.repo.revisitVersion }
             map.uiSettings.isRotateGesturesEnabled = false
             map.uiSettings.isTiltGesturesEnabled = false
             map.uiSettings.isCompassEnabled = false

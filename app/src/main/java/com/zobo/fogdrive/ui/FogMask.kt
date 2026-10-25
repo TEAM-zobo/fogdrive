@@ -45,8 +45,9 @@ class FogMaskTile(
     val y1: Double,
     val cellPx: Double,
     val key: FogMaskKey,
-    /** Worn roads at [WORN_SHARPER]× the fog's resolution (they are thin; the fog is soft anyway). */
+    /** Worn roads at [wornScale]× the fog's resolution (they are thin; the fog is soft anyway). */
     val worn: Bitmap?,
+    val wornScale: Int,
 ) {
     fun covers(ax0: Double, ay0: Double, ax1: Double, ay1: Double) = ax0 >= x0 && ay0 >= y0 && ax1 <= x1 && ay1 <= y1
 }
@@ -110,6 +111,8 @@ class FogMaskRenderer(
                 render(next)
             } catch (e: RuntimeException) {
                 null  // a concurrent change mid-read: the view re-requests
+            } catch (e: OutOfMemoryError) {
+                null  // no room for the bitmaps this time: keep the old tile, the view re-requests
             }
             if (tile != null) main.post { onTile(tile) } else main.post { onFailed(next) }
         }
@@ -132,13 +135,28 @@ class FogMaskRenderer(
     }
 
     private fun render(job: Job): FogMaskTile {
+        val made = ArrayList<Bitmap>(2)
+        try {
+            return renderInto(job, made)
+        } catch (e: Throwable) {
+            // Hand the bitmaps of the failed render back, or each failure would drop them for good.
+            canvas.setBitmap(null)
+            synchronized(lock) {
+                spares.addAll(made)
+                while (spares.size > MAX_SPARES) spares.removeAt(0)
+            }
+            throw e
+        }
+    }
+
+    private fun renderInto(job: Job, made: MutableList<Bitmap>): FogMaskTile {
         val key = job.key
         val px = job.cellPx
         val x0 = job.x0
         val y0 = job.y0
         val w = max(1, ceil((job.x1 - x0) * px).toInt())
         val h = max(1, ceil((job.y1 - y0) * px).toInt())
-        val bmp = obtain(w, h)
+        val bmp = obtain(w, h).also { made.add(it) }
         bmp.eraseColor(Color.TRANSPARENT)
         val c = canvas
         c.setBitmap(bmp)
@@ -162,7 +180,7 @@ class FogMaskRenderer(
             c.drawPaint(fogPaint)
             for (i in regions.counts.visitedDongs) {
                 val o = regions.atlas.dongs[i].outline
-                if (visible(o, x0, y0, job.x1, job.y1)) drawOutline(c, o, i, px, x0, y0)
+                if (o.intersects(x0, y0, job.x1, job.y1)) drawOutline(c, o, i, px, x0, y0)
             }
         }
 
@@ -205,15 +223,16 @@ class FogMaskRenderer(
             i += 2
         }
         c.setBitmap(null)
+        val wornScale = ceil(WORN_MIN_CELL_PX / px).toInt().coerceIn(1, WORN_MAX_SCALE)
         val worn = job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
-            val wb = obtain(max(1, (w * WORN_SHARPER)), max(1, (h * WORN_SHARPER)))
+            val wb = obtain(max(1, (w * wornScale)), max(1, (h * wornScale))).also { made.add(it) }
             wb.eraseColor(Color.TRANSPARENT)
             c.setBitmap(wb)
-            drawWornRoads(c, visits, x0, y0, job.x1, job.y1, px * WORN_SHARPER)
+            drawWornRoads(c, visits, x0, y0, job.x1, job.y1, px * wornScale)
             c.setBitmap(null)
             wb
         }
-        return FogMaskTile(bmp, x0, y0, job.x1, job.y1, px, key, worn)
+        return FogMaskTile(bmp, x0, y0, job.x1, job.y1, px, key, worn, wornScale)
     }
 
     /**
@@ -268,7 +287,13 @@ class FogMaskRenderer(
     }
 
     companion object {
-        const val WORN_SHARPER = 2
+        /**
+         * Worn roads get at least this many bitmap pixels per cell: sharper than the fog when zoomed
+         * out (a cell is ~1 px there and the band looked jagged), the fog's own resolution when driving
+         * (cells are large; a 2× bitmap was ~20 MB to upload per redraw).
+         */
+        const val WORN_MIN_CELL_PX = 4.0
+        const val WORN_MAX_SCALE = 2
         private const val MAX_SPARES = 4
         /** One thread for every map view (each FogMap composition makes a new view; a per-view
          *  executor was never shut down and leaked a thread each time). Jobs are serialised, so each
@@ -281,9 +306,6 @@ class FogMaskRenderer(
         }
     }
 
-    private fun visible(o: Outline, x0: Double, y0: Double, x1: Double, y1: Double): Boolean =
-        o.bbox[2] >= x0 && o.bbox[0] <= x1 && o.bbox[3] >= y0 && o.bbox[1] <= y1
-
     /**
      * Outline paths are in tile units relative to their bbox corner (floats can't hold zoom-20
      * coordinates to sub-tile precision); the offset to the bitmap is computed in double.
@@ -295,3 +317,7 @@ class FogMaskRenderer(
         c.drawPath(outlinePath, lightFogPaint)
     }
 }
+
+/** Whether [o]'s bounding box meets the rectangle (zoom-20 tile units). */
+internal fun Outline.intersects(x0: Double, y0: Double, x1: Double, y1: Double): Boolean =
+    bbox[2] >= x0 && bbox[0] <= x1 && bbox[3] >= y0 && bbox[1] <= y1
