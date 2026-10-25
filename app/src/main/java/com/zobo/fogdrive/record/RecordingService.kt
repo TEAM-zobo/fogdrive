@@ -353,7 +353,6 @@ class RecordingService : Service() {
             if (s.newCells > 0) add("안개 ${spokenArea(Area.ofCells(s.newCells))}를 걷었어요")
             else add("${"%.1f".format(s.distanceMeters / 1000)}킬로미터를 달렸어요")
             if (summary.newDongs.isNotEmpty()) add("처음 가 본 동네는 ${summary.newDongs.size}곳")
-            if (summary.stamps.isNotEmpty()) add("스탬프 ${summary.stamps.size}개")
         }
         FogRuntime.announcer.say("주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + ".", important = true)
     }
