@@ -42,6 +42,10 @@ python3 -m fogqa run --headless --shutdown   # 끝나면 QA 에뮬레이터 종�
 
 리포트는 `qa/reports/<시각>/index.html`에 스크린샷과 함께 저장됩니다(git 제외). 각 TC는 앱 데이터 초기화와 차량 상태 초기화에서 시작하므로 순서와 무관합니다.
 
+## Windows
+
+`python3` 대신 `python`으로 같은 명령을 씁니다(`python -m fogqa run`). SDK 경로는 Gradle과 같이 `local.properties` → `ANDROID_HOME` → `%LOCALAPPDATA%\Android\Sdk` 순으로 찾습니다. `scripts/service.sh`(LaunchAgent 상시 실행)는 macOS 전용이라 Windows에서는 `python -m fogqa serve`로 직접 띄웁니다. 에뮬레이터·AVD 준비는 [`docs/SETUP.md`](../docs/SETUP.md)를 보세요.
+
 ## 주의
 
 - 에뮬레이터가 켜져 있고 앱이 설치되어 있어야 합니다(대시보드의 앱 탭에서 빌드·설치 가능).

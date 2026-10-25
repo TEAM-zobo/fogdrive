@@ -2,6 +2,7 @@
 import os
 import re
 import subprocess
+import sys
 import time
 import xml.etree.ElementTree as ET
 
@@ -14,7 +15,35 @@ RUNTIME_PERMISSIONS = [
     "pleos.car.permission.FUSED_LOCATION",
 ]
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DEFAULT_ADB = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
+WINDOWS = os.name == "nt"
+
+
+def sdk_dir():
+    """Same order as Gradle: local.properties, then ANDROID_HOME / ANDROID_SDK_ROOT, then the
+    Android Studio default."""
+    props = os.path.join(ROOT, "local.properties")
+    if os.path.exists(props):
+        with open(props, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("sdk.dir="):
+                    # local.properties escapes Windows paths (C\:\\Users\\...).
+                    return line[len("sdk.dir="):].strip().replace("\\:", ":").replace("\\\\", "\\")
+    for key in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        if os.environ.get(key):
+            return os.environ[key]
+    if WINDOWS:
+        return os.path.join(os.environ.get("LOCALAPPDATA", ""), "Android", "Sdk")
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Android/sdk")
+    return os.path.expanduser("~/Android/Sdk")
+
+
+def sdk_tool(*parts):
+    path = os.path.join(sdk_dir(), *parts)
+    return path + ".exe" if WINDOWS else path
+
+
+DEFAULT_ADB = sdk_tool("platform-tools", "adb")
 
 
 def _bounds(s):
@@ -209,7 +238,7 @@ class Device:
             raise AssertionError("앱 화면이 뜨지 않음")
 
 
-EMULATOR = os.path.expanduser("~/Library/Android/sdk/emulator/emulator")
+EMULATOR = sdk_tool("emulator", "emulator")
 QA_AVD = "Pleos_Connect_QA"
 QA_SERIAL = "emulator-5556"
 # Home position (경기 고양시 덕양구 향기5로 66), where every demo course starts; set after boot.

@@ -98,9 +98,29 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 | 지도 | MapLibre Android 11.13.5 + OpenFreeMap 타일 (© OpenStreetMap contributors) |
 | 행정구역 경계 | [admdongkor](https://github.com/vuski/admdongkor) ver20261001 (CC BY 4.0, 원자료 통계청). `python3 tools/regions/build_regions.py`로 `app/src/main/assets/regions/kr_regions.bin` 재생성 |
 
-에뮬레이터 설치는 [Pleos Connect Emulator 설치 및 실행](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator) 문서를 따릅니다. AVD는 Cold boot, RAM 4GB로 설정합니다. 지도 타일을 받으려면 에뮬레이터에 인터넷 연결이 필요합니다.
+### 셋팅 (macOS / Windows)
 
-앱의 기본 위치(위치가 없을 때의 지도 시작점)는 고양시 향동 향기5로 66입니다. 에뮬레이터 위치를 여기로 맞추려면 `tools/emulator/set_home.sh`를 실행합니다.
+SDK 설치, Pleos 에뮬레이터 이미지 설치, AVD 생성, 부팅, 빌드·설치·실행까지 스크립트 하나로 합니다. OS별 준비물, 단계별 실행, 문제 해결은 **[docs/SETUP.md](docs/SETUP.md)** 를 보세요.
+
+**macOS** (Apple Silicon)
+
+```bash
+tools/setup/setup.sh doctor   # 빠진 것 점검
+tools/setup/setup.sh all      # SDK → Pleos 이미지(약 4.7GB) → AVD → 부팅 → 빌드·설치·실행
+```
+
+**Windows** (10/11, Intel·AMD, 하이퍼바이저 필요)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\setup\setup.ps1 doctor
+powershell -ExecutionPolicy Bypass -File tools\setup\setup.ps1 all
+```
+
+**Claude Code로 셋팅**: 저장소를 열고 "docs/SETUP.md대로 테스트 환경 셋팅하고 앱 실행해줘"라고 요청하면 됩니다. 절차는 [`CLAUDE.md`](CLAUDE.md)에 요약되어 있습니다.
+
+스크립트 대신 Android Studio로 직접 셋팅하려면 [Pleos Connect Emulator 설치 및 실행](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator) 문서를 따릅니다(요약은 [docs/SETUP.md](docs/SETUP.md#android-studio로-직접-셋팅-macoswindows-공통-스크립트-대신)). AVD는 Cold boot, RAM 4GB로 설정합니다. 지도 타일을 받으려면 에뮬레이터에 인터넷 연결이 필요합니다.
+
+앱의 기본 위치(위치가 없을 때의 지도 시작점)는 고양시 향동 향기5로 66입니다. 셋팅 스크립트의 `boot` 단계가 에뮬레이터 위치를 여기로 맞춥니다. 따로 맞추려면 macOS는 `tools/emulator/set_home.sh`, Windows는 `adb emu geo fix 126.89592 37.60852`를 실행합니다.
 
 ## 실행 방법
 
@@ -120,6 +140,8 @@ adb shell am start -n com.zobo.fogdrive/.ui.MainActivity
 ./gradlew :app:testDebugUnitTest    # 단위 테스트 47개
 ./gradlew :app:assembleRelease      # keystore.properties가 없으면 debug 키로 서명
 ```
+
+Windows는 `./gradlew` 대신 `gradlew.bat`를 씁니다. 빌드부터 설치·실행까지 한 번에 하려면 `tools/setup/setup.sh app`(Windows `setup.ps1 app`)을 실행합니다.
 
 Release 서명 정보는 저장소 밖의 `keystore.properties`(gitignore)에서 읽습니다.
 
@@ -202,10 +224,12 @@ tools/
   mapstyle/   지도 스타일 생성
   regions/    행정구역 경계 바이너리 생성
   emulator/   에뮬레이터 기본 위치 설정
+  setup/      테스트 환경 셋팅(macOS setup.sh, Windows setup.ps1)
 qa/           에뮬레이터 자동 테스트·웹 대시보드
 ```
 
 ## 문서
 
+- [테스트 환경 셋팅](docs/SETUP.md): macOS·Windows별 SDK·에뮬레이터 설치, 빌드·실행, 문제 해결
 - [공모전 준비 가이드](docs/index.html): 일정, 제출물, 접수양식 작성법, 일자별 계획, 개발 현황, 근거 링크
 - [테스트 케이스](docs/test-cases.html): 기능별 TC 21개 (`qa/fogqa/cases.py`에서 생성)

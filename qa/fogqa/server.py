@@ -16,15 +16,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import runner
 from .cases import CASES, ROUTE
-from .device import QA_SERIAL, ROOT, Device, boot_headless
+from .device import EMULATOR, QA_SERIAL, ROOT, WINDOWS, Device, boot_headless
 from .vconsole import VConsole
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 PASSWORD_FILE = os.path.join(ROOT, "qa", ".qa_password")
 USER = "zobo"
-EMULATOR = os.path.expanduser("~/Library/Android/sdk/emulator/emulator")
-AVD = "Pleos_Connect_v2.1"
-GRADLE_JAVA_HOME = os.path.expanduser("~/Library/Java/JavaVirtualMachines/corretto-17.0.4.1/Contents/Home")
+AVD = os.environ.get("FOG_AVD", "Pleos_Connect_v2.1")
+# JDK for Gradle: JAVA_HOME if set, else the JDK 17 on the original dev Mac, else Gradle's own lookup.
+_MAC_JDK17 = os.path.expanduser("~/Library/Java/JavaVirtualMachines/corretto-17.0.4.1/Contents/Home")
+GRADLE_JAVA_HOME = os.environ.get("JAVA_HOME") or (_MAC_JDK17 if os.path.isdir(_MAC_JDK17) else None)
+GRADLEW = os.path.join(ROOT, "gradlew.bat" if WINDOWS else "gradlew")
 
 
 def load_password():
@@ -160,8 +162,8 @@ def start_emulator():
 
 def build_and_install():
     S.emit("디버그 APK 빌드 시작")
-    env = dict(os.environ, JAVA_HOME=GRADLE_JAVA_HOME)
-    p = subprocess.run(["./gradlew", ":app:assembleDebug", "--console=plain", "-q"], cwd=ROOT, env=env,
+    env = dict(os.environ, JAVA_HOME=GRADLE_JAVA_HOME) if GRADLE_JAVA_HOME else None
+    p = subprocess.run([GRADLEW, ":app:assembleDebug", "--console=plain", "-q"], cwd=ROOT, env=env,
                        capture_output=True, text=True, timeout=900)
     if p.returncode != 0:
         S.emit("빌드 실패:\n" + (p.stdout + p.stderr)[-2000:])
