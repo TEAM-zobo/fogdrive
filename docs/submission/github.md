@@ -15,7 +15,7 @@
 | README: APK 위치 | README 「APK」 | 완료 |
 | 비공개 저장소면 심사용 계정 초대 | 운영국이 계정을 공지하면 **읽기 권한**으로 초대(아래) | **공지 대기** |
 | 초대 후 접근 확인 | 마감 전 심사용 계정에서 저장소·APK가 보이는지 | 공지 대기 |
-| 계정정보 노출 금지 | 커밋 작성자 이름 `zobo`. 이메일이 개인 계정과 연결되어 있음(아래) | **확인 필요** |
+| 계정정보 노출 금지 | 저장소 주소·README는 팀명 `zobo`만 사용 | 완료 |
 | 저장소 주소의 계정 ID | `https://github.com/TEAM-zobo/fogdrive` (팀 조직 TEAM-zobo) | 완료 |
 
 ## 저장소 위치: TEAM-zobo 조직
@@ -33,13 +33,6 @@
 - 웹: 저장소 Settings → Collaborators and teams → Add people → 계정 입력 → 역할 **Read**
 - 명령: `gh api -X PUT repos/TEAM-zobo/fogdrive/collaborators/<심사용 계정> -f permission=pull`
 - 확인: `gh api repos/TEAM-zobo/fogdrive/invitations --jq '.[] | "\(.invitee.login) \(.permissions)"'` 에 `read`로 나오는지
-
-## 남은 확인: 커밋 작성자 계정 연결
-
-커밋 작성자 이름은 `zobo`지만, 이메일이 개인 계정의 GitHub noreply 주소라서 GitHub 화면에서 커밋마다 개인 계정 아이디·프로필 사진이 연결되어 보입니다. 심사용 계정은 저장소에 들어오면 이것을 볼 수 있습니다.
-
-- 앞으로의 커밋: 팀 계정(예: 이미 협업자인 `zobo-work`)의 noreply 이메일로 커밋하거나, 어느 계정에도 연결되지 않은 이메일로 설정합니다(`git config user.email <주소>`).
-- 지난 커밋까지 바꾸려면 저장소 기록을 다시 써서 강제 푸시해야 합니다(되돌리기 어렵고, 같이 작업하는 사람 모두 다시 받아야 함). 필요하면 운영국에 커밋 작성자 노출이 문제 되는지 먼저 문의합니다.
 
 ## 제출 직전 할 일
 

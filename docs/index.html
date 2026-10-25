@@ -159,7 +159,7 @@
         </tbody>
       </table>
     </div>
-    <div class="callout danger"><b>실명·계정 노출 금지</b> 02 소개 자료와 공유 링크, 첨부자료에는 성명·연락처·이메일·소속은 물론 계정정보와 개발자 실명도 드러나면 안 됩니다. 연락정보는 01 참가신청서에만 적습니다. 저장소 README와 커밋 작성자는 팀명 <code>zobo</code>와 GitHub noreply 이메일로 맞춰 두었습니다. 저장소는 팀 조직 <code>TEAM-zobo</code>로 옮겨 주소에 개인 계정 ID가 보이지 않습니다. 커밋 작성자 이메일이 개인 계정과 연결된 점은 <a href="#decide">확인·결정 필요</a>를 보세요.</div>
+    <div class="callout danger"><b>실명·계정 노출 금지</b> 02 소개 자료와 공유 링크, 첨부자료에는 성명·연락처·이메일·소속은 물론 계정정보와 개발자 실명도 드러나면 안 됩니다. 연락정보는 01 참가신청서에만 적습니다. 저장소 README와 커밋 작성자는 팀명 <code>zobo</code>와 GitHub noreply 이메일로 맞춰 두었습니다. 저장소는 팀 조직 <code>TEAM-zobo</code>로 옮겨 주소에 개인 계정 ID가 보이지 않습니다.</div>
     <h3>기획서 초안 대비 반영할 변경점</h3>
     <ul>
       <li><b>FusedLocation SDK</b>: 초안은 "준비 중(로드맵)"으로 적었지만 공개 Maven에 1.1.3이 있고 에뮬레이터에서 <code>isSupported()</code>가 참입니다. 앱은 이미 FusedLocation을 우선 사용하고, 미지원 차량에서는 Android GPS로 대체합니다. 다만 Playground 프로젝트 화면에는 아직 "준비 중"으로 표시되므로 표현은 "지원 차량에서 사용, 미지원 시 대체"로 씁니다.</li>
@@ -336,16 +336,14 @@
 
   <section id="decide">
     <h2>확인·결정이 필요한 것</h2>
-    <div class="callout warn"><b>1. 커밋 작성자 계정 연결</b> 저장소는 10/25 팀 조직으로 옮겨 주소가 <code>github.com/TEAM-zobo/fogdrive</code>가 됐습니다. 다만 커밋 이메일이 개인 계정의 noreply 주소라 GitHub 화면에서 커밋마다 개인 계정이 연결되어 보입니다. 앞으로의 커밋 이메일을 바꿀지, 지난 기록까지 다시 쓸지(강제 푸시) 정합니다. 자세한 내용은 <a href="submission/github.md">github.md</a>.</div>
-    <div class="callout warn"><b>2. 심사용 GitHub 계정</b> 비공개 저장소는 공지될 심사용 계정을 Collaborator로 초대해야 합니다. 아직 공지되지 않았으니 공지사항을 확인하세요. 무료 조직은 브랜치 보호가 없으므로 <b>읽기(Read) 권한</b>으로 초대합니다.</div>
-    <div class="callout warn"><b>3. 참가 단위</b> 개인/팀 여부와 인원은 접수양식 01에 직접 기입합니다. 팀이면 팀원 전원 서명과 CC가 필요합니다.</div>
+    <div class="callout warn"><b>1. 심사용 GitHub 계정</b> 비공개 저장소는 공지될 심사용 계정을 Collaborator로 초대해야 합니다. 아직 공지되지 않았으니 공지사항을 확인하세요. 무료 조직은 브랜치 보호가 없으므로 <b>읽기(Read) 권한</b>으로 초대합니다.</div>
+    <div class="callout warn"><b>2. 참가 단위</b> 개인/팀 여부와 인원은 접수양식 01에 직접 기입합니다. 팀이면 팀원 전원 서명과 CC가 필요합니다.</div>
     <h3>설명회(10/28) 질문 목록</h3>
     <ul>
       <li>준비 중 SDK(FusedLocation, TextToSpeech)를 공모전 기간에 사용해도 되는지, 미지원 차량 대체 구현이면 충분한지</li>
       <li>에뮬레이터에서 위치 이동 시뮬레이션 권장 방법 (<code>adb emu geo fix</code>, GPX 재생)</li>
       <li>외부 지도 타일(OpenStreetMap 기반) 네트워크 사용 허용 여부</li>
-      <li>GitHub 커밋 작성자에 개인 계정이 연결되어 보이는 것이 "계정정보 노출"에 해당하는지</li>
-      <li>MAU 산정 시 참고할 Pleos Connect 탑재 차량 수 공개 자료 유무</li>
+            <li>MAU 산정 시 참고할 Pleos Connect 탑재 차량 수 공개 자료 유무</li>
       <li>에뮬레이터 2.1.0에서 Virtual Console의 좌석 탑승 값이 Vehicle SDK <code>getCurrentSeatOccupancy</code>에 반대로 전달되는 현상(콘솔 "탑승" → SDK false)이 알려진 문제인지</li>
     </ul>
   </section>

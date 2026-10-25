@@ -13,7 +13,7 @@
 | 접수양식(기획서) | **필수** | [`application-form.docx`](application-form.docx) | 02 작성 완료 | 01·03·04 기입·서명, 02-7·8 링크 |
 | 접수양식 02 원고 | (양식 원본 글) | [`02-app-introduction.md`](02-app-introduction.md) | 작성 완료 | 고치면 양식 다시 생성 |
 | 제출 이메일 | **필수** | [`email.md`](email.md) | 작성 완료 | 대표자명·팀원·링크 바꿔서 발송 |
-| GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | 준비 완료(TEAM-zobo 조직으로 이전) | 심사용 계정 읽기 권한 초대, 커밋 작성자 확인, APK 재빌드 |
+| GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | 준비 완료(TEAM-zobo 조직으로 이전) | 심사용 계정 읽기 권한 초대, APK 재빌드 |
 | 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | 콘티 완료 | 녹화·편집·업로드 |
 | 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 콘티 완료 | 여유 있으면 제작 |
 | 양식 원본 | - | [`template/contest-application-consent.docx`](template/contest-application-consent.docx) | 공식 배포본 그대로 | - |
@@ -43,7 +43,7 @@
 - [ ] 접수양식 02, 첨부, 링크 어디에도 성명·연락처·이메일·소속·계정 ID·개발자 실명이 없다(01에만 있다)
 - [ ] 02의 【기입 필요】가 모두 채워졌고 노란 형광이 남아 있지 않다
 - [ ] 01·03·04 기입·서명 완료(팀이면 팀원 전원)
-- [ ] GitHub: 심사용 계정을 읽기 권한으로 초대·접근 확인, 커밋 작성자 계정 연결 확인([`github.md`](github.md)), `apk/` APK가 최신이고 설치·실행됨
+- [ ] GitHub: 심사용 계정을 읽기 권한으로 초대·접근 확인, `apk/` APK가 최신이고 설치·실행됨
 - [ ] 시연 영상: 로그인하지 않은 브라우저에서 재생됨, 2–3분
 - [ ] README의 실행 방법대로 처음부터 셋팅해 앱이 뜬다([`../SETUP.md`](../SETUP.md))
 - [ ] 지도 출처 표기(© OpenStreetMap · OpenFreeMap)가 앱 화면에 보인다
