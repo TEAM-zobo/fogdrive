@@ -1,5 +1,7 @@
 *.iml
 .gradle/
+# Kotlin compiler session data (left behind when the compile daemon falls back)
+.kotlin/
 /local.properties
 .idea/
 .DS_Store
