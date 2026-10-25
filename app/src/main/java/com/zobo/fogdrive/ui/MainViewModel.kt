@@ -477,8 +477,8 @@ class MainViewModel : ViewModel() {
 
     fun importData() {
         viewModelScope.launch {
-            // The newer of the two, so a format-1 file copied in after an export isn't passed over.
-            val file = listOf(FogRuntime.backupFile, FogRuntime.legacyBackupFile)
+            // The newest candidate, so a file copied in after an export isn't passed over.
+            val file = FogRuntime.importCandidates
                 .filter { it.exists() }.maxByOrNull { it.lastModified() } ?: FogRuntime.backupFile
             backupMessage.value = if (!file.exists()) {
                 "불러올 파일이 없어요. ${FogRuntime.backupFile.path} 에 백업 파일을 넣어 주세요."

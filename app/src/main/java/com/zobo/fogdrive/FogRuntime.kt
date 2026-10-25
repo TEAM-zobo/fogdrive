@@ -111,6 +111,15 @@ object FogRuntime {
     private val backupDir: File
         get() = appContext.getExternalFilesDir(null) ?: appContext.filesDir
 
+    /**
+     * Files Import looks at, newest wins. Besides the export location, the app's internal files folder:
+     * on AAOS adb can't write another user's external app folder, but `run-as` can write this one
+     * (tools/demo/prepare_demo.py puts the demo record there).
+     */
+    val importCandidates: List<File>
+        get() = listOf(backupFile, legacyBackupFile) +
+            listOf("fogdrive-backup.fgbk", "fogdrive-backup.json").map { File(appContext.filesDir, it) }
+
     val live = MutableStateFlow(LiveStatus())
     /** The region atlas has been read (or failed to): the first step of the launch loading screen. */
     val regionsLoaded = MutableStateFlow(false)

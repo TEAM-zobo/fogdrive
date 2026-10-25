@@ -241,6 +241,7 @@ tools/
   emulator/   에뮬레이터 기본 위치 설정
   setup/      테스트 환경 셋팅(macOS setup.sh, Windows setup.ps1)
   submission/ 접수양식 DOCX 생성(build_form.py)
+  demo/       시연 영상: 예시 기록 생성 · 시연 상태 준비 · 구간별 녹화 · 편집(docs/submission/demo-video.md)
 qa/           에뮬레이터 자동 테스트·웹 대시보드
 docs/
   submission/ 공모전 제출물(접수양식, 02 원고, 제출 이메일, 시연 영상·숏폼 콘티, GitHub 제출 요건)
