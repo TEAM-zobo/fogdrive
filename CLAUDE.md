@@ -1,7 +1,8 @@
 # FogDrive (안개지도)
 
 Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compose, Gradle 8.10.2, AGP 8.8.2, JDK 17, compileSdk 35.
-기능·구조는 `README.md`, 테스트 환경은 `docs/SETUP.md`, 에뮬레이터 QA는 `qa/README.md`에 있습니다.
+기능·구조는 `README.md`, 테스트 환경은 `docs/SETUP.md`, 에뮬레이터 QA는 `qa/README.md`, 공모전 제출물은 `docs/submission/`에 있습니다.
+접수양식 02는 `docs/submission/02-app-introduction.md`를 고친 뒤 `python3 tools/submission/build_form.py`로 `application-form.docx`를 다시 만듭니다. 02와 제출 링크에는 성명·연락처·이메일·소속·계정 ID를 쓰지 않습니다.
 
 ## 테스트 환경 셋팅과 실행
 

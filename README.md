@@ -6,6 +6,18 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 
 ![주행 중 안개가 걷히는 지도](docs/images/02-driving.jpg)
 
+## 화면
+
+2026-10-25, Pleos Connect 에뮬레이터 v2.1.0에서 시연 모드(성수 주말 나들이)로 촬영했습니다. 왼쪽은 에뮬레이터 차량 패널, 오른쪽이 앱입니다.
+
+| | |
+| --- | --- |
+| ![출발 전 탐험 우회 경로 제안](docs/images/01-detour.jpg) 출발 전(P단): 탐험 우회 경로 제안 | ![주행 모드](docs/images/02-driving.jpg) 주행 모드: 회전 안내·제한속도, 도로 양쪽만 걷힘 |
+| ![이번 주행 요약](docs/images/03-trip-summary.jpg) 도착: 이번 주행 요약, 처음 가 본 동네 | ![정차 중 지도](docs/images/04-map.jpg) 정차 중 지도: 2단계 안개, 안 가본 동네 추천 |
+| ![기록](docs/images/05-record.jpg) 기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율 | ![지역 도감](docs/images/06-dex.jpg) 지역 도감: 시·도별 달성률 |
+| ![스탬프](docs/images/07-stamps.jpg) 스탬프 29종 | ![설정](docs/images/08-settings.jpg) 설정: SDK 연결 상태, 시연 모드 |
+| ![내 안개지도 카드](docs/images/09-share-card.jpg) 내 안개지도 카드(공유 이미지) | ![튜토리얼](docs/images/10-tutorial.jpg) 첫 실행 튜토리얼 |
+
 ## APK
 
 - Release APK: [`apk/zobo_FogDrive_release.apk`](apk/zobo_FogDrive_release.apk)
@@ -87,6 +99,8 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 - 지역 경계 데이터(`kr_regions.bin`, 약 4MB)를 APK에 비압축으로 넣고 메모리 매핑으로 읽습니다. 경계 조회 버킷을 5km로 키워 로딩이 4.3초에서 1.3초로 줄었습니다. 로딩 중에는 짙은 안개를 유지하고, 파일을 못 읽으면 한 단계 안개로 대체합니다.
 - 지역 집계는 새로 추가된 칸만 세고, 지도 상단·주행 화면은 가벼운 집계만 씁니다.
 - 시연 위치는 최대 초당 5회로 보냅니다(경로가 꺾이는 지점은 항상 전송). UI 재구성이 15초에 185회에서 108회로 줄었습니다.
+- 안개는 직전 조각과 영역·배율이 같으면 바뀐 부분(새 칸, 재방문 칸)만 지우고 다시 그립니다. 주행 중 안개 렌더링 스레드 CPU가 10초당 1,580 ms에서 720 ms로 줄었습니다.
+- 기본 프로필(`app/src/main/baseline-prof.txt`)로 앱 코드를 설치 때 미리 컴파일합니다.
 
 ## 테스트 환경
 
@@ -137,7 +151,7 @@ adb shell am start -n com.zobo.fogdrive/.ui.MainActivity
 
 ```bash
 ./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:testDebugUnitTest    # 단위 테스트 47개
+./gradlew :app:testDebugUnitTest    # 단위 테스트 58개
 ./gradlew :app:assembleRelease      # keystore.properties가 없으면 debug 키로 서명
 ```
 
@@ -225,11 +239,16 @@ tools/
   regions/    행정구역 경계 바이너리 생성
   emulator/   에뮬레이터 기본 위치 설정
   setup/      테스트 환경 셋팅(macOS setup.sh, Windows setup.ps1)
+  submission/ 접수양식 DOCX 생성(build_form.py)
 qa/           에뮬레이터 자동 테스트·웹 대시보드
+docs/
+  submission/ 공모전 제출물(접수양식, 02 원고, 제출 이메일, 시연 영상·숏폼 콘티, GitHub 제출 요건)
+  images/     앱 화면
 ```
 
 ## 문서
 
+- [공모전 제출물](docs/submission/README.md): 무엇을 내는지, 접수양식(02 작성 완료), 복사해 쓰는 제출 이메일, 시연 영상·숏폼 콘티, 최종 점검표
 - [테스트 환경 셋팅](docs/SETUP.md): macOS·Windows별 SDK·에뮬레이터 설치, 빌드·실행, 문제 해결
 - [공모전 준비 가이드](docs/index.html): 일정, 제출물, 접수양식 작성법, 일자별 계획, 개발 현황, 근거 링크
 - [테스트 케이스](docs/test-cases.html): 기능별 TC 21개 (`qa/fogqa/cases.py`에서 생성)
