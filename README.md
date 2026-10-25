@@ -152,7 +152,7 @@ adb shell am start -n com.zobo.fogdrive/.ui.MainActivity
 
 ```bash
 ./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:testDebugUnitTest    # 단위 테스트 69개
+./gradlew :app:testDebugUnitTest    # 단위 테스트 71개
 ./gradlew :app:assembleRelease      # keystore.properties가 없으면 debug 키로 서명
 ```
 
