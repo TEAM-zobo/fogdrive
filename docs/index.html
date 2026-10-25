@@ -145,7 +145,7 @@
 
   <section id="form">
     <h2>접수양식 작성 가이드</h2>
-    <p>양식 원본은 저장소의 <code>docs/submission/template/contest-application-consent.docx</code>, 02를 채운 파일은 <a href="submission/application-form.docx"><code>docs/submission/application-form.docx</code></a>에 있습니다(02 원고: <a href="submission/02-app-introduction.md"><code>02-app-introduction.md</code></a>, <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">원본 다운로드</a>). 양식이 곧 기획서이며, 소개 자료 분량 제한은 없습니다.</p>
+    <p>양식 원본은 저장소의 <code>docs/submission/original/contest-application-consent.docx</code>, 02를 채운 파일은 <a href="submission/application-form.docx"><code>docs/submission/application-form.docx</code></a>에 있습니다(02 원고: <a href="submission/02-app-introduction.md"><code>02-app-introduction.md</code></a>, <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">원본 다운로드</a>). 양식이 곧 기획서이며, 소개 자료 분량 제한은 없습니다.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>양식 영역</th><th>채울 내용</th><th>누가</th></tr></thead>
@@ -209,6 +209,7 @@
         <thead><tr><th>근거</th><th>값</th><th>출처</th></tr></thead>
         <tbody>
           <tr><td>Pleos Connect 탑재 계획</td><td>첫 적용 '더 뉴 그랜저'(2026년 5월), 이후 부분변경·신차로 확대, 2030년까지 전 세계 약 2,000만 대 목표 (기존 ccNC 차량은 미적용)</td><td><a href="https://news.mtn.co.kr/news-detail/2026043016372162316">MTN 2026-04-30</a> · <a href="https://www.heraldk.com/article/2026042918170356636">헤럴드경제 2026-04-29</a></td></tr>
+          <tr><td>탑재 차종 판매(2026)</td><td>더 뉴 그랜저 6월 10,062 · 8월 5,931 · 9월 8,898대, 디 올 뉴 아반떼(8/5 계약 시작, 전 트림 기본 탑재) 9월 7,305대 → 공식 집계만 약 3.2만 대, 월 약 1.6만 대 증가. 이 속도면 2027년 말 약 30만 대(MAU 보수 시나리오의 V)</td><td><a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-june-2026-sales">6월</a> · <a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-august-2026-sales">8월</a> · <a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-september-2026-sales">9월 실적</a> · <a href="https://www.starnewskorea.com/business-life/2026/08/05/2026080509094993230">아반떼 계약</a></td></tr>
           <tr><td>국내 신차 판매(2025)</td><td>현대차 71.3만 대(제네시스 포함) + 기아 54.6만 대 ≈ 125.9만 대</td><td><a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-2025-earnings-announcement">현대차 2025 실적</a> · <a href="https://v.daum.net/v/zwT3FbHlzh">판매 순위 기사</a></td></tr>
           <tr><td>커넥티드카 가입자</td><td>글로벌 1,000만 명 돌파(2023년 6월, 현대차·기아·제네시스)</td><td><a href="https://www.smarttoday.co.kr/ko-kr/articles/31442">스마트투데이</a></td></tr>
           <tr><td>국내여행과 자동차</td><td>2025년 국내여행 경험률 97.0%, 총 3억 900만 회, 이동수단 자동차 84.5%</td><td><a href="https://www.segye.com/newsView/20260630504163">2025 국민여행조사 보도</a></td></tr>
@@ -258,12 +259,12 @@
           <tr><td class="date">10/24(토)</td><td>공모전·개발 문서 분석, 프로젝트 생성, Pleos 에뮬레이터 구축, MVP 구현(자동 기록·안개·하차 지점·스탬프·내비 연동·우회 제안·시연 모드)</td><td>저장소, 디버그/릴리스 APK, 이 문서</td><td><span class="tag done">완료</span></td></tr>
           <tr class="today"><td class="date">10/24–25</td><td>행정구역 경계 적용(지역 도감·두 단계 안개), 내비 연동 확장(도착·경유지 스탬프, 회전 안내, 동네 추천), 주행 경로 보기, 반복 주행, 기간별 챌린지·스탬프 24종·레벨 곡선, 백업·동기화, 시연 코스 17개, 주행 지도 흔들림 수정, 튜토리얼·음성 안내·주행 요약·동승자 미션·창문/선루프/주행 모드/주행 가능 거리 연동·동네 이야기·공유 카드, 사업성 근거 초안, 단위 테스트 58개·QA TC 21개 (계획보다 앞당겨 완료)</td><td>"○○구 정복률" 화면, 지역 도감, 시연 코스</td><td><span class="tag done">완료</span></td></tr>
           <tr><td class="date">10/26(월)</td><td>Virtual Console로 기어·도어·와이퍼·전조등·좌석 실신호 검증, 에뮬레이터 위치 이동 테스트</td><td>검증 기록</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">10/27(화)</td><td>설명회 질문 정리, 주행 중 화면 차단 동작·큰 터치 영역 점검</td><td>질문 목록</td><td><span class="tag todo">예정</span></td></tr>
-          <tr class="milestone"><td class="date">10/28(수)</td><td><b>온라인 설명회 참석(오후)</b> · 질의</td><td>답변 메모</td><td><span class="tag key">직접</span></td></tr>
-          <tr><td class="date">10/29(목)</td><td>설명회 내용 반영, 기획서 수정(FusedLocation, 격자, 지역 정복률)</td><td>기획서 v2</td><td><span class="tag todo">예정</span></td></tr>
+          <tr><td class="date">10/27(화)</td><td>주행 중 화면 차단 동작·큰 터치 영역 점검</td><td>점검 기록</td><td><span class="tag todo">예정</span></td></tr>
+          <tr><td class="date">10/28(수)</td><td>온라인 설명회(오후) — 참석·질문하지 않기로 함. 궁금한 점은 공지·FAQ·SDK 문서로 10/25에 확인(<a href="#decide">확인한 것</a>)</td><td>—</td><td><span class="tag done">대체 완료</span></td></tr>
+          <tr><td class="date">10/29(목)</td><td>기획서 수정(FusedLocation, 격자, 지역 정복률, TTS SDK 상태) — 10/25 접수양식 02에 반영</td><td>기획서 v2</td><td><span class="tag done">앞당겨 완료</span></td></tr>
           <tr><td class="date">10/30(금)</td><td>우회 경로 고도화, TTS "새 동네 진입" 음성 검토, 첫 실행 온보딩 — 10/25에 음성 안내·튜토리얼·주행 가능 거리 반영 완료, 실차 음성 톤 점검만 남음</td><td>앱 v0.2</td><td><span class="tag done">앞당겨 완료</span></td></tr>
           <tr><td class="date">10/31–11/1</td><td>시연 영상 촬영·편집(2–3분) — 10/25에 콘티·촬영 방법(<a href="submission/demo-video.md">demo-video.md</a>)과 화면 이미지 10장 준비</td><td>시연 영상</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">11/2(월)</td><td>사업성 근거 보완(MAU 산식·리텐션 비교 지표) — 10/25 초안 작성, 설명회 답변으로 수치 보완</td><td>기대효과 절 v2</td><td><span class="tag done">초안</span></td></tr>
+          <tr><td class="date">11/2(월)</td><td>사업성 근거 보완(MAU 산식·리텐션 비교 지표) — 10/25 탑재 차종 판매 실적으로 보완</td><td>기대효과 절 v2</td><td><span class="tag done">완료</span></td></tr>
           <tr><td class="date">11/3–11/5</td><td>접수양식 02(1–8) 작성, 숏폼 영상(선택) — 10/25에 02 초안을 양식에 채움(<a href="submission/application-form.docx">application-form.docx</a>), 설명회 답변으로 보완</td><td>양식 초안</td><td><span class="tag done">초안</span></td></tr>
           <tr><td class="date">11/6–11/9</td><td>안정화, 릴리스 APK 갱신, README 최종, 심사용 계정 초대(공지 시)</td><td>앱 v1.0</td><td><span class="tag todo">예정</span></td></tr>
           <tr><td class="date">11/10(화)</td><td>최종 점검(체크리스트·링크·실명 노출 여부)</td><td>점검 결과</td><td><span class="tag todo">예정</span></td></tr>
@@ -310,7 +311,7 @@
           <tr><td>행정구역 정복률·지역 도감(시·도→시·군·구→읍·면·동), 두 단계 안개, 하차 지역 표시</td><td>admdongkor 행정구역 경계 (CC BY 4.0, 통계청)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>백업 내보내기·불러오기, 클라우드 동기화</td><td>Pleos Sync SDK 미공개 → 기기 내 보낼 함 대체 구현</td><td><span class="tag todo">SDK 대기</span></td></tr>
           <tr><td>시연 모드: 코스 17개(서울·수도권·부산·강릉), 20~200km/h, 왕복, 회전 안내·도착 대체 생성</td><td>OSRM 실제 도로 경로</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>음성 안내(새 동네·스탬프·도착·미션·주행 요약)</td><td>Android TextToSpeech, 내비 안내 오디오로 재생 (Pleos TTS SDK 공개 시 교체)</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>음성 안내(새 동네·스탬프·도착·미션·주행 요약)</td><td>Android TextToSpeech, 내비 안내 오디오로 재생 (Pleos TextToSpeech SDK 3.3.1 공개 확인, 교체 예정)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>첫 실행 튜토리얼(5장, 설정에서 다시 보기)</td><td>앱 내부</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>주행 요약 카드(면적·거리·새 길·처음 가 본 동네·스탬프·미션)</td><td>앱 내부 계산</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>동승자 미션(주행 화면엔 진행 한 줄, 성공 시 스탬프)</td><td>Vehicle Seat</td><td><span class="tag done">구현</span></td></tr>
@@ -337,14 +338,14 @@
   <section id="decide">
     <h2>확인·결정이 필요한 것</h2>
     <div class="callout warn"><b>1. 심사용 GitHub 계정</b> 비공개 저장소는 공지될 심사용 계정을 Collaborator로 초대해야 합니다. 아직 공지되지 않았으니 공지사항을 확인하세요. 무료 조직은 브랜치 보호가 없으므로 <b>읽기(Read) 권한</b>으로 초대합니다.</div>
-    <div class="callout warn"><b>2. 참가 단위</b> 개인/팀 여부와 인원은 접수양식 01에 직접 기입합니다. 팀이면 팀원 전원 서명과 CC가 필요합니다.</div>
-    <h3>설명회(10/28) 질문 목록</h3>
+    <div class="callout warn"><b>2. 참가 단위</b> 팀 2명(대표자 1명 + 팀원 1명)으로 정했습니다. 두 사람 모두 접수양식 04에 각자 동의·서명·날짜를 쓰고, 대표자가 팀원을 이메일 참조(CC)에 넣어 보냅니다.</div>
+    <h3>설명회 대신 직접 확인한 것 (2026-10-25)</h3>
     <ul>
-      <li>준비 중 SDK(FusedLocation, TextToSpeech)를 공모전 기간에 사용해도 되는지, 미지원 차량 대체 구현이면 충분한지</li>
-      <li>에뮬레이터에서 위치 이동 시뮬레이션 권장 방법 (<code>adb emu geo fix</code>, GPX 재생)</li>
-      <li>외부 지도 타일(OpenStreetMap 기반) 네트워크 사용 허용 여부</li>
-            <li>MAU 산정 시 참고할 Pleos Connect 탑재 차량 수 공개 자료 유무</li>
-      <li>에뮬레이터 2.1.0에서 Virtual Console의 좌석 탑승 값이 Vehicle SDK <code>getCurrentSeatOccupancy</code>에 반대로 전달되는 현상(콘솔 "탑승" → SDK false)이 알려진 문제인지</li>
+      <li><b>SDK 사용</b>: 공모전 FAQ의 제공 SDK는 Vehicle·NaviHelper·TextToSpeech·SpeechToText·FusedLocation입니다. Pleos Maven에 TextToSpeech 3.3.1(10/13)이 올라와 있어, 지금 Android TextToSpeech로 만든 음성 안내를 Pleos TextToSpeech SDK로 바꿔야 합니다. FusedLocation 1.1.3은 이미 사용 중입니다. (<a href="https://appdevchallenge.auto-hmg.io/faq">FAQ</a> · <a href="https://document.pleos.ai/api-reference/connect-sdk-pleos/TextToSpeech/make-the-first-api-call">TextToSpeech SDK 문서</a>)</li>
+      <li><b>위치 시뮬레이션</b>: 공식 권장 방법은 따로 없습니다. Virtual Console과 <code>adb emu geo fix</code>로 QA 자동 테스트를 돌리고 있고, 시연은 앱의 시연 모드로 합니다.</li>
+      <li><b>외부 지도 타일</b>: FAQ·유의사항에 네트워크 사용 제한이 없습니다. OpenStreetMap 출처 표기만 유지합니다.</li>
+      <li><b>MAU 근거</b>: 탑재 차량 누적 대수는 공개되지 않았습니다. 대신 탑재 차종 판매로 추정합니다. 2026년 9월 국내 판매 그랜저 8,898대·아반떼 7,305대(<a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-september-2026-sales">현대차 9월 실적</a>), 아반떼는 8/5 계약 시작부터 전 트림 기본 탑재(<a href="https://www.starnewskorea.com/business-life/2026/08/05/2026080509094993230">기사</a>).</li>
+      <li><b>좌석 탑승 값 반대 현상</b>: 에뮬레이터 2.1.0 Virtual Console 문제로 보고, QA 도구가 보정합니다(<code>VConsole.seat()</code>). 앱 동작과는 관계없습니다.</li>
     </ul>
   </section>
 

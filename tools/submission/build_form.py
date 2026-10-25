@@ -3,14 +3,21 @@
 
     python3 tools/submission/build_form.py
 
-Reads   docs/submission/template/contest-application-consent.docx  (the official form, unchanged)
+Reads   docs/submission/original/contest-application-consent.docx  (the official form, unchanged)
         docs/submission/02-app-introduction.md                     (sections "## 1." .. "## 8.")
 Writes  docs/submission/application-form.docx
 
-Only non-personal fields are filled: section 02 (1-8), the app name lines, the team name and the
-category. Personal fields in 01, the consent in 03 and the signatures in 04 stay blank on purpose.
+Only non-personal fields are filled there: section 02 (1-8), the app name lines, the team name and
+the category. That file is committed, and the repository is a link the judges open, so it must not
+carry names or contact details.
+
+If docs/submission/private/team.json exists (git-ignored, see team.example.json), the team's entries
+in 01 and the names in 04 are also filled into a second copy:
+        docs/submission/private/zobo_안개지도_접수양식.docx
+Consent boxes, signatures and dates are never filled: each member does those.
 Standard library only.
 """
+import json
 import os
 import re
 import struct
@@ -19,9 +26,12 @@ from xml.sax.saxutils import escape
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SUB = os.path.join(ROOT, "docs", "submission")
-TEMPLATE = os.path.join(SUB, "template", "contest-application-consent.docx")
+TEMPLATE = os.path.join(SUB, "original", "contest-application-consent.docx")
 SOURCE = os.path.join(SUB, "02-app-introduction.md")
 OUT = os.path.join(SUB, "application-form.docx")
+PRIVATE = os.path.join(SUB, "private")
+TEAM_JSON = os.path.join(PRIVATE, "team.json")
+PRIVATE_OUT = os.path.join(PRIVATE, "zobo_안개지도_접수양식.docx")
 
 APP_NAME = "안개지도(FogDrive)"
 TEAM = "zobo"
@@ -220,6 +230,60 @@ def fill_line(doc, prefix, text):
     return doc
 
 
+def fill_table(doc, marker, rows, first_row=1, first_col=0):
+    """Writes [rows] (lists of cell texts, None = leave) into the empty cells of the table holding [marker]."""
+    for m in re.finditer(r"<w:tbl>.*?</w:tbl>", doc, flags=re.S):
+        tbl = m.group(0)
+        if marker not in tbl:
+            continue
+        trs = re.findall(r"<w:tr[ >].*?</w:tr>", tbl, flags=re.S)
+        new_tbl = tbl
+        for r, values in enumerate(rows):
+            tr = trs[first_row + r]
+            tcs = re.findall(r"<w:tc>.*?</w:tc>", tr, flags=re.S)
+            new_tr = tr
+            for c, text in enumerate(values):
+                if not text:
+                    continue
+                tc = tcs[first_col + c]
+                if "<w:t>" in tc or "<w:t " in tc:
+                    raise SystemExit(f"cell already has text: {marker} row {r} col {c}")
+                run = f'<w:r><w:rPr>{FONT_RPR}</w:rPr><w:t xml:space="preserve">{escape(text)}</w:t></w:r>'
+                new_tr = new_tr.replace(tc, tc.replace("</w:pPr></w:p>", "</w:pPr>" + run + "</w:p>", 1), 1)
+            new_tbl = new_tbl.replace(tr, new_tr, 1)
+        return doc[:m.start()] + new_tbl + doc[m.end():]
+    raise SystemExit(f"table with '{marker}' not found in the form")
+
+
+def fill_private(doc, team):
+    rep = team["representative"]
+    members = team["members"]
+    blank = lambda v, n: v or "_" * n
+    doc = fill_line(doc, "참가 단위: ", "□ 개인           ■ 팀" if len(members) > 1 else "■ 개인           □ 팀")
+    doc = fill_line(doc, "대표자 성명: ", f"{rep['name']}   역할: {blank(rep.get('role'), 27)}")
+    if rep.get("affiliation"):
+        doc = fill_line(doc, "대표자 소속(학교/학과/회사명/무소속 등): ", rep["affiliation"] + "  ※ 필수기입 아님")
+    doc = fill_line(doc, "대표자 이메일: ", rep["email"])
+    if rep.get("phone"):
+        doc = fill_line(doc, "대표자 휴대폰번호: ", rep["phone"])
+    doc = fill_line(doc, "참가 인원: ", f"{len(members)}명")
+    doc = fill_table(doc, "담당 역할", [[m["name"], m.get("affiliation"), m.get("phone"), m["email"], m.get("role")]
+                                        for m in members])
+    others = [m for m in members if m["name"] != rep["name"]]
+    doc = fill_table(doc, "서명일자", [[rep["name"]]] + [[m["name"]] for m in others], first_col=1)
+    return doc
+
+
+def write_docx(files, doc, path):
+    files = dict(files, **{"word/document.xml": doc.encode("utf-8")})
+    tmp = path + ".tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+        for n, data in files.items():
+            # Fixed timestamp so rebuilding unchanged content gives the same bytes (no spurious git diffs).
+            z.writestr(zipfile.ZipInfo(n, date_time=(1980, 1, 1, 0, 0, 0)), data, zipfile.ZIP_DEFLATED)
+    os.replace(tmp, path)
+
+
 def main():
     md = open(SOURCE, encoding="utf-8").read()
     secs = sections(md)
@@ -236,7 +300,6 @@ def main():
     doc = fill_line(doc, "참가 부문: ", "□ 대학(원)생    ■ 일반(스타트업 포함)")
     if "xmlns:wp=" not in doc[:3000] or "xmlns:r=" not in doc[:3000]:
         raise SystemExit("form lacks the drawing namespaces")
-    files["word/document.xml"] = doc.encode("utf-8")
 
     rels = files["word/_rels/document.xml.rels"].decode("utf-8")
     extra = "".join(f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="{name}"/>'
@@ -251,13 +314,13 @@ def main():
     for _, name, data in images.items:
         files["word/" + name] = data
 
-    tmp = OUT + ".tmp"
-    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
-        for n, data in files.items():
-            # Fixed timestamp so rebuilding unchanged content gives the same bytes (no spurious git diffs).
-            z.writestr(zipfile.ZipInfo(n, date_time=(1980, 1, 1, 0, 0, 0)), data, zipfile.ZIP_DEFLATED)
-    os.replace(tmp, OUT)
+    write_docx(files, doc, OUT)
     print(f"{os.path.relpath(OUT, ROOT)} ({len(images.items)} images)")
+    if os.path.exists(TEAM_JSON):
+        with open(TEAM_JSON, encoding="utf-8") as f:
+            team = json.load(f)
+        write_docx(files, fill_private(doc, team), PRIVATE_OUT)
+        print(f"{os.path.relpath(PRIVATE_OUT, ROOT)} (team entries filled; not in git)")
 
 
 if __name__ == "__main__":

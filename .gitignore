@@ -16,3 +16,6 @@ qa/reports/
 qa/.qa_password
 qa/logs/
 __pycache__/
+
+# Contest submission: filled form and email with names/contacts (never committed)
+docs/submission/private/

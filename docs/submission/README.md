@@ -10,19 +10,32 @@
 
 | 제출물 | 구분 | 이 폴더의 파일 | 상태 | 남은 일 |
 | --- | --- | --- | --- | --- |
-| 접수양식(기획서) | **필수** | [`application-form.docx`](application-form.docx) | 02 작성 완료 | 01·03·04 기입·서명, 02-7·8 링크 |
+| 접수양식(기획서) | **필수** | [`application-form.docx`](application-form.docx) (개인정보 없는 공개본)<br>`private/zobo_안개지도_접수양식.docx` (제출본, git 제외) | 02 작성 완료, 제출본은 01·04 이름·이메일까지 채움 | 휴대폰·역할·작성일, 04 동의·서명, 02-7·8 영상 링크 |
 | 접수양식 02 원고 | (양식 원본 글) | [`02-app-introduction.md`](02-app-introduction.md) | 작성 완료 | 고치면 양식 다시 생성 |
-| 제출 이메일 | **필수** | [`email.md`](email.md) | 작성 완료 | 대표자명·팀원·링크 바꿔서 발송 |
+| 제출 이메일 | **필수** | [`email.md`](email.md) (양식)<br>`private/email.txt` (실제 값을 넣은 메일, git 제외) | 작성 완료 | 영상 링크 넣어서 발송 |
 | GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | 준비 완료(TEAM-zobo 조직으로 이전) | 심사용 계정 읽기 권한 초대, APK 재빌드 |
 | 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | 콘티 완료 | 녹화·편집·업로드 |
 | 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 콘티 완료 | 여유 있으면 제작 |
-| 양식 원본 | - | [`template/contest-application-consent.docx`](template/contest-application-consent.docx) | 공식 배포본 그대로 | - |
+| 양식 원본 | - | [`original/contest-application-consent.docx`](original/contest-application-consent.docx) | 공식 배포본과 바이트까지 같음(SHA-1 `73fad63f`, 2026-10-25 확인) | 수정하지 않음. 채운 양식과 비교할 때 씀 |
 
 앱 화면 이미지는 [`../images/`](../images/)에 있습니다(2026-10-25, Pleos Connect 에뮬레이터 v2.1.0에서 촬영). 접수양식 02-7에는 그중 6장이 들어 있습니다.
 
 ## 접수양식 채우는 법
 
-`application-form.docx`는 공식 양식에 아래만 미리 채운 파일입니다. 개인정보와 서명은 비워 뒀습니다.
+양식은 두 가지로 만들어집니다.
+
+- `application-form.docx`: 저장소에 올라가는 **공개본**. 심사위원이 여는 GitHub 저장소에 들어 있으므로 성명·연락처를 넣지 않습니다.
+- `private/zobo_안개지도_접수양식.docx`: 실제로 **제출하는 파일**. 공개본에 `private/team.json`의 팀 정보(참가 단위, 대표자, 구성원 성명·이메일, 04 성명)를 더 채운 것입니다. `private/` 폴더는 `.gitignore`로 저장소에 올라가지 않습니다. 다른 컴퓨터에서는 [`team.example.json`](team.example.json)을 `private/team.json`으로 복사해 채웁니다.
+
+| 영역 | 공개본에 채운 것 | 제출본에 더 채운 것 | 직접 채울 것 |
+| --- | --- | --- | --- |
+| 01-A 참가 기본정보 | 참가 부문 일반, 팀명 zobo, 앱명 | 참가 단위 팀, 대표자 성명·이메일, 참가 인원 2명 | 대표자 역할·휴대폰, 소속(선택), 작성일 |
+| 01-B 참가 구성원 | - | 2명의 성명·이메일 | 각자 소속·휴대폰·역할 |
+| 02 앱 소개 1–8 | 전부(원고 = `02-app-introduction.md`), GitHub 주소 포함 | - | 노란 형광 【기입 필요】 2곳: 시연 영상 링크, 숏폼 링크(없으면 "없음") |
+| 03 개인정보 동의 | - | - | 내용 확인 |
+| 04 동의·서명 | 앱명, 팀명 | 대표자·팀원 성명 | 각자 동의 체크, 서명, 서명일자 |
+
+휴대폰·역할·소속은 `private/team.json`에 넣고 다시 만들면 양식에도 들어갑니다. 동의 체크·서명·날짜는 본인이 해야 하므로 스크립트가 채우지 않습니다.
 
 | 영역 | 미리 채운 것 | 직접 채울 것 |
 | --- | --- | --- |
@@ -32,11 +45,12 @@
 | 03 개인정보 동의 | - | 내용 확인 |
 | 04 동의·서명 | 앱명, 팀명 | 대표자·팀원 각자 동의 체크, 서명, 서명일자 |
 
-1. 02 내용을 고칠 때는 `02-app-introduction.md`를 고친 뒤 `python3 tools/submission/build_form.py`를 실행합니다(Windows `python`). `application-form.docx`가 다시 만들어집니다. 【기입 필요】도 이 원고에서 채우면 됩니다.
-2. 01·03·04는 Word에서 직접 입력합니다. 서명은 서명 이미지를 넣거나, 인쇄 → 서명 → 스캔해도 됩니다.
-3. 다 채운 파일을 `zobo_안개지도_접수양식.docx`로 저장하고, PDF로도 내보내(`zobo_안개지도_접수양식.pdf`) 둘 다 첨부합니다.
+1. 02 내용을 고칠 때는 `02-app-introduction.md`를, 팀 정보를 고칠 때는 `private/team.json`을 고친 뒤 `python3 tools/submission/build_form.py`를 실행합니다(Windows `python`). 공개본과 제출본이 함께 다시 만들어집니다.
+2. 서명은 제출본(`private/zobo_안개지도_접수양식.docx`)을 Word로 열어 서명 이미지를 넣거나, 인쇄 → 서명 → 스캔합니다. 팀원은 각자 서명합니다.
+3. 서명한 파일을 PDF로도 내보내(`zobo_안개지도_접수양식.pdf`) DOCX와 함께 첨부합니다.
+4. 채운 양식이 이상해 보이면 `original/`의 공식 원본과 나란히 열어 비교합니다.
 
-> `build_form.py`를 다시 실행하면 Word에서 직접 입력한 01·03·04 내용은 사라집니다. 02를 확정한 뒤에 01·03·04를 채우세요.
+> `build_form.py`를 다시 실행하면 Word에서 직접 입력·서명한 내용은 사라집니다. 내용을 모두 확정한 뒤에 서명하세요.
 
 ## 최종 점검 (11/10)
 
@@ -47,7 +61,7 @@
 - [ ] 시연 영상: 로그인하지 않은 브라우저에서 재생됨, 2–3분
 - [ ] README의 실행 방법대로 처음부터 셋팅해 앱이 뜬다([`../SETUP.md`](../SETUP.md))
 - [ ] 지도 출처 표기(© OpenStreetMap · OpenFreeMap)가 앱 화면에 보인다
-- [ ] 이메일 제목 `[차량용 앱 개발 공모전] zobo_대표자명`, 팀이면 팀원 전원 참조
+- [ ] 이메일은 대표자 주소에서, 제목 `[차량용 앱 개발 공모전] zobo_대표자명`, 팀원 참조(CC) — `private/email.txt` 그대로
 - [ ] 보낸 메일함에서 첨부가 열린다
 
 ## 제출 후

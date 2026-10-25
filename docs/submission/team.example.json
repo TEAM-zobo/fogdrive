@@ -1,0 +1,7 @@
+{
+  "representative": {"name": "대표자 성명", "role": "역할", "affiliation": "소속(선택)", "email": "대표자 이메일", "phone": "010-0000-0000"},
+  "members": [
+    {"name": "대표자 성명", "role": "역할", "affiliation": "소속", "email": "대표자 이메일", "phone": "010-0000-0000"},
+    {"name": "팀원 성명", "role": "역할", "affiliation": "소속", "email": "팀원 이메일", "phone": "010-0000-0000"}
+  ]
+}
