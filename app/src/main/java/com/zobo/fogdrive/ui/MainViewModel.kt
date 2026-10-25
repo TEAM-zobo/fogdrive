@@ -86,10 +86,13 @@ class MainViewModel : ViewModel() {
     val landings: StateFlow<List<LandingEntity>> = repo.landings.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val stamps: StateFlow<List<StampEntity>> = repo.stamps.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val summary: StateFlow<Summary> = combine(version, landings, stamps, trips, live) { _, l, s, t, lv ->
+    val summary: StateFlow<Summary> = combine(
+        version, landings, stamps, trips,
+        // Cell size only depends on latitude; 0.1° steps keep the summary from being recomputed on
+        // every fix (the whole live status changes several times a second while driving).
+        live.map { it.location?.lat?.let { lat -> Math.round(lat * 10) / 10.0 } ?: 37.5 }.distinctUntilChanged(),
+    ) { _, l, s, t, lat ->
         val cells = repo.count()
-        // Cell size only depends on latitude; 0.1° steps keep the summary from changing on every fix.
-        val lat = lv.location?.lat?.let { Math.round(it * 10) / 10.0 } ?: 37.5
         val cellKm = Tiles.cellSizeMeters(lat) / 1000.0
         val xp = Progress.xp(cells, l.size, s.size, s.map { it.code }.distinct().size)
         val dist = t.sumOf { it.distanceMeters }
@@ -328,15 +331,18 @@ class MainViewModel : ViewModel() {
 
     /**
      * Detour toward fog on the way to the destination. With the car's remaining range known, a
-     * detour the range can't comfortably cover (round trip home included) is not offered.
+     * detour the range can't comfortably cover (round trip home included) is not offered. Planned
+     * only while parked, where the card shows: while driving every fix re-planned it for nothing
+     * (about a quarter of the background CPU), and the location stops changing once parked.
      */
     val detour: StateFlow<DetourPlanner.Suggestion?> = combine(
         live.map { it.location?.let { f -> f.lat to f.lng } }.distinctUntilChanged(),
         navi.destination,
         version,
         vehicle.map { it.rangeKm?.let { km -> (km / 10).toInt() * 10 } }.distinctUntilChanged(),
-    ) { origin, dest, _, rangeKm ->
-        if (origin == null || dest == null) return@combine null
+        vehicle.map { it.parked }.distinctUntilChanged(),
+    ) { origin, dest, _, rangeKm, parked ->
+        if (!parked || origin == null || dest == null) return@combine null
         val s = DetourPlanner.plan(origin.first, origin.second, dest.lat, dest.lng, repo::isExplored) ?: return@combine null
         val direct = Tiles.distanceMeters(origin.first, origin.second, dest.lat, dest.lng)
         s.takeIf { rangeKm == null || DetourPlanner.fitsRange(rangeKm.toDouble(), direct, s.extraMeters) }

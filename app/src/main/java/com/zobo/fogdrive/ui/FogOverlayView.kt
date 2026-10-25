@@ -15,6 +15,7 @@ import android.graphics.Typeface
 import android.view.View
 import com.zobo.fogdrive.data.ExploreRepository
 import com.zobo.fogdrive.data.LongHashSet
+import com.zobo.fogdrive.data.LongIntMap
 import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.explore.RegionCounts
 import com.zobo.fogdrive.geo.Outline
@@ -52,7 +53,7 @@ class FogOverlayView(context: Context) : View(context) {
     /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
     /** Called once, the first time the fog is drawn with the region data (or without it for good). */
     var onReady: (() -> Unit)? = null
-    var revisits: () -> Map<Long, Int> = { emptyMap() }
+    var revisits: () -> LongIntMap = { LongIntMap.NONE }
     /** Changes whenever explored cells change (the fog is redrawn then). */
     var cellsVersion: () -> Int = { 0 }
     /** Changes whenever revisit counts change (the worn roads are redrawn then, if shown). */

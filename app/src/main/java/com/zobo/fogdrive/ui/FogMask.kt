@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import com.zobo.fogdrive.data.LongHashSet
+import com.zobo.fogdrive.data.LongIntMap
 import com.zobo.fogdrive.data.forEachValue
 import com.zobo.fogdrive.geo.Outline
 import com.zobo.fogdrive.geo.Tiles
@@ -85,7 +86,7 @@ class FogMaskRenderer(
         /** Explored cells at [FogMaskKey.dz]: a concurrent or immutable set, safe to read here. */
         val cells: () -> LongHashSet,
         /** Revisit counts (concurrent map), or null when worn roads are not drawn. */
-        val revisits: Map<Long, Int>?,
+        val revisits: LongIntMap?,
         /**
          * Where the content changed since the last request (x0, y0, x1, y1 in zoom-20 tile units),
          * or null for "anywhere": only that part is redrawn when the tile is otherwise the same.
@@ -190,6 +191,8 @@ class FogMaskRenderer(
         var sy0 = y0
         var sx1 = x1
         var sy1 = y1
+        // The pixels redrawn this time (a partial render), so chunks outside are handed on as they were.
+        var changed: android.graphics.Rect? = null
         if (dirty != null) {
             val rimWorld = RIM_CELLS * (1 shl key.dz)
             val margin = 2.0 * (1 shl key.dz) + rimWorld
@@ -199,10 +202,12 @@ class FogMaskRenderer(
             sy1 = minOf(y1, dirty[3] + margin)
             c.save()
             // Whole pixels: a fractional clip edge blends old and new along it (a faint seam).
-            c.clipRect(
+            val clip = android.graphics.Rect(
                 floor((sx0 - x0) * px).toInt(), floor((sy0 - y0) * px).toInt(),
                 ceil((sx1 - x0) * px).toInt(), ceil((sy1 - y0) * px).toInt(),
             )
+            c.clipRect(clip)
+            changed = clip
             c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             // Cells just outside still reach in with their rims: scan a little wider than the clip.
             sx0 -= rimWorld
@@ -274,7 +279,7 @@ class FogMaskRenderer(
             i += 2
         }
         var worn: Bitmap? = null
-        job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
+        job.revisits?.takeIf { !it.isEmpty() }?.let { visits ->
             if (wornScale == 1) {
                 // Same resolution as the fog (driving zoom): drawn into the fog itself, so it is
                 // uploaded with the chunks it touches.
@@ -289,16 +294,24 @@ class FogMaskRenderer(
         }
         if (dirty != null) c.restore()
         c.setBitmap(null)
+        val chunks = chunk(bmp, gx0, gy0, cols, rows, px, key, changed)
+        // Only now: a partial render hands on [last]'s chunks outside its clip, so the bitmap may be
+        // reused only when this render also became [last] (chunking can still run out of memory).
         fullGeometry = geometry
-        return FogMaskTile(chunk(bmp, gx0, gy0, cols, rows, px, key), cols, x0, y0, x1, y1, px, key, worn, wornScale)
+        return FogMaskTile(chunks, cols, x0, y0, x1, y1, px, key, worn, wornScale)
     }
 
     /**
      * Cuts the tile into chunks. A chunk whose pixels equal the last tile's chunk at the same map
      * position (same scale and look) is handed on as is: the GPU keeps that texture, so a redraw for a
      * few new cells uploads a few chunks instead of the whole tile (~4 MB, a late frame each time).
+     * After a partial render ([changed]: the pixels redrawn), a chunk clear of them is the last tile's
+     * as it was, without copying and comparing it (that was a third of the renderer's time).
      */
-    private fun chunk(src: Bitmap, gx0: Long, gy0: Long, cols: Int, rows: Int, px: Double, key: FogMaskKey): List<FogChunk> {
+    private fun chunk(
+        src: Bitmap, gx0: Long, gy0: Long, cols: Int, rows: Int, px: Double, key: FogMaskKey,
+        changed: android.graphics.Rect?,
+    ): List<FogChunk> {
         val prev = last?.takeIf { it.cellPx == px && it.key.dz == key.dz && it.key.night == key.night }
         val prevChunks = prev?.chunks?.associateBy { chunkKey(it.gx, it.gy) }
         val out = ArrayList<FogChunk>(cols * rows)
@@ -311,6 +324,13 @@ class FogMaskRenderer(
             val top = max(0, j * CHUNK - 1)
             val right = minOf(w, (i + 1) * CHUNK + 1)
             val bottom = minOf(h, (j + 1) * CHUNK + 1)
+            val offX = i * CHUNK - left
+            val offY = j * CHUNK - top
+            val old = prevChunks?.get(chunkKey(gx, gy))?.takeIf { it.offX == offX && it.offY == offY }
+            if (old != null && changed != null && !changed.intersects(left, top, right, bottom)) {
+                out.add(old)
+                continue
+            }
             val cw = right - left
             val ch = bottom - top
             val sizeKey = (cw.toLong() shl 32) or ch.toLong()
@@ -320,10 +340,7 @@ class FogMaskRenderer(
             dstRect.set(0, 0, cw, ch)
             canvas.drawBitmap(src, srcRect, dstRect, copyPaint)
             canvas.setBitmap(null)
-            val offX = i * CHUNK - left
-            val offY = j * CHUNK - top
-            val old = prevChunks?.get(chunkKey(gx, gy))
-            if (old != null && old.offX == offX && old.offY == offY && old.bitmap.sameAs(copy)) {
+            if (old != null && old.bitmap.sameAs(copy)) {
                 scratch[sizeKey] = copy
                 out.add(old)
             } else {
@@ -345,7 +362,7 @@ class FogMaskRenderer(
      * the daily routes stand out at a glance. Drawn into the fog bitmap, above the holes.
      */
     private fun drawWornRoads(
-        c: Canvas, visits: Map<Long, Int>, x0: Double, y0: Double, x1: Double, y1: Double, px: Double,
+        c: Canvas, visits: LongIntMap, x0: Double, y0: Double, x1: Double, y1: Double, px: Double,
         // The part to scan for cells (default: all of it); positions stay relative to x0, y0.
         sx0: Double = x0, sy0: Double = y0, sx1: Double = x1, sy1: Double = y1,
     ) {
@@ -369,13 +386,15 @@ class FogMaskRenderer(
             wornCount[level] = i + 2
         }
         if ((lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1) < visits.size) {
-            for (cx in lx0..lx1) for (cy in ly0..ly1) visits[Tiles.pack(cx, cy)]?.let { collect(cx, cy, it) }
+            for (cx in lx0..lx1) for (cy in ly0..ly1) {
+                val n = visits[Tiles.pack(cx, cy)]
+                if (n > 0) collect(cx, cy, n)
+            }
         } else {
-            for ((cell, n) in visits) {
+            visits.forEach { cell, n ->
                 val cx = Tiles.x(cell)
                 val cy = Tiles.y(cell)
-                if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
-                collect(cx, cy, n)
+                if (cx in lx0..lx1 && cy in ly0..ly1) collect(cx, cy, n)
             }
         }
         // One layer per tint: opaque circles inside merge into an even band, and the layer's alpha

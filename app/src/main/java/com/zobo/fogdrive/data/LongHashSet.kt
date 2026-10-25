@@ -96,9 +96,9 @@ class LongHashSet(expected: Int = 16) : AbstractSet<Long>() {
         const val EMPTY = Long.MIN_VALUE
 
         /** Fibonacci hashing: neighbouring cells (packed x / y) land far apart. */
-        private fun slot(value: Long, mask: Int): Int = ((value * -0x61c8864680b583ebL) ushr 32).toInt() and mask
+        internal fun slot(value: Long, mask: Int): Int = ((value * -0x61c8864680b583ebL) ushr 32).toInt() and mask
 
-        private fun capacityFor(expected: Int): Int {
+        internal fun capacityFor(expected: Int): Int {
             var c = 16
             while (c * 3 < expected * 5) c = c shl 1
             return c

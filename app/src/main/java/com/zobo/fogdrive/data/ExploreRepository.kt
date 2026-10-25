@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -113,7 +112,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             if (synchronized(lock) { resetGeneration } == generation) {
                 stored.forEach { visitCounts[it.cell] = it.visits }
                 // Repeats recorded while loading go on top: a cell stored with none was driven once.
-                pendingVisits.forEach { (c, k) -> visitCounts.merge(c, 1 + k) { old, _ -> old + k } }
+                pendingVisits.forEach { (c, k) -> visitCounts.add(c, by = k, initial = 1 + k) }
                 // Now that the stored counts are read, store the repeats (once per repeat).
                 val byRepeats = pendingVisits.entries.groupBy({ it.value }, { it.key })
                 for ((k, list) in byRepeats) repeat(k) { storeVisits(list) }
@@ -135,7 +134,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     override fun noTripsYet(): Boolean = !hasTrips
 
     /** Cells driven by more than one trip, with their trip count (read live by the map). */
-    private val visitCounts = ConcurrentHashMap<Long, Int>(INITIAL_CELLS / 4)
+    private val visitCounts = LongIntMap(INITIAL_CELLS / 4)
     /** Guards the switch from [pendingVisits] to [visitCounts] once the stored counts are loaded. */
     private val visitLock = Any()
     @Volatile private var visitsLoaded = false
@@ -165,7 +164,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         if (revisitLogSize + cells.size > revisitLog.size) revisitLog = revisitLog.copyOf(maxOf(revisitLog.size * 2, revisitLogSize + cells.size))
         for (c in cells) revisitLog[revisitLogSize++] = c
     }
-    val revisits: Map<Long, Int> get() = visitCounts
+    val revisits: LongIntMap get() = visitCounts
     /** Bumped when [revisits] changes (no [version] bump for that, see [revisit]): the fog redraws on it. */
     private val revisitCounter = AtomicInteger()
     val revisitVersion: Int get() = revisitCounter.get()
@@ -176,7 +175,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         val loaded = synchronized(visitLock) {
             if (visitsLoaded) {
                 // A cell missing from the map was driven once before (only repeats are stored).
-                for (c in cells) visitCounts.merge(c, 2) { old, _ -> old + 1 }
+                for (c in cells) visitCounts.add(c, by = 1, initial = 2)
                 logRevisits(cells)
             } else {
                 // The stored counts aren't in yet: count the repeats, added on top once they are.
