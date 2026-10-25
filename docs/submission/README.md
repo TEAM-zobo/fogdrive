@@ -14,8 +14,8 @@
 | 접수양식 02 원고 | (양식 원본 글) | [`02-app-introduction.md`](02-app-introduction.md) | 작성 완료 | 고치면 양식 다시 생성 |
 | 제출 이메일 | **필수** | [`email.md`](email.md) (양식)<br>`private/email.txt` (실제 값을 넣은 메일, git 제외) | 작성 완료 | 영상 링크 넣어서 발송 |
 | GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | 준비 완료(TEAM-zobo 조직으로 이전) | 심사용 계정 읽기 권한 초대, APK 재빌드 |
-| 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | 콘티 완료 | 녹화·편집·업로드 |
-| 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 콘티 완료 | 여유 있으면 제작 |
+| 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | 제작 완료(1분 46초) | 직접 확인 후 업로드 |
+| 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 제작 완료(47초, 세로) | 직접 확인 후 팀 계정으로 게시 |
 | 양식 원본 | - | [`original/contest-application-consent.docx`](original/contest-application-consent.docx) | 공식 배포본과 바이트까지 같음(SHA-1 `73fad63f`, 2026-10-25 확인) | 수정하지 않음. 채운 양식과 비교할 때 씀 |
 
 앱 화면 이미지는 [`../images/`](../images/)에 있습니다(2026-10-25, Pleos Connect 에뮬레이터 v2.1.0에서 촬영). 접수양식 02-7에는 그중 6장이 들어 있습니다.

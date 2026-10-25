@@ -89,7 +89,7 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 | 파일 | 역할 |
 | --- | --- |
 | `build.py` | **편집은 여기서.** 장면 목록(`SCENES`): 쓰는 클립, 카메라(`cam`: 원본 좌표와 배율), 자막(`cap`), 제목(`title`), 숫자 카드(`stat`). 색·글꼴·전환(0.6초 크로스페이드)·음악 볼륨 곡선·효과음 목록(`SFX`)도 여기 있습니다 |
-| `prepare_assets.sh` | 녹화본의 어느 구간을 어떤 클립으로 자를지. 우회 제안 카드 0.35배속, 음성 문장 한 줄(+22dB, 앞뒤 페이드) |
+| `prepare_assets.sh` | 녹화본의 어느 구간을 어떤 클립으로 자를지(숏폼에만 쓰는 `share` 포함). 우회 제안 카드 0.35배속, 음성 문장 한 줄(+22dB, 앞뒤 페이드) |
 | `vector2svg.py` | 앱 런처 아이콘(Android vector XML) → `assets/icon.svg` |
 | `SPEC.md`, `STORYLINES.md` | 장면별 기획, 대안 스토리라인 2개 |
 | `index.html`, `compositions/` | `build.py`가 만드는 결과(직접 고치지 않음) |
@@ -115,7 +115,28 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 | 지도 타일 | OpenStreetMap contributors (ODbL), OpenFreeMap | 엔딩 화면 하단 + 앱 화면 자체 표기 |
 | HyperFrames | Apache-2.0 | 필요 없음 |
 
-## 5. 문제 해결
+## 5. 숏폼
+
+접수양식 02-8 숏폼(선택)은 같은 녹화본으로 만드는 세로 영상입니다. 제출 조건과 장면은 [submission/shortform.md](submission/shortform.md)에 있습니다.
+
+- 결과물: `tools/demo/shortform/renders/fogdrive-shortform.mp4` (1080×1920, 30fps, 47초, git 제외)
+- 소재: 홍보 영상의 `assets/`(장면 클립, 글꼴, 음악, 효과음, 아이콘)를 그대로 씁니다. `build.py`가 `tools/demo/shortform/assets`를 `../promo/assets`로 연결합니다(심볼릭 링크를 만들 수 없는 Windows에서는 복사).
+
+```bash
+tools/demo/promo/prepare_assets.sh          # 홍보 영상과 같은 준비(이미 했으면 생략)
+cd tools/demo/shortform
+python3 build.py                            # 장면 목록 → index.html + compositions/*.html
+npx hyperframes@0.8.196 check
+npx hyperframes@0.8.196 snapshot --at 0,12,22,26,31,37,44
+npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o renders/fogdrive-shortform.mp4
+```
+
+- **편집은 `tools/demo/shortform/build.py`에서.** 장면 목록, 카메라, 자막, 효과음이 있고 색·글꼴·글자 효과는 홍보 영상의 `build.py`에서 가져옵니다.
+- **세로 구도:** 카메라 `(원본 x, 원본 y, 배율)`의 기본은 `TALL = (1680, 700, 1.5)`(차 주변 720×1280 원본 픽셀)입니다. `ms=초`는 클립을 그만큼 건너뛰고 시작합니다.
+- **글자 위치:** 휴대폰 화면 위 168–1330 px 안에만 둡니다. 그 아래는 플랫폼의 설명·버튼이 덮습니다. 첫 프레임(썸네일)에 질문 제목이 이미 떠 있어야 합니다.
+- **해시태그:** `HASHTAG`에 있고 마지막 화면에 나옵니다. 게시글 본문에도 적습니다.
+
+## 6. 문제 해결
 
 | 증상 | 원인·해결 |
 | --- | --- |

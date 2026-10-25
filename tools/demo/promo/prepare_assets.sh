@@ -42,6 +42,7 @@ shot timelapse  b3_timelapse   0.5 15
 shot record     b2_record      1.2 12   # from 1.2 s: the map shows until the record tab opens
 shot dex        b4_dex         8.5 15.5
 shot stamps     b4_dex         24 35.5
+shot share      b5_share       1.6 8.5   # the shortform only: the share card is up from 1.6 s
 
 for w in Regular SemiBold Bold ExtraBold; do
   [ -f "$A/fonts/Pretendard-$w.woff2" ] || curl -fsSL -o "$A/fonts/Pretendard-$w.woff2" \

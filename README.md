@@ -221,7 +221,7 @@ Virtual Console에서 기어(P/D), 도어, 창문, 와이퍼, 전조등, 좌석,
 
 ## 시연·홍보 영상
 
-에뮬레이터에서 앱을 자동 조작하며 구간별로(소리 포함) 녹화하고, [HyperFrames](https://github.com/heygen-com/hyperframes)로 자막·카메라 워크·배경음악을 입혀 1분 46초 홍보 영상을 만듭니다. 결과물은 `tools/demo/promo/renders/fogdrive-promo.mp4`(git 제외)입니다.
+에뮬레이터에서 앱을 자동 조작하며 구간별로(소리 포함) 녹화하고, [HyperFrames](https://github.com/heygen-com/hyperframes)로 자막·카메라 워크·배경음악을 입혀 1분 46초 홍보 영상을 만듭니다. 결과물은 `tools/demo/promo/renders/fogdrive-promo.mp4`(git 제외)입니다. 같은 녹화본으로 세로 숏폼(47초, `tools/demo/shortform`)도 만듭니다.
 
 ```bash
 tools/setup/setup.sh video        # 한 번: ffmpeg, Node.js 22+, HyperFrames 0.8.196 + Claude Code 스킬 (Windows: setup.ps1 video)
@@ -255,6 +255,7 @@ tools/
   submission/ 접수양식 DOCX 생성(build_form.py)
   demo/       시연 영상: 예시 기록 생성 · 시연 상태 준비 · 구간별 녹화(docs/VIDEO.md)
     promo/    HyperFrames 홍보 영상 프로젝트(build.py가 장면 생성, SPEC.md 기획)
+    shortform/ 세로 숏폼(1080×1920, 47초) 프로젝트. 홍보 영상 소재를 그대로 씀
 qa/           에뮬레이터 자동 테스트·웹 대시보드
 docs/
   submission/ 공모전 제출물(접수양식, 02 원고, 제출 이메일, 시연 영상·숏폼 콘티, GitHub 제출 요건)

@@ -1,0 +1,43 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#111111; }
+.cam { position:absolute; left:0; top:0; width:2560px; height:1440px; transform-origin:0 0; }
+.cam video { position:absolute; left:0; top:0; width:2560px; height:1440px; }
+.tw { display:inline-block; transform-origin:50% 60%; }
+.title { position:absolute; left:72px; right:72px; top:400px; color:#FFFFFF;
+  text-shadow:0 2px 8px rgba(0,0,0,0.45), 0 10px 48px rgba(0,0,0,0.6); }
+.title .tl { font-size:112px; font-weight:800; letter-spacing:-0.05em; line-height:1.14; }
+.cap { position:absolute; left:60px; right:60px; top:360px; }   /* below the app's top banner */
+.cap.mid { top:560px; }   /* between the stamp banner above and the car below */
+.cap-card { display:inline-flex; gap:28px; align-items:center; background:rgba(255,255,255,0.97); border-radius:32px;
+  padding:36px 44px 40px; box-shadow:0 24px 64px rgba(17,17,17,0.25), 0 2px 6px rgba(17,17,17,0.08); }
+.cap-icon { color:#0081F8; width:96px; height:96px; border-radius:48px; background:#E8F2FE; display:flex;
+  align-items:center; justify-content:center; flex:none; }
+.cap-icon svg { width:52px; height:52px; }
+.cap h2 { font-size:66px; font-weight:800; letter-spacing:-0.04em; line-height:1.18; }
+.cap h2 .l1 { color:#0081F8; }
+.legend { display:grid; grid-template-columns:repeat(3, auto); gap:14px 26px; margin-top:24px; justify-content:start; }
+.lg { display:flex; align-items:center; gap:12px; font-size:32px; font-weight:700; color:#4A5260; }
+.lg i { display:block; width:56px; height:16px; border-radius:8px; }
+.stat { position:absolute; inset:0; }
+.stat-flood { position:absolute; inset:0; background:#0081F8; display:flex; align-items:center; justify-content:center; }
+.stat-in { text-align:center; color:#FFFFFF; margin-top:-180px; }
+.stat-label { font-size:60px; font-weight:700; letter-spacing:-0.035em; opacity:0.92; }
+.stat-value { font-size:250px; font-weight:800; letter-spacing:-0.06em; line-height:1.0; font-variant-numeric:tabular-nums; margin:16px 0 22px; }
+.stat-value small { font-size:96px; margin-left:12px; letter-spacing:-0.03em; }
+.stat-sub { font-size:48px; font-weight:600; opacity:0.88; }
+#first-wrap{position:absolute;inset:0;background:transparent;transform-origin:50% 50%;}</style>
+  <div id="root" data-composition-id="first" data-width="1080" data-height="1920" data-start="0" data-duration="4.4"><div id="first-wrap" class="wrap"><div id="first-cam" class="cam" data-layout-allow-overflow><video id="first-video" class="clip" data-start="0" data-duration="4.4" src="assets/shots/firstpath.mp4" muted playsinline></video></div><div id="first-stat" class="clip stat" data-start="0.0" data-duration="3.6"><div class="stat-flood"><div class="stat-in"><div class="stat-label">첫 드라이브가 밝힌 세상</div><div class="stat-value"><span id="first-num">0.00</span><small>km²</small></div><div class="stat-sub">처음 가 본 동네 44곳</div></div></div></div></div></div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#first-cam",{"x": -1872.0, "y": 22.0, "scale": 1.34},{"x": -1872.0, "y": 22.0, "scale": 1.34},0);
+tl.to("#first-cam",{...{"x": -1992.6, "y": -24.9, "scale": 1.4070000000000003},duration:4.4,ease:"none"},0);
+tl.fromTo("#first-cam",{opacity:0},{opacity:1,duration:0.01},0.42);
+tl.fromTo("#first-stat .stat-flood",{clipPath:"inset(100% 0% 0% 0%)"},{clipPath:"inset(0% 0% 0% 0%)",duration:0.4,ease:"power3.inOut"},0.0);
+tl.fromTo("#first-stat .stat-label, #first-stat .stat-sub",{opacity:0,y:20},{opacity:1,y:0,duration:0.4,ease:"expo.out",stagger:0.5},0.3);
+tl.fromTo("#first-stat .stat-value",{opacity:0,scale:1.3,filter:"blur(16px)"},{opacity:1,scale:1,filter:"blur(0px)",duration:0.4,ease:"expo.out"},0.4);
+const nfirst={v:0}; tl.fromTo(nfirst,{v:0},{v:4.07,duration:1.2,ease:"power3.out",onUpdate:()=>{document.querySelector("#first-num").textContent=nfirst.v.toFixed(2);}},0.4);
+tl.to("#first-stat .stat-flood",{clipPath:"inset(0% 0% 100% 0%)",duration:0.4,ease:"power3.inOut"},3.2);
+    window.__timelines["first"] = tl;
+  </script>
+</template>
