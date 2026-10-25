@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
@@ -42,6 +43,8 @@ class FogOverlayView(context: Context) : View(context) {
     /** Draw [revisits] at all (map / driving view / Settings toggle). */
     var showWornRoads = true
     /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
+    /** Called once, the first time the fog is drawn with the region data (or without it for good). */
+    var onReady: (() -> Unit)? = null
     var revisits: () -> Map<Long, Int> = { emptyMap() }
     /** Changes whenever explored cells change (the fog is redrawn then). */
     var cellsVersion: () -> Int = { 0 }
@@ -247,18 +250,16 @@ class FogOverlayView(context: Context) : View(context) {
 
     private val renderer = FogMaskRenderer(onTile = { onTile(it) }, onFailed = { onRenderFailed(it) })
     private var tile: FogMaskTile? = null
-    /** The tile the last frame drew: its bitmaps stay out of reuse until a later frame replaced it. */
-    private var drawn: FogMaskTile? = null
     /** The newest request sent to [renderer] (its key and rectangle), so a frame doesn't resend it. */
     private var requested: FogMaskRenderer.Job? = null
     private var lastDataRequest = 0L
     private val tileMatrix = Matrix()
+    private val chunkSrc = Rect()
+    private val chunkDst = RectF()
     private val fogFallback = Paint()
 
     private fun onTile(t: FogMaskTile) {
-        // A tile that was never drawn is in no display list and can be reused right away; the drawn
-        // one is retired from [drawFog] once a frame has replaced it.
-        tile?.takeIf { it !== drawn }?.let { renderer.recycle(it) }
+        // Tile bitmaps are never reused or changed once handed out, so nothing to give back here.
         tile = t
         invalidate()
     }
@@ -267,12 +268,6 @@ class FogOverlayView(context: Context) : View(context) {
         // Forget the request, or later frames would wait for it forever ("already on its way").
         if (requested === job) requested = null
         postInvalidateDelayed(DATA_REDRAW_MS)
-    }
-
-    /** The previous drawn tile may still be read by the render thread (or replayed unchanged by a
-     *  parent redraw) for a frame or two: its bitmaps are handed back for reuse only after a delay. */
-    private fun retire(old: FogMaskTile) {
-        postDelayed({ if (old !== tile && old !== drawn) renderer.recycle(old) }, RETIRE_MS)
     }
 
     /**
@@ -309,13 +304,19 @@ class FogOverlayView(context: Context) : View(context) {
         }
         if (t != null) {
             val s = px / t.cellPx
-            tileMatrix.setScale(s.toFloat(), s.toFloat())
-            tileMatrix.postTranslate(((t.x0 - x0) * px).toFloat(), ((t.y0 - y0) * px).toFloat())
-            canvas.drawBitmap(t.bitmap, tileMatrix, maskPaint)
-            if (drawn !== t) {
-                drawn?.let { retire(it) }
-                drawn = t
+            val left = (t.x0 - x0) * px
+            val top = (t.y0 - y0) * px
+            val size = FogMaskRenderer.CHUNK * s
+            t.chunks.forEachIndexed { k, c ->
+                // Each chunk carries a pixel of its neighbours; drawing only its own square from it
+                // keeps the filtered edges seamless.
+                chunkSrc.set(c.offX, c.offY, c.offX + FogMaskRenderer.CHUNK, c.offY + FogMaskRenderer.CHUNK)
+                val dx = left + (k % t.cols) * size
+                val dy = top + (k / t.cols) * size
+                chunkDst.set(dx.toFloat(), dy.toFloat(), (dx + size).toFloat(), (dy + size).toFloat())
+                canvas.drawBitmap(c.bitmap, chunkSrc, chunkDst, maskPaint)
             }
+            if (t.key.regions != null || t.key.regionsUnavailable) onReady?.let { onReady = null; it() }
             t.worn?.let { worn ->
                 val ws = s / t.wornScale
                 tileMatrix.setScale(ws.toFloat(), ws.toFloat())
@@ -323,6 +324,9 @@ class FogOverlayView(context: Context) : View(context) {
                 canvas.drawBitmap(worn, tileMatrix, maskPaint)
             }
         }
+        // Until the region data is in, a tile would be redrawn whole as soon as it lands (light fog over
+        // entered 동): skip it; the plain dark fog above covers the wait (behind the loading screen).
+        if (t == null && fogRegions == null && !regionsUnavailable) return
         fun fits(k: FogMaskKey, jx0: Double, jy0: Double, jx1: Double, jy1: Double, jCellPx: Double) = k.dz == dz &&
             x0 >= jx0 && y0 >= jy0 && x1 <= jx1 && y1 <= jy1 && (cellPx / jCellPx) in 0.6..1.6
         val r = requested
@@ -330,7 +334,9 @@ class FogOverlayView(context: Context) : View(context) {
         if (tileFits && t!!.key == key) return
         if (r != null && r.key == key && fits(r.key, r.x0, r.y0, r.x1, r.y1, r.cellPx)) return  // already on its way
         val now = android.os.SystemClock.uptimeMillis()
-        if (tileFits && now - lastDataRequest < DATA_REDRAW_MS) {
+        // The region data arriving changes the whole fog (light fog over entered 동): no waiting then.
+        val regionsArrived = t != null && t.key.regions == null && key.regions != null
+        if (tileFits && !regionsArrived && now - lastDataRequest < DATA_REDRAW_MS) {
             // Only the content changed: keep showing the current tile a little longer.
             postInvalidateDelayed(DATA_REDRAW_MS - (now - lastDataRequest))
             return
@@ -638,7 +644,6 @@ class FogOverlayView(context: Context) : View(context) {
         /** At most one fog redraw this often for new cells alone (driving reveals cells every fix). */
         private const val DATA_REDRAW_MS = 300L
         /** How long a replaced tile's bitmaps stay untouched before the renderer may reuse them. */
-        private const val RETIRE_MS = 250L
         const val MAX_DZ = 10
         const val TEXTURE_SIZE = 128
         private val textures = HashMap<Pair<Boolean, Boolean>, Bitmap>()

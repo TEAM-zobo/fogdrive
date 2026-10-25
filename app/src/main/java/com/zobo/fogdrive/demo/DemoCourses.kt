@@ -42,6 +42,62 @@ class DemoCourse(
 
     val lengthMeters: Double get() = along.last()
 
+    /**
+     * Speed limit along the route, as (start metres, km/h) steps. Real roads change limit by road
+     * type; the courses only have their shape, so long straight runs get the course's higher limit
+     * and twisty stretches and the ends (residential streets) a lower one. Steps change only where
+     * the road does, so the sign never flickers.
+     */
+    val speedLimits: List<Pair<Double, Int>> by lazy {
+        val (low, mid, high) = limitsAround(speedLimit)
+        val steps = ArrayList<Pair<Double, Int>>()
+        fun put(at: Double, kmh: Int) {
+            if (steps.isEmpty() || steps.last().second != kmh) steps += at to kmh
+        }
+        // Group the route into runs that keep their heading (turns under ~25°).
+        var runStart = 0
+        var i = 1
+        fun heading(k: Int): Double = kotlin.math.atan2(
+            Tiles.lngToX(route[k + 1].second) - Tiles.lngToX(route[k].second),
+            Tiles.latToY(route[k].first) - Tiles.latToY(route[k + 1].first),
+        )
+        while (i <= route.size - 1) {
+            val turnHere = i < route.size - 1 && run {
+                var d = Math.toDegrees(heading(i) - heading(i - 1))
+                d = ((d + 540) % 360) - 180
+                kotlin.math.abs(d) > 25
+            }
+            if (turnHere || i == route.size - 1) {
+                val from = along[runStart]
+                val length = along[i] - from
+                put(from, if (length >= 3_000) high else if (length >= 800) mid else low)
+                runStart = i
+            }
+            i++
+        }
+        if (steps.isEmpty()) put(0.0, speedLimit)
+        // Residential at both ends.
+        val ends = minOf(400.0, lengthMeters / 4)
+        val out = ArrayList<Pair<Double, Int>>()
+        out += 0.0 to low
+        // The run under way where the residential start ends takes over there (a long straight run
+        // from the start otherwise stayed at the low limit until its end).
+        steps.lastOrNull { it.first <= ends }?.second?.let { if (it != low && ends < lengthMeters - ends) out += ends to it }
+        for ((at, kmh) in steps) if (at > ends && at < lengthMeters - ends && kmh != out.last().second) out += at to kmh
+        if (out.last().second != low) out += (lengthMeters - ends) to low
+        // A step shorter than a few hundred metres would only blink: it keeps the previous limit.
+        val kept = ArrayList<Pair<Double, Int>>()
+        out.forEachIndexed { k, step ->
+            val next = out.getOrNull(k + 1)?.first ?: lengthMeters
+            if (k == 0 || next - step.first >= MIN_LIMIT_STEP_M) {
+                if (kept.isEmpty() || kept.last().second != step.second) kept += step
+            }
+        }
+        kept
+    }
+
+    fun speedLimitAt(metres: Double): Int = speedLimits.lastOrNull { it.first <= metres }?.second ?: speedLimit
+
     /** The same road back to [DemoCourses.START], for a round trip. */
     fun returnTrip(): DemoCourse = DemoCourse(
         id = "$id-back", title = "$title · 복귀", summary = summary, destination = DemoCourses.START,
@@ -2898,3 +2954,16 @@ object DemoCourses {
 
     fun byId(id: String?): DemoCourse = all.firstOrNull { it.id == id } ?: all.first()
 }
+
+/** Lower, usual and higher limit for a course whose roads are mostly [base] km/h. */
+private fun limitsAround(base: Int): Triple<Int, Int, Int> = when {
+    base <= 30 -> Triple(30, 30, 50)
+    base <= 40 -> Triple(30, 40, 50)
+    base <= 50 -> Triple(30, 50, 60)
+    base <= 60 -> Triple(50, 60, 80)
+    base <= 80 -> Triple(60, 80, 100)
+    else -> Triple(80, 100, 110)
+}
+
+/** Shortest stretch the demo's speed limit stays at, metres. */
+private const val MIN_LIMIT_STEP_M = 300.0

@@ -1,7 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A patch of map cleared out of the fog: the road driven (orange), the car's pin (blue), and fog
+     drifting over the edges. Kept inside the 66dp safe zone of the adaptive icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#5A6B7D" android:pathData="M24,40h60v8h-60z M30,56h48v8h-48z M24,72h60v8h-60z" />
-    <path android:fillColor="#5EE6B8"
-        android:pathData="M54,28c-9.4,0 -17,7.6 -17,17c0,12.7 17,31 17,31s17,-18.3 17,-31c0,-9.4 -7.6,-17 -17,-17zM54,51.5c-3.6,0 -6.5,-2.9 -6.5,-6.5s2.9,-6.5 6.5,-6.5s6.5,2.9 6.5,6.5s-2.9,6.5 -6.5,6.5z" />
+    <!-- Soft glow around the cleared map. -->
+    <path android:pathData="M54,57m-29,0a29,29 0,1 1,58 0a29,29 0,1 1,-58 0">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="57" android:gradientRadius="29"
+                android:startColor="#33A9C9FF" android:endColor="#00A9C9FF" />
+        </aapt:attr>
+    </path>
+    <group>
+        <clip-path android:pathData="M54,57m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+        <!-- Map paper. -->
+        <path android:fillColor="#FFF1F4F8" android:pathData="M30,33h48v48h-48z" />
+        <path android:fillColor="#FFE2EEDF" android:pathData="M58,62c6,-3 14,-1 20,3v16h-22c-2,-7 -3,-15 2,-19z" />
+        <!-- Streets. -->
+        <path android:strokeColor="#FFD3DAE3" android:strokeWidth="2.2" android:strokeLineCap="round"
+            android:pathData="M28,48L80,40M40,82L60,32M30,64L82,58" />
+        <!-- The road driven. -->
+        <path android:strokeColor="#FFFF9900" android:strokeWidth="5" android:strokeLineCap="round"
+            android:strokeLineJoin="round" android:fillColor="#00000000"
+            android:pathData="M30,74C38,70 42,64 48,61C55,58 58,52 64,47C68,44 72,43 78,42" />
+    </group>
+    <!-- Fog drifting over the edges. -->
+    <path android:fillColor="#F2D9E0E8"
+        android:pathData="M20,79c0,-3.6 2.9,-6.5 6.5,-6.5c0.6,0 1.2,0.1 1.8,0.3c1.6,-3.6 5.2,-6.1 9.4,-6.1c4.6,0 8.5,3 9.8,7.2c0.5,-0.1 1,-0.2 1.5,-0.2c3.2,0 5.8,2.6 5.8,5.8c0,0.5 -0.1,1 -0.2,1.5h-34.4c-0.1,-0.7 -0.2,-1.3 -0.2,-2z" />
+    <path android:fillColor="#E6C7D0DB"
+        android:pathData="M62,37c0,-2.8 2.3,-5.1 5.1,-5.1c0.5,0 1,0.1 1.4,0.2c1.3,-2.8 4.1,-4.7 7.4,-4.7c4.3,0 7.8,3.3 8.1,7.6c2,0.6 3.4,2.4 3.4,4.6c0,0.4 0,0.8 -0.1,1.2h-25.1c-0.1,-0.6 -0.2,-1.2 -0.2,-1.8z" />
+    <!-- Pin shadow and pin. -->
+    <path android:fillColor="#30000000" android:pathData="M54,66m-6,0a6,2 0,1 1,12 0a6,2 0,1 1,-12 0" />
+    <path android:pathData="M54,30c-6.9,0 -12.5,5.6 -12.5,12.5c0,9 12.5,21.5 12.5,21.5s12.5,-12.5 12.5,-21.5c0,-6.9 -5.6,-12.5 -12.5,-12.5z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="30" android:endX="54" android:endY="64"
+                android:startColor="#FF2B9BFF" android:endColor="#FF0068D6" />
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54,42.5m-4.8,0a4.8,4.8 0,1 1,9.6 0a4.8,4.8 0,1 1,-9.6 0" />
 </vector>

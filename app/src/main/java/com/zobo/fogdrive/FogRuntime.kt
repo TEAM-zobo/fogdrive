@@ -23,7 +23,10 @@ import com.zobo.fogdrive.voice.Announcer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /** What the recording service is doing right now, for the UI. */
@@ -98,10 +101,73 @@ object FogRuntime {
         get() = File(appContext.getExternalFilesDir(null) ?: appContext.filesDir, "fogdrive-backup.json")
 
     val live = MutableStateFlow(LiveStatus())
+    /** The map's fog has been drawn with the region data once: the launch loading screen can go. */
+    val fogReady = MutableStateFlow(false)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var initialized = false
 
+    private val regionCountsFile: File get() = File(appContext.filesDir, "region_counts.bin")
+
+    /**
+     * Seeds the region counts from [saveRegionCounts]'s file when it was saved for exactly the cells
+     * just loaded (same count and fingerprint, same atlas); otherwise counts them now and saves.
+     */
+    private fun seedRegionCounts() {
+        val tally = regions ?: return
+        val (generation, size) = repo.logPosition()
+        val fingerprint = repo.logFingerprint(generation, size) ?: return
+        val atlasId = atlasId(tally)
+        val seeded = runCatching {
+            java.io.DataInputStream(regionCountsFile.inputStream().buffered()).use { inp ->
+                if (inp.readInt() != REGION_COUNTS_MAGIC || inp.readLong() != atlasId) return@use false
+                if (inp.readInt() != size || inp.readLong() != fingerprint[0] || inp.readLong() != fingerprint[1]) return@use false
+                val counts = IntArray(inp.readInt()) { inp.readInt() }
+                tally.seed(counts, generation, size)
+                true
+            }
+        }.getOrDefault(false)
+        if (seeded) {
+            Log.i("FogRuntime", "region counts restored for $size cells")
+        } else {
+            tally.levels(repo)
+            saveRegionCounts()
+        }
+    }
+
+    private fun atlasId(tally: RegionTally): Long =
+        tally.atlas.dongs.size.toLong() shl 32 or (tally.atlas.source.hashCode().toLong() and 0xffffffffL)
+
+    /** Serialises [saveRegionCounts]: start-up, the debounced saver and onStop all write the same files. */
+    private val regionCountsLock = Any()
+
+    /** Saves the region counts with the fingerprint of the cells they cover (called when the app stops). */
+    fun saveRegionCounts(): Unit = synchronized(regionCountsLock) {
+        if (!initialized) return
+        val tally = regions ?: return
+        tally.levels(repo)  // catch up with the cells added since the last count
+        val (generation, seen, counts) = tally.progress()
+        val fingerprint = repo.logFingerprint(generation, seen) ?: return
+        val atlasId = atlasId(tally)
+        runCatching {
+            val tmp = File(appContext.filesDir, "region_counts.tmp")
+            java.io.DataOutputStream(tmp.outputStream().buffered()).use { out ->
+                out.writeInt(REGION_COUNTS_MAGIC)
+                out.writeLong(atlasId)
+                out.writeInt(seen)
+                out.writeLong(fingerprint[0])
+                out.writeLong(fingerprint[1])
+                out.writeInt(counts.size)
+                counts.forEach { out.writeInt(it) }
+            }
+            if (!tmp.renameTo(regionCountsFile)) tmp.delete()
+        }.onFailure { Log.w("FogRuntime", "region counts not saved", it) }
+    }
+
+    private const val REGION_COUNTS_MAGIC = 0x46475243  // "FGRC"
+    private const val REGION_COUNTS_SAVE_MS = 10_000L
+
+    @OptIn(FlowPreview::class)
     fun init(context: Context) {
         if (initialized) return
         initialized = true
@@ -115,6 +181,11 @@ object FogRuntime {
         mapPrefs = MapPrefs(app)
         announcer = Announcer(app) { mapPrefs.voice.value }
         stories = LocalStories(app)
-        scope.launch { repo.load() }
+        scope.launch { repo.load(beforeShown = ::seedRegionCounts) }
+        // Keep the saved counts current while exploring, so a later start can reuse them.
+        scope.launch { repo.version.drop(1).debounce(REGION_COUNTS_SAVE_MS).collect { saveRegionCounts() } }
+        // Start parsing the atlas now, in parallel with the database load, so it is ready (or nearly)
+        // when the map first asks for it; the launch loading screen waits for both.
+        scope.launch { regions }
     }
 }

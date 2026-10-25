@@ -20,6 +20,8 @@ import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -709,6 +711,7 @@ fun FogMap(
             holder.overlay.map = map
             holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
             holder.overlay.revisits = { FogRuntime.repo.revisits }
+            holder.overlay.onReady = { FogRuntime.fogReady.value = true }
             holder.overlay.cellsVersion = { FogRuntime.repo.version.value }
             holder.overlay.revisitVersion = { FogRuntime.repo.revisitVersion }
             map.uiSettings.isRotateGesturesEnabled = false
@@ -742,7 +745,11 @@ fun FogMap(
         }
     }
 
-    LaunchedEffect(version) {
+    val cellsLoaded by FogRuntime.repo.loaded.collectAsState()
+    LaunchedEffect(version, cellsLoaded) {
+        // Not before the stored cells are in: a layer counted from an empty log would let the first
+        // tile (and the launch loading screen's fogReady) go out with dark fog everywhere.
+        if (!cellsLoaded) return@LaunchedEffect
         // Light fog over the 읍·면·동 already entered, boundaries, and the rates in the labels.
         val layer = withContext(Dispatchers.Default) {
             FogRuntime.regions?.let { RegionLayer(it.atlas, it.levels(FogRuntime.repo)) }

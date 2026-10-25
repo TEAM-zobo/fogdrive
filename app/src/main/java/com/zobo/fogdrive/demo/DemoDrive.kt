@@ -169,7 +169,7 @@ class DemoDrive(
         val turn = course.turns.firstOrNull { it.first > along + 1 }
         val hint = if (turn != null) TurnHint(turn.second, (turn.first - along).toInt())
         else TurnHint(TurnKind.ARRIVE, (course.lengthMeters - along).toInt())
-        return Guidance(routing = true, speedLimitKmh = course.speedLimit, nextTurn = hint)
+        return Guidance(routing = true, speedLimitKmh = course.speedLimitAt(along), nextTurn = hint)
     }
 
     companion object {

@@ -60,30 +60,65 @@ class RegionAtlas(
     val dongs: List<Dong>,
     val source: String = "",
 ) {
-    private val buckets = HashMap<Long, IntArray>()
+    // Bucket index, as sorted primitive arrays: bucket key i is [bucketKeys][i], its 동 are
+    // [bucketDongs] from [bucketStart][i] to [bucketStart][i + 1]. A HashMap of boxed keys and lists
+    // took ~1.5 s to build at start-up (25k entries); sorting one LongArray takes a few ms.
+    private val bucketKeys: LongArray
+    private val bucketStart: IntArray
+    private val bucketDongs: IntArray
     /** Grid cells per 시·군·구 / 시·도 (sum of their 동). */
     val districtCells = LongArray(districts.size).also { a -> dongs.forEach { a[it.district] += it.cells } }
     val provinceCells = LongArray(provinces.size).also { a -> districts.forEachIndexed { i, d -> a[d.province] += districtCells[i] } }
 
     init {
-        val tmp = HashMap<Long, MutableList<Int>>()
+        require(dongs.size <= DONG_MASK + 1) { "too many 동 for the bucket index" }
+        var total = 0
+        for (d in dongs) {
+            val b = d.outline.bbox
+            total += ((b[2] shr BUCKET_DZ) - (b[0] shr BUCKET_DZ) + 1) * ((b[3] shr BUCKET_DZ) - (b[1] shr BUCKET_DZ) + 1)
+        }
+        // (bucket key << DONG_BITS) | 동 index: sorting groups each bucket's 동, in index order.
+        val entries = LongArray(total)
+        var n = 0
         dongs.forEachIndexed { i, d ->
-            val bbox = d.outline.bbox
-            for (bx in (bbox[0] shr BUCKET_DZ)..(bbox[2] shr BUCKET_DZ)) {
-                for (by in (bbox[1] shr BUCKET_DZ)..(bbox[3] shr BUCKET_DZ)) {
-                    tmp.getOrPut(Tiles.pack(bx, by)) { ArrayList() }.add(i)
+            val b = d.outline.bbox
+            for (bx in (b[0] shr BUCKET_DZ)..(b[2] shr BUCKET_DZ)) {
+                for (by in (b[1] shr BUCKET_DZ)..(b[3] shr BUCKET_DZ)) {
+                    entries[n++] = (bucketKey(bx, by) shl DONG_BITS) or i.toLong()
                 }
             }
         }
-        for ((k, v) in tmp) buckets[k] = v.toIntArray()
+        entries.sort()
+        var keys = 0
+        for (k in 0 until n) if (k == 0 || entries[k] ushr DONG_BITS != entries[k - 1] ushr DONG_BITS) keys++
+        bucketKeys = LongArray(keys)
+        bucketStart = IntArray(keys + 1)
+        bucketDongs = IntArray(n)
+        var u = -1
+        for (k in 0 until n) {
+            val key = entries[k] ushr DONG_BITS
+            if (u < 0 || bucketKeys[u] != key) {
+                u++
+                bucketKeys[u] = key
+                bucketStart[u] = k
+            }
+            bucketDongs[k] = (entries[k] and DONG_MASK.toLong()).toInt()
+        }
+        bucketStart[keys] = n
     }
 
     /** Index into [dongs] of the 동 holding [cell], or -1 (sea, abroad, dropped islet). */
     fun dongOf(cell: Long): Int {
-        val candidates = buckets[Tiles.parent(cell, BUCKET_DZ)] ?: return -1
-        val x = Tiles.x(cell) + 0.5
-        val y = Tiles.y(cell) + 0.5
-        for (i in candidates) if (dongs[i].outline.contains(x, y)) return i
+        val x = Tiles.x(cell)
+        val y = Tiles.y(cell)
+        val b = bucketKeys.binarySearch(bucketKey(x shr BUCKET_DZ, y shr BUCKET_DZ))
+        if (b < 0) return -1
+        val cx = x + 0.5
+        val cy = y + 0.5
+        for (k in bucketStart[b] until bucketStart[b + 1]) {
+            val i = bucketDongs[k]
+            if (dongs[i].outline.contains(cx, cy)) return i
+        }
         return -1
     }
 
@@ -94,6 +129,10 @@ class RegionAtlas(
          * candidate keeps lookups cheap (each explored cell is located only once anyway).
          */
         private const val BUCKET_DZ = 7
+        private const val DONG_BITS = 16
+        private const val DONG_MASK = (1 shl DONG_BITS) - 1
+        /** Zoom-13 tile x, y as one sortable key (both < 2^13 at zoom 13). */
+        private fun bucketKey(bx: Int, by: Int): Long = (bx.toLong() shl 20) or by.toLong()
         const val ASSET = "regions/kr_regions.bin"
         private const val FORMAT_VERSION = 2
 

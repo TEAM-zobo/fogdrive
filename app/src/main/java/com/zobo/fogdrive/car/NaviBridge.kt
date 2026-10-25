@@ -50,6 +50,12 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     val destination: StateFlow<Place?> = _destination.asStateFlow()
 
     private val _guidance = MutableStateFlow(Guidance())
+    /**
+     * The demo drives its own guidance. The real navigation keeps reporting for where the car really
+     * is (its road's limit, 20-30 km/h at home), which overwrote the demo's for a moment, again and
+     * again: the limit sign flickered. Its callbacks leave the guidance alone while this is set.
+     */
+    @Volatile private var demoGuidance = false
     val guidance: StateFlow<Guidance> = _guidance.asStateFlow()
 
     private val _arrivals = MutableSharedFlow<Arrival>(extraBufferCapacity = 8)
@@ -152,6 +158,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     /** Demo mode stand-in for the guidance the emulator's navigation cannot produce. */
     fun setDemoGuidance(guidance: Guidance?) {
+        demoGuidance = guidance != null
         _guidance.value = guidance ?: Guidance()
     }
 
@@ -191,6 +198,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
+        if (demoGuidance) return
         _guidance.update { it.copy(routing = true) }
         requestTurnInfo(force = true)
     }
@@ -203,6 +211,8 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
      */
     fun requestTurnInfo(force: Boolean = false) {
         val h = helper ?: return
+        // The demo's own guidance is shown meanwhile; the real answer would only be dropped.
+        if (demoGuidance) return
         if (!force && !_guidance.value.routing) return
         val now = System.currentTimeMillis()
         if (!force && now - lastTbtRequestAt < TBT_INTERVAL_MS) return
@@ -218,12 +228,13 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     override fun onRouteEnded() = endGuidance()
 
     override fun onRouteStateInfo(routeStateInfo: RouteStateInfo) {
-        if (!routeStateInfo.isRouting) return
+        if (demoGuidance || !routeStateInfo.isRouting) return
         _guidance.update { it.copy(routing = true) }
         requestTurnInfo(force = true)
     }
 
     override fun onNavigationStatus(navigationStatus: NavigationStatus) {
+        if (demoGuidance) return
         when (navigationStatus) {
             NavigationStatus.ROUTE_DRIVE -> _guidance.update { it.copy(routing = true) }
             // The navigation is off: nothing it reported (speed limit included) is current any more.
@@ -236,12 +247,13 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     override fun onCurrentRoadSpeedLimit(speedLimit: Int) {
+        if (demoGuidance) return
         _guidance.update { it.copy(speedLimitKmh = speedLimit.takeIf { v -> v > 0 }) }
     }
 
     override fun onTBTInfo(tbtInfoList: List<TBTInfo>) {
         // A periodic query can answer after the route ended; don't bring back a stale arrow.
-        if (!_guidance.value.routing) return
+        if (demoGuidance || !_guidance.value.routing) return
         val next = tbtInfoList.firstOrNull()
         val kind = next?.type?.let(::turnKind)
         _guidance.update { it.copy(nextTurn = if (next != null && kind != null) TurnHint(kind, next.distance.toInt()) else null) }
@@ -262,6 +274,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     private fun endGuidance() {
         detourPending = false
+        if (demoGuidance) return
         _guidance.update { it.copy(routing = false, nextTurn = null) }
     }
 

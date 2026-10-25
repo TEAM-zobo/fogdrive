@@ -5,10 +5,14 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import com.zobo.fogdrive.FogRuntime
+import kotlinx.coroutines.launch
 import com.zobo.fogdrive.record.RecordingService
 
 class MainActivity : ComponentActivity() {
@@ -18,20 +22,29 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { startRecordingIfAllowed() }
 
+    override fun onStop() {
+        super.onStop()
+        // Region counts for the next start's loading screen (see FogRuntime.saveRegionCounts).
+        FogRuntime.scope.launch { FogRuntime.saveRegionCounts() }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // QA starts most cases with the tutorial already seen (its own case starts without it).
         if (intent?.getBooleanExtra(EXTRA_SKIP_ONBOARDING, false) == true) FogRuntime.mapPrefs.setOnboardingDone(true)
         setContent {
             FogTheme {
-                FogApp(
-                    viewModel = viewModel,
-                    onStartDemo = { RecordingService.start(this, RecordingService.ACTION_DEMO_START) },
-                    onStopDemo = { RecordingService.start(this, RecordingService.ACTION_DEMO_STOP) },
-                    onRequestBackground = {
-                        permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-                    },
-                )
+                Box(Modifier.fillMaxSize()) {
+                    FogApp(
+                        viewModel = viewModel,
+                        onStartDemo = { RecordingService.start(this@MainActivity, RecordingService.ACTION_DEMO_START) },
+                        onStopDemo = { RecordingService.start(this@MainActivity, RecordingService.ACTION_DEMO_STOP) },
+                        onRequestBackground = {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+                        },
+                    )
+                    LoadingOverlay()
+                }
             }
         }
         val missing = RUNTIME_PERMISSIONS.filter {

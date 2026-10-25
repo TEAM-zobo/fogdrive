@@ -4,6 +4,7 @@ import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.geo.Tiles
 import com.zobo.fogdrive.record.ExploreSink
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
      * Concurrent so the fog overlay can read the live set at full zoom (see [cellsAtLevel]) without
      * a copy; writes still go through [lock] together with the trip cache and [order].
      */
-    private val cells: MutableSet<Long> = ConcurrentHashMap.newKeySet()
+    private val cells: MutableSet<Long> = ConcurrentHashMap.newKeySet(INITIAL_CELLS)
     private val liveCells: Set<Long> = Collections.unmodifiableSet(cells)
     /** [cells] in the order they were added, so region counts read only what is new ([readSince]). */
     private var order = LongArray(4096)
@@ -69,13 +70,51 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     @Volatile
     var currentTripId: Long = 0L
 
-    suspend fun load() {
+    /** (generation, size) of the cell log right now. */
+    fun logPosition(): Pair<Int, Int> = synchronized(lock) { resetGeneration to orderSize }
+
+    /**
+     * Order-independent fingerprint (sum and xor of mixed ids) of the first [n] logged cells, or null
+     * if the log was reset since [generation]. Two sets with equal size and fingerprint are taken to
+     * be the same set.
+     */
+    fun logFingerprint(generation: Int, n: Int): LongArray? = synchronized(lock) {
+        if (generation != resetGeneration || n > orderSize) return null
+        var sum = 0L
+        var xor = 0L
+        for (i in 0 until n) {
+            val h = mix(order[i])
+            sum += h
+            xor = xor xor h
+        }
+        longArrayOf(sum, xor)
+    }
+
+    private fun mix(c: Long): Long {
+        var z = c + -0x61c8864680b583ebL
+        z = (z xor (z ushr 30)) * -0x40a7b892e31b1a47L
+        z = (z xor (z ushr 27)) * -0x6b2fb644ecceee15L
+        return z xor (z ushr 31)
+    }
+
+    /** [beforeShown] runs once the cells are in, before the UI is told (start-up work that needs them). */
+    suspend fun load(beforeShown: () -> Unit = {}) {
+        // Revisit counts only tint worn roads: read them alongside the cells, and let the map draw the
+        // fog as soon as the cells are in (start-up showed the loading screen for all of it).
+        val generation = synchronized(lock) { resetGeneration }
+        val revisited = scope.async(Dispatchers.IO) { db.dao().revisited() }
         val all = withContext(Dispatchers.IO) { db.dao().allCellIds() }
         synchronized(lock) { for (c in all) if (cells.add(c)) append(c) }
-        withContext(Dispatchers.IO) { db.dao().revisited() }.forEach { visitCounts[it.cell] = it.visits }
         hasTrips = withContext(Dispatchers.IO) { db.dao().tripCount() } > 0
+        beforeShown()
         bump()
         _loaded.value = true
+        val stored = revisited.await()
+        // Wiped meanwhile (기록 전체 삭제 right after launch): the visits read belong to deleted data.
+        if (synchronized(lock) { resetGeneration } != generation) return
+        // A revisit recorded meanwhile already counted the stored visits plus one.
+        stored.forEach { visitCounts.merge(it.cell, it.visits) { now, old -> maxOf(now, old) } }
+        revisitCounter.incrementAndGet()
     }
 
     fun count(): Int = synchronized(lock) { cells.size }
@@ -87,7 +126,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     override fun noTripsYet(): Boolean = !hasTrips
 
     /** Cells driven by more than one trip, with their trip count (read live by the map). */
-    private val visitCounts = ConcurrentHashMap<Long, Int>()
+    private val visitCounts = ConcurrentHashMap<Long, Int>(INITIAL_CELLS / 4)
     val revisits: Map<Long, Int> get() = visitCounts
     /** Bumped when [revisits] changes (no [version] bump for that, see [revisit]): the fog redraws on it. */
     private val revisitCounter = AtomicInteger()
@@ -232,5 +271,8 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     private companion object {
         /** SQLite's default bound-parameter limit is 999. */
         const val SQL_IN_LIMIT = 900
+        /** Room for a long history up front: growing a concurrent set step by step while loading
+         *  tens of thousands of cells took over a second at start-up. */
+        const val INITIAL_CELLS = 1 shl 17
     }
 }

@@ -26,6 +26,8 @@ import android.car.drivingstate.CarUxRestrictionsManager
 import android.car.hardware.CarPropertyValue
 import android.car.hardware.property.CarPropertyManager
 import android.content.Context
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,20 +47,34 @@ class VehicleSignals(private val context: Context) {
     private val _state = MutableStateFlow(VehicleState())
     val state: StateFlow<VehicleState> = _state.asStateFlow()
 
-    private var demoOverride: VehicleState? = null
+    /** Set from the main thread, read by [publish] on the worker and the SDK callback threads. */
+    @Volatile private var demoOverride: VehicleState? = null
     private var vehicle: Vehicle? = null
     private var car: Car? = null
     private var propertyManager: CarPropertyManager? = null
     private var uxManager: CarUxRestrictionsManager? = null
     private val releasers = mutableListOf<() -> Unit>()
+    /**
+     * Connecting and registering every signal is dozens of binder calls (~2 s on the emulator). Done
+     * on the main thread, from the recording service's onCreate, it held back the app's first frame
+     * by that much. Start and stop run in order on this thread instead (it has a Looper, in case the
+     * SDKs create handlers on the calling thread); the state goes out through thread-safe flows.
+     */
+    private val worker = Handler(HandlerThread("VehicleSignals").apply { start() }.looper)
 
     fun start() {
-        if (vehicle != null || car != null) return
-        startPleos()
-        startAaos()
+        worker.post {
+            if (vehicle != null || car != null) return@post
+            startPleos()
+            startAaos()
+        }
     }
 
     fun stop() {
+        worker.post { release() }
+    }
+
+    private fun release() {
         releasers.forEach { runCatching(it) }
         releasers.clear()
         runCatching { vehicle?.release() }
@@ -72,11 +88,14 @@ class VehicleSignals(private val context: Context) {
         publish()
     }
 
+    @Synchronized
     fun setDemoOverride(state: VehicleState?) {
         demoOverride = state
         publish()
     }
 
+    /** Locked so a publish that read the old override cannot land after a newer one. */
+    @Synchronized
     private fun publish() {
         _state.value = demoOverride ?: real.value
     }

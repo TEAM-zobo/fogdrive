@@ -34,11 +34,20 @@ data class FogMaskKey(
 )
 
 /**
+ * One square of a tile on a grid fixed to the map: [gx], [gy] count [FogMaskRenderer.CHUNK]-pixel
+ * steps at the tile's scale. [bitmap] holds it plus a pixel of each neighbour ([offX], [offY] is where
+ * the square starts in it), so filtered scaling has no seams between chunks.
+ */
+class FogChunk(val gx: Long, val gy: Long, val bitmap: Bitmap, val offX: Int, val offY: Int)
+
+/**
  * The fog over a world rectangle ([x0], [y0]) – ([x1], [y1]) in zoom-20 tile units, at [cellPx]
- * bitmap pixels per tile. Drawn to the screen through a matrix, so panning and zooming only move it.
+ * bitmap pixels per tile, as [chunks] (row by row, [cols] across). Drawn to the screen through a
+ * matrix, so panning and zooming only move it.
  */
 class FogMaskTile(
-    val bitmap: Bitmap,
+    val chunks: List<FogChunk>,
+    val cols: Int,
     val x0: Double,
     val y0: Double,
     val x1: Double,
@@ -80,8 +89,12 @@ class FogMaskRenderer(
     private val main = Handler(Looper.getMainLooper())
     private val lock = Any()
     private var queued: Job? = null
-    /** Bitmaps from a replaced tile, reused when the next one has the same size. */
-    private val spares = ArrayList<Bitmap>(MAX_SPARES + 2)
+    /** The last tile made: chunks whose pixels did not change are handed on, not re-uploaded. */
+    @Volatile private var last: FogMaskTile? = null
+    /** Whole-tile drawing surface (this thread only). */
+    private var full: Bitmap? = null
+    /** A chunk copy that turned out unchanged, kept for the next comparison (this thread only). */
+    private val scratch = HashMap<Long, Bitmap>()
 
     private val canvas = Canvas()
     private val clearPaint = Paint().apply {
@@ -118,45 +131,32 @@ class FogMaskRenderer(
         }
     }
 
-    /** Hands back the bitmaps of a tile no display list references any more (main thread). */
-    fun recycle(tile: FogMaskTile) {
-        synchronized(lock) {
-            spares.add(tile.bitmap)
-            tile.worn?.let { spares.add(it) }
-            while (spares.size > MAX_SPARES) spares.removeAt(0)
-        }
-    }
-
-    private fun obtain(w: Int, h: Int): Bitmap {
-        val reuse = synchronized(lock) {
-            spares.indexOfFirst { it.width == w && it.height == h }.takeIf { it >= 0 }?.let { spares.removeAt(it) }
-        }
-        return reuse ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    }
-
     private fun render(job: Job): FogMaskTile {
-        val made = ArrayList<Bitmap>(2)
         try {
-            return renderInto(job, made)
-        } catch (e: Throwable) {
-            // Hand the bitmaps of the failed render back, or each failure would drop them for good.
+            return renderInto(job).also { last = it }
+        } finally {
             canvas.setBitmap(null)
-            synchronized(lock) {
-                spares.addAll(made)
-                while (spares.size > MAX_SPARES) spares.removeAt(0)
-            }
-            throw e
         }
     }
 
-    private fun renderInto(job: Job, made: MutableList<Bitmap>): FogMaskTile {
+    private fun renderInto(job: Job): FogMaskTile {
         val key = job.key
         val px = job.cellPx
-        val x0 = job.x0
-        val y0 = job.y0
-        val w = max(1, ceil((job.x1 - x0) * px).toInt())
-        val h = max(1, ceil((job.y1 - y0) * px).toInt())
-        val bmp = obtain(w, h).also { made.add(it) }
+        // Snap the rectangle out to the chunk grid, so the same map area always falls in the same
+        // chunks and unchanged ones can be reused across tiles (driving re-renders move the view).
+        val step = CHUNK / px
+        val gx0 = floor(job.x0 / step).toLong()
+        val gy0 = floor(job.y0 / step).toLong()
+        val cols = max(1, (ceil(job.x1 / step).toLong() - gx0).toInt())
+        val rows = max(1, (ceil(job.y1 / step).toLong() - gy0).toInt())
+        val x0 = gx0 * step
+        val y0 = gy0 * step
+        val x1 = x0 + cols * step
+        val y1 = y0 + rows * step
+        val w = cols * CHUNK
+        val h = rows * CHUNK
+        val bmp = full?.takeIf { it.width == w && it.height == h }
+            ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { full = it }
         bmp.eraseColor(Color.TRANSPARENT)
         val c = canvas
         c.setBitmap(bmp)
@@ -180,16 +180,16 @@ class FogMaskRenderer(
             c.drawPaint(fogPaint)
             for (i in regions.counts.visitedDongs) {
                 val o = regions.atlas.dongs[i].outline
-                if (o.intersects(x0, y0, job.x1, job.y1)) drawOutline(c, o, i, px, x0, y0)
+                if (o.intersects(x0, y0, x1, y1)) drawOutline(c, o, i, px, x0, y0)
             }
         }
 
         val scale = (1 shl key.dz).toDouble()
         val cellMaskPx = (px * scale).toFloat()
         val lx0 = floor(x0 / scale).toInt() - 1
-        val lx1 = floor(job.x1 / scale).toInt() + 1
+        val lx1 = floor(x1 / scale).toInt() + 1
         val ly0 = floor(y0 / scale).toInt() - 1
-        val ly1 = floor(job.y1 / scale).toInt() + 1
+        val ly1 = floor(y1 / scale).toInt() + 1
         val radius = max(1.2f, cellMaskPx * 1.05f)
         var n = 0
         fun punch(cx: Int, cy: Int) {
@@ -222,28 +222,71 @@ class FogMaskRenderer(
             c.drawCircle(centres[i], centres[i + 1], radius, clearPaint)
             i += 2
         }
-        c.setBitmap(null)
         val wornScale = ceil(WORN_MIN_CELL_PX / px).toInt().coerceIn(1, WORN_MAX_SCALE)
-        if (wornScale == 1) {
-            // Same resolution as the fog (driving zoom): drawn into the fog bitmap itself, so each
-            // new tile is one texture upload instead of two.
-            job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
-                c.setBitmap(bmp)
-                drawWornRoads(c, visits, x0, y0, job.x1, job.y1, px)
-                c.setBitmap(null)
+        var worn: Bitmap? = null
+        job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
+            if (wornScale == 1) {
+                // Same resolution as the fog (driving zoom): drawn into the fog itself, so it is
+                // uploaded with the chunks it touches.
+                drawWornRoads(c, visits, x0, y0, x1, y1, px)
+            } else {
+                // Zoomed out (parked): sharper than the fog, one bitmap of its own.
+                val wb = Bitmap.createBitmap(w * wornScale, h * wornScale, Bitmap.Config.ARGB_8888)
+                c.setBitmap(wb)
+                drawWornRoads(c, visits, x0, y0, x1, y1, px * wornScale)
+                worn = wb
             }
-            return FogMaskTile(bmp, x0, y0, job.x1, job.y1, px, key, null, 1)
         }
-        val worn = job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
-            val wb = obtain(max(1, (w * wornScale)), max(1, (h * wornScale))).also { made.add(it) }
-            wb.eraseColor(Color.TRANSPARENT)
-            c.setBitmap(wb)
-            drawWornRoads(c, visits, x0, y0, job.x1, job.y1, px * wornScale)
-            c.setBitmap(null)
-            wb
-        }
-        return FogMaskTile(bmp, x0, y0, job.x1, job.y1, px, key, worn, wornScale)
+        c.setBitmap(null)
+        return FogMaskTile(chunk(bmp, gx0, gy0, cols, rows, px, key), cols, x0, y0, x1, y1, px, key, worn, wornScale)
     }
+
+    /**
+     * Cuts the tile into chunks. A chunk whose pixels equal the last tile's chunk at the same map
+     * position (same scale and look) is handed on as is: the GPU keeps that texture, so a redraw for a
+     * few new cells uploads a few chunks instead of the whole tile (~4 MB, a late frame each time).
+     */
+    private fun chunk(src: Bitmap, gx0: Long, gy0: Long, cols: Int, rows: Int, px: Double, key: FogMaskKey): List<FogChunk> {
+        val prev = last?.takeIf { it.cellPx == px && it.key.dz == key.dz && it.key.night == key.night }
+        val prevChunks = prev?.chunks?.associateBy { chunkKey(it.gx, it.gy) }
+        val out = ArrayList<FogChunk>(cols * rows)
+        val w = src.width
+        val h = src.height
+        for (j in 0 until rows) for (i in 0 until cols) {
+            val gx = gx0 + i
+            val gy = gy0 + j
+            val left = max(0, i * CHUNK - 1)
+            val top = max(0, j * CHUNK - 1)
+            val right = minOf(w, (i + 1) * CHUNK + 1)
+            val bottom = minOf(h, (j + 1) * CHUNK + 1)
+            val cw = right - left
+            val ch = bottom - top
+            val sizeKey = (cw.toLong() shl 32) or ch.toLong()
+            val copy = scratch.remove(sizeKey) ?: Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888)
+            canvas.setBitmap(copy)
+            srcRect.set(left, top, right, bottom)
+            dstRect.set(0, 0, cw, ch)
+            canvas.drawBitmap(src, srcRect, dstRect, copyPaint)
+            canvas.setBitmap(null)
+            val offX = i * CHUNK - left
+            val offY = j * CHUNK - top
+            val old = prevChunks?.get(chunkKey(gx, gy))
+            if (old != null && old.offX == offX && old.offY == offY && old.bitmap.sameAs(copy)) {
+                scratch[sizeKey] = copy
+                out.add(old)
+            } else {
+                out.add(FogChunk(gx, gy, copy, offX, offY))
+            }
+        }
+        return out
+    }
+
+    private val srcRect = android.graphics.Rect()
+    private val dstRect = android.graphics.Rect()
+    /** Exact copy: no filtering, replace the destination. */
+    private val copyPaint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC) }
+
+    private fun chunkKey(gx: Long, gy: Long) = (gx shl 32) xor (gy and 0xffffffffL)
 
     /**
      * Roads driven on several trips get a tint that deepens with the count (see WORN_LEVELS), so
@@ -304,13 +347,16 @@ class FogMaskRenderer(
          */
         const val WORN_MIN_CELL_PX = 4.0
         const val WORN_MAX_SCALE = 2
-        private const val MAX_SPARES = 4
+        /** Chunk edge in bitmap pixels. */
+        const val CHUNK = 256
         /** One thread for every map view (each FogMap composition makes a new view; a per-view
          *  executor was never shut down and leaked a thread each time). Jobs are serialised, so each
          *  renderer's paints and buffers are still used by one thread at a time. */
         private val executor = Executors.newSingleThreadExecutor { r ->
             Thread({
-                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+                // Default, not background: under load (start-up, driving) background threads starve and the
+            // fog lagged behind by seconds; the UI and render threads still run at higher priority.
+            Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT)
                 r.run()
             }, "FogMask").apply { isDaemon = true }
         }

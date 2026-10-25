@@ -82,6 +82,24 @@ class RegionTally(val atlas: RegionAtlas) {
         return snapshot!!
     }
 
+    /**
+     * Starts from counts saved earlier for exactly the first [seen] cells of the log at [generation]
+     * (see FogRuntime.seedRegionCounts): locating every explored cell again took ~1 s at start-up.
+     */
+    @Synchronized
+    fun seed(counts: IntArray, generation: Int, seen: Int) {
+        if (counts.size != running.size) return
+        counts.copyInto(running)
+        this.generation = generation
+        this.seen = seen
+        snapshot = null
+        memo.clear()
+    }
+
+    /** The counts so far, for saving: (generation, cells counted, per-동 counts). */
+    @Synchronized
+    fun progress(): Triple<Int, Int, IntArray> = Triple(generation, seen, running.copyOf())
+
     /** Explored cells per 동 / 시·군·구 / 시·도, by atlas index (for the map's fog and labels). */
     fun levels(cells: Set<Long>): RegionCounts = levels(CellLog.of(cells))
 
