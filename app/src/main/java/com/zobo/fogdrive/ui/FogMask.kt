@@ -13,6 +13,8 @@ import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import com.zobo.fogdrive.data.LongHashSet
+import com.zobo.fogdrive.data.forEachValue
 import com.zobo.fogdrive.geo.Outline
 import com.zobo.fogdrive.geo.Tiles
 import java.util.concurrent.Executors
@@ -81,7 +83,7 @@ class FogMaskRenderer(
         val y1: Double,
         val cellPx: Double,
         /** Explored cells at [FogMaskKey.dz]: a concurrent or immutable set, safe to read here. */
-        val cells: () -> Set<Long>,
+        val cells: () -> LongHashSet,
         /** Revisit counts (concurrent map), or null when worn roads are not drawn. */
         val revisits: Map<Long, Int>?,
         /**
@@ -251,13 +253,12 @@ class FogMaskRenderer(
         val tiles = (lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1)
         if (tiles < explored.size) {
             // A large explored set: probe only the tiles in the rectangle.
-            for (cx in lx0..lx1) for (cy in ly0..ly1) if (Tiles.pack(cx, cy) in explored) punch(cx, cy)
+            for (cx in lx0..lx1) for (cy in ly0..ly1) if (explored.has(Tiles.pack(cx, cy))) punch(cx, cy)
         } else {
-            for (cell in explored) {
+            explored.forEachValue { cell ->
                 val cx = Tiles.x(cell)
                 val cy = Tiles.y(cell)
-                if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
-                punch(cx, cy)
+                if (cx in lx0..lx1 && cy in ly0..ly1) punch(cx, cy)
             }
         }
         // Rim first (larger circles over the fog), then punch the holes: only a soft edge remains.

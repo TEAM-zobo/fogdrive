@@ -60,6 +60,24 @@ class MapPrefs(context: Context) {
         prefs.edit().putInt(KEY_SOUND_VOLUME, v).apply()
     }
 
+    private val _milestones = MutableStateFlow(prefs.getStringSet(KEY_MILESTONES, emptySet())!!.toSet())
+    /** 읍·면·동 exploration steps reached, as "code:percent" (see [MILESTONES]). */
+    val milestones: StateFlow<Set<String>> = _milestones.asStateFlow()
+
+    /** Highest step reached in the 동 [code], or 0. */
+    fun milestoneOf(code: String, reached: Set<String> = _milestones.value): Int =
+        MILESTONES.lastOrNull { "$code:$it" in reached } ?: 0
+
+    /** Records the steps [percents] of [code]; returns those that are new. */
+    fun reachMilestones(code: String, percents: List<Int>): List<Int> {
+        val fresh = percents.filter { "$code:$it" !in _milestones.value }
+        if (fresh.isEmpty()) return fresh
+        val next = _milestones.value + fresh.map { "$code:$it" }
+        _milestones.value = next
+        prefs.edit().putStringSet(KEY_MILESTONES, next).apply()
+        return fresh
+    }
+
     private val _stories = MutableStateFlow(prefs.getBoolean(KEY_STORIES, true))
     /** "동네 이야기": landmark lines for 동 from Wikipedia (sends the 동's centre point, not the car's). */
     val stories: StateFlow<Boolean> = _stories.asStateFlow()
@@ -97,6 +115,9 @@ class MapPrefs(context: Context) {
         private const val KEY_VOICE = "voice_on"
         private const val KEY_STORIES = "stories_on"
         private const val KEY_SOUND = "sound_on"
+        private const val KEY_MILESTONES = "dong_milestones"
+        /** Exploration steps celebrated per 읍·면·동, in percent of its cells. */
+        val MILESTONES = listOf(10, 25, 50, 75, 100)
         private const val KEY_SOUND_VOLUME = "sound_volume"
 
         fun today(): String = SimpleDateFormat("yyyyMMdd", Locale.KOREA).format(Date())

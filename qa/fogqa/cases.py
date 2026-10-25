@@ -367,13 +367,15 @@ def tc_detour(ctx):
 
 @case("TC-13", "시연 모드", "시연 모드가 출발→주행→하차까지 끝까지 재생된다",
       "앱 초기화",
-      ["설정 → 시연 시작 → 지도", "완료 메시지까지 대기(성수 코스 36 km, 기본 60 km/h·10배속으로 약 4분)", "기록·도감 확인", "시연 중지"],
+      ["지도 → 시연 주행 → 시연 시작", "완료 메시지까지 대기(성수 코스 36 km, 기본 60 km/h·10배속으로 약 4분)", "기록·도감 확인", "시연 중지"],
       ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "빗속 개척·가족 탐험 획득"])
 def tc_demo(ctx):
     fresh(ctx)
-    ctx.dev.tap_text("설정")
-    ctx.dev.tap_text("시연 시작")
+    # Started from the map's own demo panel: the drive ends back on the map, where the completion
+    # notice shows (started from settings, it ends on settings, which has no notice).
     ctx.dev.tap_text("지도")
+    ctx.dev.tap_text("시연 주행")
+    ctx.dev.tap_text("시연 시작")
     ctx.check(ctx.dev.wait_text("시연 주행 완료", timeout=330), "시연 완료")
     ctx.shot("demo_done")
     r = read_record(ctx)

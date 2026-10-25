@@ -1,6 +1,6 @@
 <resources>
     <!-- Window colour behind the Compose UI; follows day/night like FogTheme. -->
-    <color name="bg">#FFF3F5F8</color>
+    <color name="bg">#FFF6F8FC</color>
     <color name="accent">#FF0081F8</color>
     <color name="icon_bg">#FF141B25</color>
 </resources>

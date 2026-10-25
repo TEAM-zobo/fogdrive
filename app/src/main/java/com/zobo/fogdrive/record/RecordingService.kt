@@ -130,6 +130,8 @@ class RecordingService : Service() {
     private suspend fun recordFix(fix: Fix) {
         // Until the explored set is loaded every cell looks new (inflated counts, bogus stamps).
         repo.loaded.first { it }
+        // Nor before the gear is known: an unknown gear counts as driving and would start a trip in P.
+        FogRuntime.vehicle.settled.first { it }
         // Real fixes are ignored while the scripted demo drive is playing.
         if (demoSession && fix.source != LocationFeed.SOURCE_DEMO) return
         val vehicle = FogRuntime.vehicle.state.value

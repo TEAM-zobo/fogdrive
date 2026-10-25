@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Environment
 import com.zobo.fogdrive.FogRuntime
+import com.zobo.fogdrive.data.forEachValue
 import com.zobo.fogdrive.geo.Area
 import com.zobo.fogdrive.geo.Tiles
 import java.io.File
@@ -110,13 +111,13 @@ object ShareCard {
         val blocks = FogRuntime.repo.cellsAtLevel(BLOCK_DZ)
         if (blocks.isEmpty()) return
         val counts = HashMap<Long, Int>()
-        for (cell in FogRuntime.repo.cellsAtLevel(0)) counts.merge(Tiles.parent(cell, BLOCK_DZ), 1, Int::plus)
+        FogRuntime.repo.cellsAtLevel(0).forEachValue { cell -> counts.merge(Tiles.parent(cell, BLOCK_DZ), 1, Int::plus) }
         val busiest = counts.maxByOrNull { it.value }?.key ?: return
         val bx = Tiles.x(busiest)
         val by = Tiles.y(busiest)
         val xs = ArrayList<Int>()
         val ys = ArrayList<Int>()
-        for (cell in FogRuntime.repo.cellsAtLevel(0)) {
+        FogRuntime.repo.cellsAtLevel(0).forEachValue { cell ->
             val p = Tiles.parent(cell, BLOCK_DZ)
             if (kotlin.math.abs(Tiles.x(p) - bx) <= FRAME_BLOCKS && kotlin.math.abs(Tiles.y(p) - by) <= FRAME_BLOCKS) {
                 xs += Tiles.x(cell)
@@ -142,7 +143,7 @@ object ShareCard {
         val midY = rect.centerY()
         c.save()
         c.clipRect(rect)
-        for (cell in FogRuntime.repo.cellsAtLevel(dz)) {
+        FogRuntime.repo.cellsAtLevel(dz).forEachValue { cell ->
             val px = (midX + ((Tiles.x(cell).toDouble() * (1 shl dz)) - cx) * pxPerFine).toFloat()
             val py = (midY + ((Tiles.y(cell).toDouble() * (1 shl dz)) - cy) * pxPerFine).toFloat()
             c.drawRect(px - cellPx, py - cellPx, px + cellPx * 2, py + cellPx * 2, glow)

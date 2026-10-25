@@ -61,7 +61,7 @@ class DemoDrive(
             onVehicle(vehicle)
             onFix(fix(course.route.first()))
             // Parked briefly before departure (the detour suggestion card shows here). It was 6 s, which
-            // read as the demo not starting.
+            // read as the demo not starting; 1 s was too short for the card to be planned and shown.
             delay(PARKED_BEFORE_DEPARTURE_MS)
             vehicle = drive(course, vehicle, speedKmh, speedUp) ?: return@launch
             if (roundTrip()) {
@@ -178,7 +178,7 @@ class DemoDrive(
         /** Remaining range the demo car starts with (a charged EV), km. */
         const val DEMO_RANGE_KM = 480f
         const val DEFAULT_KMH = 60
-        private const val PARKED_BEFORE_DEPARTURE_MS = 1_000L
+        private const val PARKED_BEFORE_DEPARTURE_MS = 2_000L
         private const val STEP_M = 15.0
         private const val MIN_FIX_INTERVAL_MS = 200.0
         private const val MAX_LATE_MS = 500

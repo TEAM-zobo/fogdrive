@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -25,11 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger
 class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope) : ExploreSink, CellLog {
     private val lock = Any()
     /**
-     * Concurrent so the fog overlay can read the live set at full zoom (see [cellsAtLevel]) without
-     * a copy; writes still go through [lock] together with the trip cache and [order].
+     * Readable without a lock, so the fog overlay can use the live set at full zoom (see
+     * [cellsAtLevel]) without a copy; writes go through [lock] together with the trip cache and [order].
      */
-    private val cells: MutableSet<Long> = ConcurrentHashMap.newKeySet(INITIAL_CELLS)
-    private val liveCells: Set<Long> = Collections.unmodifiableSet(cells)
+    private val cells = LongHashSet(INITIAL_CELLS)
     /** [cells] in the order they were added, so region counts read only what is new ([readSince]). */
     private var order = LongArray(4096)
     private var orderSize = 0
@@ -43,7 +41,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         val start = if (generation == resetGeneration) from.coerceIn(0, orderSize) else 0
         CellLog.Slice(resetGeneration, orderSize, order.copyOfRange(start, orderSize))
     }
-    private val levelCache = HashMap<Int, Pair<Int, Set<Long>>>()
+    private val levelCache = HashMap<Int, Pair<Int, LongHashSet>>()
     /** Cells first cleared on trip [tripCellsOf]: the stored ones (once [tripCellsLoaded]) plus every
      *  later reveal, so a lookup never misses cells whose async insert hasn't landed yet. */
     private val tripCells = HashSet<Long>()
@@ -130,7 +128,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     fun count(): Int = synchronized(lock) { cells.size }
 
-    override fun isExplored(cell: Long): Boolean = cell in cells  // concurrent set: no lock needed
+    override fun isExplored(cell: Long): Boolean = cells.has(cell)  // lock-free read
 
     @Volatile private var hasTrips = true
 
@@ -222,14 +220,18 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         return added.size
     }
 
-    /** Explored set aggregated [dz] levels up (any explored child marks the parent). Cached per version. */
-    fun cellsAtLevel(dz: Int): Set<Long> {
-        // Level 0 is the live set itself (no 100k-entry copy per change); coarser levels are derived.
-        if (dz == 0) return liveCells
+    /**
+     * Explored set aggregated [dz] levels up (any explored child marks the parent). Cached per
+     * version. Read only: level 0 is the live set itself (no 100k-entry copy per change).
+     */
+    fun cellsAtLevel(dz: Int): LongHashSet {
+        if (dz == 0) return cells
         return synchronized(lock) {
             val v = _version.value
             levelCache[dz]?.takeIf { it.first == v }?.second ?: run {
-                val set: Set<Long> = cells.mapTo(HashSet()) { Tiles.parent(it, dz) }
+                // About a quarter as many parents per level up: start near that size.
+                val set = LongHashSet(cells.size shr (dz * 2).coerceAtMost(8))
+                cells.forEachValue { set.add(Tiles.parent(it, dz)) }
                 levelCache[dz] = v to set
                 set
             }

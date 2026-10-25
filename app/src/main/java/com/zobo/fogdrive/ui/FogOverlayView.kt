@@ -14,6 +14,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
 import com.zobo.fogdrive.data.ExploreRepository
+import com.zobo.fogdrive.data.LongHashSet
 import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.explore.RegionCounts
 import com.zobo.fogdrive.geo.Outline
@@ -41,7 +42,7 @@ import kotlin.math.min
  */
 class FogOverlayView(context: Context) : View(context) {
     var map: MapLibreMap? = null
-    var cellsAtLevel: (Int) -> Set<Long> = { emptySet() }
+    var cellsAtLevel: (Int) -> LongHashSet = { LongHashSet() }
     /** The explored-cell log, to tell the renderer which part changed (see [changedArea]). */
     var cellLog: CellLog? = null
     /** Cells whose revisit count changed since a reading (see [changedArea]). */

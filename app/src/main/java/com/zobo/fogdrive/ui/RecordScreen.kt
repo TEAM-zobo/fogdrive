@@ -1,5 +1,7 @@
 package com.zobo.fogdrive.ui
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.outlined.PlayCircle
 import android.content.Intent
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -55,10 +57,18 @@ fun RecordScreen(viewModel: MainViewModel, onShowTrip: (TripEntity) -> Unit) {
     val card by viewModel.shareCard.collectAsState()
     val cardMessage by viewModel.shareCardMessage.collectAsState()
     card?.let { ShareCardDialog(it, onClose = { viewModel.shareCard.value = null }) }
+    val lapse by viewModel.timelapse.collectAsState()
+    lapse?.let { TimelapseDialog(it, onClose = { viewModel.timelapse.value = null }) }
+    val reports by viewModel.reports.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(40.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { ScreenTitle("나의 개척 기록", "Lv.${summary.level} · 경험치 ${summary.xp}") }
+            OutlinedButton(onClick = { viewModel.openTimelapse() }, shape = RoundedCornerShape(4.dp)) {
+                Icon(Icons.Outlined.PlayCircle, contentDescription = null, tint = FogColors.Accent)
+                Text("개척 타임랩스", modifier = Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), color = FogColors.TextMain)
+            }
+            Spacer(Modifier.width(12.dp))
             OutlinedButton(onClick = { viewModel.makeShareCard(context) }, shape = RoundedCornerShape(4.dp)) {
                 Icon(Icons.Outlined.Share, contentDescription = null, tint = FogColors.Accent)
                 Text("내 안개지도 카드", modifier = Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), color = FogColors.TextMain)
@@ -71,6 +81,11 @@ fun RecordScreen(viewModel: MainViewModel, onShowTrip: (TripEntity) -> Unit) {
             StatTile("주행 거리", formatKm(totalMeters), Modifier.weight(1f), FogColors.TextMain, Icons.Outlined.Route)
             StatTile("하차 지점", "${summary.landings}곳", Modifier.weight(1f), FogColors.Amber, Icons.Outlined.Flag)
             StatTile("새 길 비율", formatPercent(summary.newRoadRatio), Modifier.weight(1f), FogColors.Blue, Icons.Outlined.AltRoute)
+        }
+        if (reports.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth()) {
+                for (r in reports) ReportCard(r, Modifier.weight(1f))
+            }
         }
         SectionHeader("주행 기록") {
             Text("눌러서 지도에서 경로 보기", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
@@ -95,6 +110,43 @@ fun RecordScreen(viewModel: MainViewModel, onShowTrip: (TripEntity) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** This week (or month) against the one before: area, new 읍·면·동, distance, trips. */
+@Composable
+private fun ReportCard(report: PeriodReport, modifier: Modifier = Modifier) {
+    val now = report.current
+    val before = report.previous
+    FogCard(modifier, padding = 20.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("${report.title} 리포트", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text("${report.previousTitle} 대비", style = MaterialTheme.typography.labelMedium, color = FogColors.TextSub)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            ReportFigure("밝힌 면적", Area.format(now.areaM2.toDouble()), trend(now.areaM2, before.areaM2), Modifier.weight(1f))
+            ReportFigure("새 읍·면·동", "${now.newDongs}곳", trend(now.newDongs, before.newDongs), Modifier.weight(1f))
+            ReportFigure("주행", formatKm(now.distanceM.toDouble()), trend(now.distanceM, before.distanceM), Modifier.weight(1f))
+            ReportFigure("주행 횟수", "${now.trips}회", trend(now.trips, before.trips), Modifier.weight(1f))
+        }
+    }
+}
+
+/** "▲ 32%", "▼ 10%", "–" (no change), or "새 기록" when the earlier window had none. */
+@Composable
+private fun trend(now: Int, before: Int): Pair<String, androidx.compose.ui.graphics.Color> = when {
+    now == before -> "–" to FogColors.TextSub
+    before <= 0 -> "새 기록" to FogColors.Accent
+    now > before -> "▲ ${((now - before) * 100L / before)}%" to FogColors.Accent
+    else -> "▼ ${((before - now) * 100L / before)}%" to FogColors.TextSub
+}
+
+@Composable
+private fun ReportFigure(label: String, value: String, change: Pair<String, androidx.compose.ui.graphics.Color>, modifier: Modifier) {
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = FogColors.TextSub)
+        Text(value, style = MaterialTheme.typography.titleLarge, color = FogColors.TextMain, maxLines = 1)
+        Text(change.first, style = MaterialTheme.typography.labelMedium, color = change.second)
     }
 }
 

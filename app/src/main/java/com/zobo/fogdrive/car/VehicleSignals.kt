@@ -47,6 +47,13 @@ class VehicleSignals(private val context: Context) {
     private val _state = MutableStateFlow(VehicleState())
     val state: StateFlow<VehicleState> = _state.asStateFlow()
 
+    /**
+     * The signals have been connected (or found unavailable) once: until then the gear reads UNKNOWN,
+     * which would count as driving, so fixes must not start a trip before this.
+     */
+    private val _settled = MutableStateFlow(false)
+    val settled: StateFlow<Boolean> = _settled.asStateFlow()
+
     /** Set from the main thread, read by [publish] on the worker and the SDK callback threads. */
     @Volatile private var demoOverride: VehicleState? = null
     private var vehicle: Vehicle? = null
@@ -67,6 +74,7 @@ class VehicleSignals(private val context: Context) {
             if (vehicle != null || car != null) return@post
             startPleos()
             startAaos()
+            _settled.value = true
         }
     }
 
@@ -86,6 +94,8 @@ class VehicleSignals(private val context: Context) {
         uxManager = null
         real.value = VehicleState()
         publish()
+        // The gear is unknown again until the next [start] has read it.
+        _settled.value = false
     }
 
     @Synchronized
@@ -251,6 +261,10 @@ class VehicleSignals(private val context: Context) {
                 }
             }
             pm.registerCallback(callback, VehiclePropertyIds.GEAR_SELECTION, CarPropertyManager.SENSOR_RATE_ONCHANGE)
+            // The callback's first value comes a moment later; read the current gear now so it is
+            // known by the time [settled] is set.
+            runCatching { mapGear(pm.getIntProperty(VehiclePropertyIds.GEAR_SELECTION, 0)) }
+                .onSuccess { gear -> edit { it.copy(gear = gear) } }
             releasers += { pm.unregisterCallback(callback) }
         }
         guard("ux") {

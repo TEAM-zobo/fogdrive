@@ -1,5 +1,8 @@
 package com.zobo.fogdrive.ui
 
+import kotlinx.coroutines.flow.filterNotNull
+import com.zobo.fogdrive.voice.Sound
+import com.zobo.fogdrive.voice.Sfx
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zobo.fogdrive.FogRuntime
@@ -134,6 +137,39 @@ class MainViewModel : ViewModel() {
         }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * This week and this month next to the one before (record screen): area cleared, 읍·면·동 first
+     * entered, distance and trips. Read once per change from the start of the earlier window.
+     */
+    val reports: StateFlow<List<PeriodReport>> = combine(version, trips) { _, _ ->
+        val now = System.currentTimeMillis()
+        val tally = FogRuntime.regions
+        val counts = tally?.levels(repo)
+        val periods = listOf(ChallengePeriod.WEEK, ChallengePeriod.MONTH)
+        val starts = periods.associateWith { it.start(now) }
+        val before = periods.associateWith { it.start(starts.getValue(it) - 1) }
+        val cleared = repo.clearedSince(before.values.min())
+        suspend fun window(from: Long): PeriodStats {
+            val cells = cleared.mapNotNull { c -> c.cell.takeIf { c.firstSeenAt >= from } }
+            // Every 읍·면·동 first entered since [from], counted against today's totals.
+            val dongs = if (tally != null && counts != null) tally.firstEnteredLevels(cells, counts).first else 0
+            val totals = repo.tripTotalsSince(from)
+            return PeriodStats(areaM2 = Area.ofCells(cells.size).toInt(), newDongs = dongs, trips = totals.count, distanceM = totals.distanceMeters.toInt())
+        }
+        periods.map { period ->
+            val current = window(starts.getValue(period))
+            val since = window(before.getValue(period))
+            // The earlier window is everything since its start minus this window.
+            val previous = PeriodStats(
+                areaM2 = since.areaM2 - current.areaM2,
+                newDongs = since.newDongs - current.newDongs,
+                trips = since.trips - current.trips,
+                distanceM = since.distanceM - current.distanceM,
+            )
+            PeriodReport(period, current, previous)
+        }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Region dex; computed only while a screen shows it. Null until loaded, empty if the atlas failed. */
     val regions: StateFlow<List<ProvinceProgress>?> = combine(version, landings) { _, l ->
         FogRuntime.regions?.tally(repo, l.map { Tiles.cellOf(it.lat, it.lng) }) ?: emptyList()
@@ -170,6 +206,38 @@ class MainViewModel : ViewModel() {
             Tiles.xToLng(dong.outline.labelX + 0.5),
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** 읍·면·동 exploration steps reached (dex badges). */
+    val milestones = FogRuntime.mapPrefs.milestones
+
+    /** 동 met this session: steps they had already reached when first seen are recorded silently. */
+    private val milestoneBaseline = HashSet<String>()
+
+    init {
+        // A 동 passing 10 / 25 / 50 / 75 / 100 % while driving through it: a notice, a sparkle and a
+        // spoken line. Only steps crossed now count, not those reached before this session.
+        viewModelScope.launch {
+            here.filterNotNull()
+                .distinctUntilChanged { a, b -> a.dongCode == b.dongCode && a.dong.rate == b.dong.rate }
+                .collect { h ->
+                    // Marked on first sight even below the first step, so a 동 entered at 0 % that then
+                    // crosses 10 % is celebrated instead of being taken for the baseline.
+                    val firstSight = milestoneBaseline.add(h.dongCode)
+                    val percent = h.dong.rate * 100
+                    val reached = MapPrefs.MILESTONES.filter { percent >= it }
+                    if (reached.isEmpty()) return@collect
+                    val fresh = FogRuntime.mapPrefs.reachMilestones(h.dongCode, reached)
+                    if (firstSight) return@collect
+                    // 10 % is passed in almost every new 동 (every few seconds in a demo): recorded for
+                    // the dex badge only. From 25 % a notice and a sparkle, and only from 50 % a spoken
+                    // line, queued like any other so it doesn't crowd out first visits and stamps.
+                    val top = fresh.maxOrNull()?.takeIf { it >= MILESTONE_NOTICE } ?: return@collect
+                    FogRuntime.live.update { it.copy(lastEvent = "${h.dong.name} ${top}% 개척!", lastEventId = System.nanoTime()) }
+                    Sfx.play(Sound.ACHIEVE, byControl = false)
+                    if (top >= MILESTONE_VOICE) FogRuntime.announcer.say("${h.dong.name} ${top}퍼센트 개척")
+                }
+        }
+    }
 
     /** Landmark line for the 동 under the car (only for 동 already entered, and while stories are on). */
     val hereStory: StateFlow<Story?> = combine(
@@ -322,6 +390,18 @@ class MainViewModel : ViewModel() {
 
     fun dismissTripSummary() = FogRuntime.live.update { it.copy(lastTrip = null) }
 
+    /** The 개척 timelapse being shown (record screen), null when closed. */
+    val timelapse = MutableStateFlow<Timelapse?>(null)
+    private var timelapseJob: Job? = null
+
+    fun openTimelapse() {
+        // A second tap while the history is still loading doesn't load it again.
+        if (timelapseJob?.isActive == true) return
+        timelapseJob = viewModelScope.launch(Dispatchers.Default) {
+            timelapse.value = Timelapse.of(repo.clearedSince(0)) ?: return@launch run { shareCardMessage.value = "아직 걷어낸 안개가 없어요." }
+        }
+    }
+
     /** The last "내 안개지도" card made on the record screen (shown until closed), or why it failed. */
     val shareCard = MutableStateFlow<java.io.File?>(null)
     val shareCardMessage = MutableStateFlow<String?>(null)
@@ -391,9 +471,11 @@ class MainViewModel : ViewModel() {
 
     fun importData() {
         viewModelScope.launch {
-            val file = FogRuntime.backupFile
+            // The newer of the two, so a format-1 file copied in after an export isn't passed over.
+            val file = listOf(FogRuntime.backupFile, FogRuntime.legacyBackupFile)
+                .filter { it.exists() }.maxByOrNull { it.lastModified() } ?: FogRuntime.backupFile
             backupMessage.value = if (!file.exists()) {
-                "불러올 파일이 없어요. ${file.path} 에 백업 파일을 넣어 주세요."
+                "불러올 파일이 없어요. ${FogRuntime.backupFile.path} 에 백업 파일을 넣어 주세요."
             } else {
                 runCatching { repo.importFrom(file) }.fold(
                     { "불러왔어요: 칸 ${it.cells}개 · 주행 ${it.trips}건 · 하차 ${it.landings}곳" },
@@ -423,5 +505,14 @@ class MainViewModel : ViewModel() {
         /** Unexplored 동 farther than this are not suggested; the nearest few are offered in turn. */
         const val SUGGEST_MAX_M = 30_000.0
         const val SUGGEST_CHOICES = 8
+        /** 읍·면·동 exploration steps shown as a notice with a sparkle / also spoken. */
+        const val MILESTONE_NOTICE = 25
+        const val MILESTONE_VOICE = 50
     }
+}
+
+/** A week or month of exploring ([current]) beside the one before it ([previous]). */
+data class PeriodReport(val period: ChallengePeriod, val current: PeriodStats, val previous: PeriodStats) {
+    val title: String get() = if (period == ChallengePeriod.WEEK) "이번 주" else "이번 달"
+    val previousTitle: String get() = if (period == ChallengePeriod.WEEK) "지난주" else "지난달"
 }

@@ -1,5 +1,6 @@
 package com.zobo.fogdrive.ui
 
+import com.zobo.fogdrive.FogRuntime
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -112,9 +113,14 @@ fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
                     RegionHeading(district, "읍·면·동 ${district.visitedDongs} / ${district.dongs.size} 방문") { onShowOnMap(district) }
                     DexLegend()
                     Text("동을 누르면 지도에서 보여 줘요.", color = FogColors.TextSub)
+                    val milestones by viewModel.milestones.collectAsState()
                     RegionGrid(district.dongs, columns = 5, cardHeight = 124.dp, onSelect = onShowOnMap) { d ->
                         Text(d.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(formatRate(d.rate), style = MaterialTheme.typography.titleLarge, color = FogColors.Accent)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(formatRate(d.rate), style = MaterialTheme.typography.titleLarge, color = FogColors.Accent)
+                            val step = FogRuntime.mapPrefs.milestoneOf(d.code, milestones)
+                            if (step > 0) MilestoneBadge(step)
+                        }
                     }
                 }
                 province != null -> {
@@ -391,5 +397,18 @@ private fun <T : RegionStat> RegionGrid(
             }
             repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
         }
+    }
+}
+
+/** The highest exploration step a 동 reached (10 … 100 %), as a small medal. */
+@Composable
+private fun MilestoneBadge(percent: Int) {
+    Row(
+        Modifier.clip(RoundedCornerShape(4.dp)).background(FogColors.Amber.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(Icons.Outlined.EmojiEvents, contentDescription = "개척 단계", tint = FogColors.Amber, modifier = Modifier.size(18.dp))
+        Text("$percent%", style = MaterialTheme.typography.labelMedium, color = FogColors.Amber)
     }
 }

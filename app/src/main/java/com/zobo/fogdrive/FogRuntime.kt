@@ -102,7 +102,14 @@ object FogRuntime {
 
     /** Export / import file: app-specific external storage, so it can be copied off with adb or USB. */
     val backupFile: File
-        get() = File(appContext.getExternalFilesDir(null) ?: appContext.filesDir, "fogdrive-backup.json")
+        get() = File(backupDir, "fogdrive-backup.fgbk")
+
+    /** Where format-1 (JSON) backups were written; still imported when no newer backup is there. */
+    val legacyBackupFile: File
+        get() = File(backupDir, "fogdrive-backup.json")
+
+    private val backupDir: File
+        get() = appContext.getExternalFilesDir(null) ?: appContext.filesDir
 
     val live = MutableStateFlow(LiveStatus())
     /** The region atlas has been read (or failed to): the first step of the launch loading screen. */

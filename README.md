@@ -77,7 +77,7 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 ### 데이터
 
 - 위치 기록은 기기 내부(Room DB, 스키마 v4)에 저장합니다. DB 버전이 바뀌어도 마이그레이션으로 기존 기록을 유지합니다.
-- 설정 → 데이터 동기화: 백업 내보내기·불러오기(JSON), 클라우드 동기화, 주행 종료 시 자동 동기화. Pleos Sync SDK가 아직 Playground maven에 공개되지 않아서, 지금은 백업을 기기 안 보낼 함(outbox)에 쌓아 두는 대체 구현입니다. SDK가 공개되면 그 부분만 바꿉니다.
+- 설정 → 데이터 동기화: 백업 내보내기·불러오기(바이너리+gzip, 예전 JSON 백업도 불러옴), 클라우드 동기화, 주행 종료 시 자동 동기화. Pleos Sync SDK가 아직 Playground maven에 공개되지 않아서, 지금은 백업을 기기 안 보낼 함(outbox)에 쌓아 두는 대체 구현입니다. SDK가 공개되면 그 부분만 바꿉니다.
 
 ### 주행 모드와 성능
 
@@ -151,7 +151,7 @@ adb shell am start -n com.zobo.fogdrive/.ui.MainActivity
 
 ```bash
 ./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
-./gradlew :app:testDebugUnitTest    # 단위 테스트 58개
+./gradlew :app:testDebugUnitTest    # 단위 테스트 69개
 ./gradlew :app:assembleRelease      # keystore.properties가 없으면 debug 키로 서명
 ```
 

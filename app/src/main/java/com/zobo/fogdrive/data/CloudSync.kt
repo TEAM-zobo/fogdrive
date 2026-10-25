@@ -24,7 +24,7 @@ data class SyncState(
  */
 class CloudSync(context: Context, private val repo: ExploreRepository) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val outbox = File(context.filesDir, "sync/outbox.json")
+    private val outbox = File(context.filesDir, "sync/outbox.fgbk")
 
     private val _state = MutableStateFlow(
         SyncState(lastSyncAt = prefs.getLong(KEY_LAST, 0L).takeIf { it > 0 }, autoSync = prefs.getBoolean(KEY_AUTO, true)),
@@ -41,6 +41,8 @@ class CloudSync(context: Context, private val repo: ExploreRepository) {
         _state.update { it.copy(syncing = true, error = null) }
         try {
             repo.exportTo(outbox)
+            // The JSON outbox of format 1, replaced by the binary one.
+            File(outbox.parentFile, "outbox.json").delete()
             delay(UPLOAD_FEEL_MS)  // stand-in for the upload round trip
             val now = System.currentTimeMillis()
             prefs.edit().putLong(KEY_LAST, now).apply()

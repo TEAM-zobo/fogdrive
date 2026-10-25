@@ -1,5 +1,8 @@
 package com.zobo.fogdrive.ui
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.outlined.Person
+import android.os.UserManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -270,6 +273,7 @@ fun SettingsScreen(
 
         SectionHeader("기록과 개인정보", Modifier.padding(top = 16.dp))
         FogCard(Modifier.fillMaxWidth()) {
+            DriverProfileLine()
             Text("위치 기록은 이 차량 안에 저장되고, 클라우드 동기화를 켠 경우에만 내 Pleos 계정으로 보관돼요. 지도 화면은 OpenStreetMap 데이터를 사용해요.", color = FogColors.TextSub)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedButton(onClick = onRequestBackground) {
@@ -290,6 +294,25 @@ fun SettingsScreen(
                     OutlinedButton(onClick = { confirmReset = false }) { Text("취소", modifier = Modifier.padding(12.dp)) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The car's driver profile: each one is a separate Android user, so its map, trips and settings
+ * are its own (another driver starts with fog everywhere).
+ */
+@Composable
+private fun DriverProfileLine() {
+    val context = LocalContext.current
+    val name = remember {
+        runCatching { context.getSystemService(UserManager::class.java)?.userName }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        IconBadge(Icons.Outlined.Person, FogColors.Accent, size = 44.dp)
+        Column(Modifier.weight(1f)) {
+            Text("운전자 프로필 · ${name ?: "현재 사용자"}", style = MaterialTheme.typography.titleMedium)
+            Text("기록은 운전자 프로필마다 따로 저장돼요. 다른 프로필로 바꾸면 그 운전자의 지도가 보여요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
         }
     }
 }

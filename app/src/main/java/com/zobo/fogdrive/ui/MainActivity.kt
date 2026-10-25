@@ -14,6 +14,11 @@ import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import com.zobo.fogdrive.FogRuntime
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import com.zobo.fogdrive.demo.DemoCourses
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.maplibre.android.MapLibre
 import com.zobo.fogdrive.record.RecordingService
 
@@ -42,6 +47,22 @@ class MainActivity : ComponentActivity() {
         FogRuntime.scope.launch { FogRuntime.saveRegionCounts() }
     }
 
+    /**
+     * Downloads the map along the demo course picked in settings and around the navigation's
+     * destination, once the launch is done (not to compete with the first map's tiles).
+     */
+    private fun prefetchRoutes() {
+        lifecycleScope.launch {
+            FogRuntime.fogReady.first { it }
+            launch {
+                FogRuntime.demoPrefs.courseId.collect { id ->
+                    RoutePrefetch.course(this@MainActivity, id, DemoCourses.byId(id).route)
+                }
+            }
+            FogRuntime.navi.destination.filterNotNull().distinctUntilChanged().collect { RoutePrefetch.destination(this@MainActivity, it) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // QA starts most cases with the tutorial already seen (its own case starts without it).
@@ -65,6 +86,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        prefetchRoutes()
         val missing = RUNTIME_PERMISSIONS.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
