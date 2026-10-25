@@ -10,7 +10,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.RectF
+import android.graphics.RenderNode
 import android.graphics.Typeface
+import android.os.Build
 import android.view.View
 import com.zobo.fogdrive.explore.RegionCounts
 import com.zobo.fogdrive.geo.Outline
@@ -152,6 +154,8 @@ class FogOverlayView(context: Context) : View(context) {
     private val districtLineIn = Stroke(Color.argb(230, 0x2A, 0x30, 0x38), 1.8f)
     private val dongLine = Stroke(Color.argb(150, 0xAE, 0xB8, 0xC6), 1f, dashDp = 5f)
     private val dongLineIn = Stroke(Color.argb(210, 0x4A, 0x52, 0x60), 1.3f, dashDp = 5f)
+    /** Drawing order: finer levels first, each halo under its line. */
+    private val strokes = listOf(dongLine, dongLineIn, districtHalo, districtLine, districtHaloIn, districtLineIn, provinceHalo, provinceLine)
     private val nameText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#F1F4F8")
         textSize = 22f * density
@@ -196,7 +200,7 @@ class FogOverlayView(context: Context) : View(context) {
         drawFog(canvas, x0, y0, x1, y1, pxPerCell)
         val regions = regions
         if (regions != null) {
-            drawBoundaries(canvas, regions, pxPerCell, x0, y0, x1, y1)
+            drawBoundariesCached(canvas, regions, pxPerCell, x0, y0, x1, y1)
             if (showLabels) {
                 placedLabels.clear()
                 // Keep labels off the car dot.
@@ -290,9 +294,20 @@ class FogOverlayView(context: Context) : View(context) {
         val t = tile
         if (t == null || !t.covers(x0, y0, x1, y1)) {
             // Before the first tile, or past the rendered area until the new tile lands: plain dark
-            // fog, never the bare map.
+            // fog, never the bare map. Only outside the tile: the tile is see-through where explored,
+            // and dark fog under it blacked out the explored roads for a frame (a black flash).
             fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
+            val save = canvas.save()
+            if (t != null) {
+                // Inset a little: the filtered bitmap's outermost pixels are partly transparent.
+                val inset = 2f
+                canvas.clipOutRect(
+                    ((t.x0 - x0) * px).toFloat() + inset, ((t.y0 - y0) * px).toFloat() + inset,
+                    ((t.x1 - x0) * px).toFloat() - inset, ((t.y1 - y0) * px).toFloat() - inset,
+                )
+            }
             canvas.drawPaint(fogFallback)
+            canvas.restoreToCount(save)
         }
         if (t != null) {
             val s = px / t.cellPx
@@ -325,7 +340,8 @@ class FogOverlayView(context: Context) : View(context) {
         lastDataRequest = now
         // Render a margin around the view so panning and driving re-renders reuse the tile.
         // Driving: the view already includes the slide margin and the tile is redrawn for new cells
-        // every few hundred ms anyway, so a small extra margin keeps the bitmaps (and uploads) small.
+        // every few hundred ms anyway, so a smaller extra margin keeps the bitmaps (and uploads) small;
+        // still enough for about two re-renders around the car before the next tile lands.
         val margin = if (freezeTransform) DRIVING_TILE_MARGIN else TILE_MARGIN
         val mx = (x1 - x0) * margin
         val my = (y1 - y0) * margin
@@ -398,6 +414,51 @@ class FogOverlayView(context: Context) : View(context) {
 
     private fun visible(o: Outline, x0: Double, y0: Double, x1: Double, y1: Double): Boolean = o.intersects(x0, y0, x1, y1)
 
+    // Boundaries while driving, kept as their own GPU layer (see [drawBoundariesCached]).
+    private val boundaryNode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) RenderNode("boundaries") else null
+    private var boundaryKey: BoundaryKey? = null
+
+    /** What the recorded boundaries depend on. [regions] is [fogRegions]: a new layer comes with every
+     *  explored-cells change, but the line styles only depend on the atlas and the visited 읍·면·동
+     *  (a 시·군·구 is entered exactly when one of its 동 is). */
+    private data class BoundaryKey(val x0: Double, val y0: Double, val px: Double, val regions: RegionLayer?, val w: Int, val h: Int)
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        boundaryNode?.discardDisplayList()
+        boundaryKey = null
+    }
+
+    /**
+     * While driving the view only moves between re-renders around the car, but the fog layer is
+     * redrawn more often (each new fog tile). Stroking the boundaries every time was the main cost
+     * in dense areas (Seoul: ~10 % of frames late), so they live in a compositing layer that is
+     * re-rasterised only when the view or the region data changes. Parked, the view changes every
+     * frame of a pan, so they are drawn directly.
+     */
+    private fun drawBoundariesCached(c: Canvas, r: RegionLayer, px: Double, x0: Double, y0: Double, x1: Double, y1: Double) {
+        val node = boundaryNode
+        if (node == null || !freezeTransform || !c.isHardwareAccelerated) {
+            drawBoundaries(c, r, px, x0, y0, x1, y1)
+            return
+        }
+        val key = BoundaryKey(x0, y0, px, fogRegions, width, height)
+        if (key != boundaryKey) {
+            boundaryKey = null
+            node.setPosition(0, 0, width, height)
+            node.setUseCompositingLayer(true, null)
+            val rc = node.beginRecording(width, height)
+            try {
+                drawBoundaries(rc, r, px, x0, y0, x1, y1)
+            } finally {
+                node.endRecording()
+            }
+            // Only after a complete recording: a throw above must not leave a partial one cached.
+            boundaryKey = key
+        }
+        c.drawRenderNode(node)
+    }
+
     /**
      * Boundary lines are built in screen pixels from only the on-screen part of each outline (see
      * [strokeOutline]); the strokes are therefore plain dp widths.
@@ -407,7 +468,7 @@ class FogOverlayView(context: Context) : View(context) {
         if (px >= DONG_LINES_PX) {
             r.atlas.dongs.forEachIndexed { i, d ->
                 if (visible(d.outline, x0, y0, x1, y1)) {
-                    strokeOutline(c, d.outline, px, x0, y0, if (n.dong[i] > 0) dongLineIn else dongLine)
+                    strokeOutline(d.outline, px, x0, y0, if (n.dong[i] > 0) dongLineIn else dongLine)
                 }
             }
         }
@@ -415,24 +476,26 @@ class FogOverlayView(context: Context) : View(context) {
             r.atlas.districts.forEachIndexed { i, d ->
                 val o = d.outline ?: return@forEachIndexed
                 if (!visible(o, x0, y0, x1, y1)) return@forEachIndexed
-                if (n.district[i] > 0) strokeOutline(c, o, px, x0, y0, districtHaloIn, districtLineIn)
-                else strokeOutline(c, o, px, x0, y0, districtHalo, districtLine)
+                if (n.district[i] > 0) strokeOutline(o, px, x0, y0, districtHaloIn, districtLineIn)
+                else strokeOutline(o, px, x0, y0, districtHalo, districtLine)
             }
         }
         r.atlas.provinces.forEach { p ->
             val o = p.outline ?: return@forEach
-            if (visible(o, x0, y0, x1, y1)) strokeOutline(c, o, px, x0, y0, provinceHalo, provinceLine)
+            if (visible(o, x0, y0, x1, y1)) strokeOutline(o, px, x0, y0, provinceHalo, provinceLine)
         }
+        // One draw per line style (and dash phase), halos under lines, finer levels first.
+        for (st in strokes) st.flush(c)
     }
 
     /**
-     * Strokes the part of [o] that is on screen. Stroking the whole cached outline under a canvas
-     * scale made the GPU rasterise every province and district border in full (tens of thousands of
-     * points, almost all off screen) each time the fog was redrawn: ~35 ms per redraw, one dropped
-     * frame per driving re-render. Here segments outside the view are skipped and points closer than
-     * [MIN_SEGMENT_PX] merged, so only a few hundred short lines reach the GPU.
+     * Adds the part of [o] that is on screen to each stroke's batch (drawn in [drawBoundaries]).
+     * Stroking the whole cached outline under a canvas scale made the GPU rasterise every province
+     * and district border in full (tens of thousands of points, almost all off screen) each time the
+     * fog was redrawn: ~35 ms per redraw, one dropped frame per driving re-render. Here segments
+     * outside the view are skipped and points closer than [MIN_SEGMENT_PX] merged.
      */
-    private fun strokeOutline(c: Canvas, o: Outline, scale: Double, x0: Double, y0: Double, vararg strokes: Stroke) {
+    private fun strokeOutline(o: Outline, scale: Double, x0: Double, y0: Double, vararg strokes: Stroke) {
         val pad = 8f * density
         val left = -pad
         val top = -pad
@@ -441,15 +504,12 @@ class FogOverlayView(context: Context) : View(context) {
         val dashed = strokes.any { it.dashPeriod > 0f }
         val path = boundaryPath
         path.rewind()
-        // Dashes restart at every visible piece; each piece is drawn with the dash phase of its
+        // Dashes restart at every visible piece; each piece goes to the batch of the dash phase of its
         // distance along the whole ring, so the dashes stay put on the map while it pans.
         var runStart = 0.0
         fun endRun() {
-            if (!dashed || path.isEmpty) return
-            for (st in strokes) {
-                if (st.dashPeriod > 0f) st.paint.pathEffect = st.dashAt((runStart % st.dashPeriod).toFloat())
-                c.drawPath(path, st.paint)
-            }
+            if (path.isEmpty) return
+            for (st in strokes) st.add(path, runStart)
             path.rewind()
         }
         for (r in o.rings) {
@@ -494,25 +554,46 @@ class FogOverlayView(context: Context) : View(context) {
             }
             if (penDown) endRun()
         }
-        if (dashed || path.isEmpty) return
-        for (st in strokes) c.drawPath(path, st.paint)
     }
 
     private val boundaryPath = Path()
 
-    /** A line style in dp (boundaries are stroked in screen pixels, see [strokeOutline]). */
+    /**
+     * A line style in dp (boundaries are stroked in screen pixels, see [strokeOutline]), with the
+     * pieces of the current frame batched: drawing every visible piece of every 동 border on its own
+     * was hundreds of draws per redraw in dense areas (Seoul), ~15 % of driving frames late.
+     */
     private inner class Stroke(argb: Int, widthDp: Float, dashDp: Float = 0f) {
         private val dash = if (dashDp > 0) floatArrayOf(dashDp * density, dashDp * density * 0.8f) else null
         /** Length of one dash and gap, or 0 for a solid line. */
         val dashPeriod = dash?.sum() ?: 0f
-        /** Dash effects for [DASH_PHASES] phases, made once: a pan frame strokes many dashed pieces. */
+        /** Dash effects for [DASH_PHASES] phases, made once. */
         private val dashes = dash?.let { d -> Array(DASH_PHASES) { DashPathEffect(d, dashPeriod * it / DASH_PHASES) } }
-        fun dashAt(phase: Float) = dashes!![(phase / dashPeriod * DASH_PHASES).toInt().coerceIn(0, DASH_PHASES - 1)]
+        /** This frame's pieces, one path per dash phase (just one for a solid line). */
+        private val batches = Array(if (dash != null) DASH_PHASES else 1) { Path() }
+        private val used = BooleanArray(batches.size)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = argb
             style = Paint.Style.STROKE
             strokeJoin = Paint.Join.ROUND
             strokeWidth = widthDp * density
+        }
+
+        /** Adds a piece that starts [along] px from its ring's start. */
+        fun add(piece: Path, along: Double) {
+            val b = if (dash == null) 0 else ((along % dashPeriod) / dashPeriod * DASH_PHASES).toInt().coerceIn(0, DASH_PHASES - 1)
+            batches[b].addPath(piece)
+            used[b] = true
+        }
+
+        fun flush(c: Canvas) {
+            for (b in batches.indices) {
+                if (!used[b]) continue
+                paint.pathEffect = dashes?.get(b)
+                c.drawPath(batches[b], paint)
+                batches[b].rewind()
+                used[b] = false
+            }
         }
     }
 
@@ -575,7 +656,7 @@ class FogOverlayView(context: Context) : View(context) {
         const val MASK_DIV = 3
         /** Extra fog rendered on each side of the view, as a share of its size. */
         private const val TILE_MARGIN = 0.3
-        private const val DRIVING_TILE_MARGIN = 0.1
+        private const val DRIVING_TILE_MARGIN = 0.2
         /** At most one fog redraw this often for new cells alone (driving reveals cells every fix). */
         private const val DATA_REDRAW_MS = 300L
         /** How long a replaced tile's bitmaps stay untouched before the renderer may reuse them. */
