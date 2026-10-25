@@ -32,6 +32,8 @@ enum class Sound {
     START,
     /** Parked again (back from the driving view): two notes falling. */
     STOP,
+    /** A 읍·면·동 reached an exploration step: a soft rising sparkle. */
+    ACHIEVE,
 }
 
 object Sfx {
@@ -129,38 +131,48 @@ object Sfx {
         val partials: List<Pair<Double, Double>> = SOFT,
     )
 
+    // Pitches sit low (G3–C6, mostly G4–D5) and every note swells in over 14–35 ms: no edge to the
+    // start, nothing piercing. Levels are about 3–4 dB below the first version, which was too sharp.
     private fun pcm(sound: Sound): ShortArray = when (sound) {
-        // A soft, low "pup": felt more than heard.
-        Sound.TAP -> render(0.32, Note(0.0, 520.0, attack = 0.006, decay = 0.028, bend = 0.03, partials = SOFT))
-        // A rising fifth, breathed in: D5 then A5.
+        // A soft, low "pup" (G4): felt more than heard.
+        Sound.TAP -> render(0.20, Note(0.0, 392.0, attack = 0.014, decay = 0.035, partials = SOFT))
+        // A rising fourth, breathed in: A4 then D5.
         Sound.SCREEN -> render(
-            0.26,
-            Note(0.00, 587.3, attack = 0.022, decay = 0.080, partials = SOFT),
-            Note(0.07, 880.0, attack = 0.024, decay = 0.100, gain = 0.7, partials = SOFT),
+            0.18,
+            Note(0.00, 440.0, attack = 0.035, decay = 0.090, partials = SOFT),
+            Note(0.08, 587.3, attack = 0.035, decay = 0.110, gain = 0.7, partials = SOFT),
         )
-        // A major third up / down, quietly.
+        // A major third up / down, quietly: G4 – B4.
         Sound.TOGGLE_ON -> render(
-            0.28,
-            Note(0.00, 523.3, attack = 0.008, decay = 0.036, gain = 0.8, partials = SOFT),
-            Note(0.07, 659.3, attack = 0.008, decay = 0.050, partials = SOFT),
+            0.20,
+            Note(0.000, 392.0, attack = 0.016, decay = 0.040, gain = 0.8, partials = SOFT),
+            Note(0.075, 493.9, attack = 0.016, decay = 0.055, partials = SOFT),
         )
         Sound.TOGGLE_OFF -> render(
-            0.28,
-            Note(0.00, 659.3, attack = 0.008, decay = 0.036, gain = 0.8, partials = SOFT),
-            Note(0.07, 523.3, attack = 0.008, decay = 0.050, partials = SOFT),
+            0.20,
+            Note(0.000, 493.9, attack = 0.016, decay = 0.040, gain = 0.8, partials = SOFT),
+            Note(0.075, 392.0, attack = 0.016, decay = 0.055, partials = SOFT),
         )
-        // C major, arpeggiated softly and left to ring: C5 – E5 – G5.
+        // G major, arpeggiated softly and left to ring: G4 – B4 – D5.
         Sound.START -> render(
-            0.26,
-            Note(0.00, 523.3, attack = 0.020, decay = 0.22, partials = WARM),
-            Note(0.10, 659.3, attack = 0.020, decay = 0.22, gain = 0.85, partials = WARM),
-            Note(0.20, 784.0, attack = 0.022, decay = 0.28, gain = 0.75, partials = WARM),
+            0.18,
+            Note(0.00, 392.0, attack = 0.030, decay = 0.22, partials = WARM),
+            Note(0.11, 493.9, attack = 0.030, decay = 0.22, gain = 0.85, partials = WARM),
+            Note(0.22, 587.3, attack = 0.032, decay = 0.28, gain = 0.75, partials = WARM),
         )
-        // Settling down: G4 – C4 (an octave lower, calmer).
+        // A rising sparkle, gently: C5 – E5 – G5 – C6 (an octave below a bright chime).
+        Sound.ACHIEVE -> render(
+            0.18,
+            Note(0.00, 523.3, attack = 0.030, decay = 0.16, gain = 0.8, partials = WARM),
+            Note(0.09, 659.3, attack = 0.030, decay = 0.18, gain = 0.75, partials = WARM),
+            Note(0.18, 784.0, attack = 0.030, decay = 0.22, gain = 0.7, partials = WARM),
+            Note(0.27, 1_046.5, attack = 0.034, decay = 0.30, gain = 0.55, partials = WARM),
+        )
+        // Settling down: D4 – G3.
         Sound.STOP -> render(
-            0.28,
-            Note(0.00, 392.0, attack = 0.020, decay = 0.18, gain = 0.85, partials = WARM),
-            Note(0.12, 261.6, attack = 0.022, decay = 0.26, partials = WARM),
+            0.20,
+            Note(0.00, 293.7, attack = 0.030, decay = 0.18, gain = 0.85, partials = WARM),
+            Note(0.13, 196.0, attack = 0.032, decay = 0.26, partials = WARM),
         )
     }
 
@@ -197,7 +209,7 @@ object Sfx {
             for (k in d until n) room[k] += mix[k - d] * level
         }
         for (k in 0 until n) mix[k] += room[k]
-        // Low-pass (one pole, ~2.6 kHz): nothing bright or sharp is left.
+        // Low-pass (one pole, ~1.6 kHz): nothing bright or sharp is left.
         val a = exp(-2 * PI * LOWPASS_HZ / SAMPLE_RATE)
         var y = 0.0
         for (k in 0 until n) {
@@ -209,12 +221,12 @@ object Sfx {
     }
 
     /** Almost a pure tone: a whisper of octave only (taps, switches, screen changes). */
-    private val SOFT = listOf(1.0 to 1.0, 2.0 to 0.06)
+    private val SOFT = listOf(1.0 to 1.0, 2.0 to 0.03)
     /** A little warmth for the chimes, no bright partials. */
-    private val WARM = listOf(1.0 to 1.0, 2.0 to 0.14, 3.0 to 0.03)
+    private val WARM = listOf(1.0 to 1.0, 2.0 to 0.08)
     /** A note is cut after this many decay times (about -35 dB: inaudible under the next sound). */
     private const val TAIL_DECAYS = 4.0
     private val ROOM_TAPS = listOf(23.0 to 0.10, 41.0 to 0.05)
     private const val ROOM_TAIL_S = 0.08
-    private const val LOWPASS_HZ = 2_600.0
+    private const val LOWPASS_HZ = 1_600.0
 }

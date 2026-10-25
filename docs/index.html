@@ -311,7 +311,7 @@
           <tr><td>행정구역 정복률·지역 도감(시·도→시·군·구→읍·면·동), 두 단계 안개, 하차 지역 표시</td><td>admdongkor 행정구역 경계 (CC BY 4.0, 통계청)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>백업 내보내기·불러오기, 클라우드 동기화</td><td>Pleos Sync SDK 미공개 → 기기 내 보낼 함 대체 구현</td><td><span class="tag todo">SDK 대기</span></td></tr>
           <tr><td>시연 모드: 코스 17개(서울·수도권·부산·강릉), 20~200km/h, 왕복, 회전 안내·도착 대체 생성</td><td>OSRM 실제 도로 경로</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>음성 안내(새 동네·스탬프·도착·미션·주행 요약)</td><td>Android TextToSpeech, 내비 안내 오디오로 재생 (Pleos TextToSpeech SDK 3.3.1 공개 확인, 교체 예정)</td><td><span class="tag done">구현</span></td></tr>
+          <tr><td>음성 안내(새 동네·스탬프·도착·미션·주행 요약)</td><td>Pleos TextToSpeech SDK 3.3.1 온디바이스 합성, 내비 안내 오디오로 재생 (10/25 교체, 에뮬레이터에서 재생 확인)</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>첫 실행 튜토리얼(5장, 설정에서 다시 보기)</td><td>앱 내부</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>주행 요약 카드(면적·거리·새 길·처음 가 본 동네·스탬프·미션)</td><td>앱 내부 계산</td><td><span class="tag done">구현</span></td></tr>
           <tr><td>동승자 미션(주행 화면엔 진행 한 줄, 성공 시 스탬프)</td><td>Vehicle Seat</td><td><span class="tag done">구현</span></td></tr>
@@ -341,7 +341,7 @@
     <div class="callout warn"><b>2. 참가 단위</b> 팀 2명(대표자 1명 + 팀원 1명)으로 정했습니다. 두 사람 모두 접수양식 04에 각자 동의·서명·날짜를 쓰고, 대표자가 팀원을 이메일 참조(CC)에 넣어 보냅니다.</div>
     <h3>설명회 대신 직접 확인한 것 (2026-10-25)</h3>
     <ul>
-      <li><b>SDK 사용</b>: 공모전 FAQ의 제공 SDK는 Vehicle·NaviHelper·TextToSpeech·SpeechToText·FusedLocation입니다. Pleos Maven에 TextToSpeech 3.3.1(10/13)이 올라와 있어, 지금 Android TextToSpeech로 만든 음성 안내를 Pleos TextToSpeech SDK로 바꿔야 합니다. FusedLocation 1.1.3은 이미 사용 중입니다. (<a href="https://appdevchallenge.auto-hmg.io/faq">FAQ</a> · <a href="https://document.pleos.ai/api-reference/connect-sdk-pleos/TextToSpeech/make-the-first-api-call">TextToSpeech SDK 문서</a>)</li>
+      <li><b>SDK 사용</b>: 공모전 FAQ의 제공 SDK는 Vehicle·NaviHelper·TextToSpeech·SpeechToText·FusedLocation입니다. Pleos Maven에 TextToSpeech 3.3.1(10/13)이 올라와 있어, 음성 안내를 Android TextToSpeech에서 Pleos TextToSpeech SDK로 바꿨습니다(10/25). FusedLocation 1.1.3은 이미 사용 중입니다. (<a href="https://appdevchallenge.auto-hmg.io/faq">FAQ</a> · <a href="https://document.pleos.ai/api-reference/connect-sdk-pleos/TextToSpeech/make-the-first-api-call">TextToSpeech SDK 문서</a>)</li>
       <li><b>위치 시뮬레이션</b>: 공식 권장 방법은 따로 없습니다. Virtual Console과 <code>adb emu geo fix</code>로 QA 자동 테스트를 돌리고 있고, 시연은 앱의 시연 모드로 합니다.</li>
       <li><b>외부 지도 타일</b>: FAQ·유의사항에 네트워크 사용 제한이 없습니다. OpenStreetMap 출처 표기만 유지합니다.</li>
       <li><b>MAU 근거</b>: 탑재 차량 누적 대수는 공개되지 않았습니다. 대신 탑재 차종 판매로 추정합니다. 2026년 9월 국내 판매 그랜저 8,898대·아반떼 7,305대(<a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-september-2026-sales">현대차 9월 실적</a>), 아반떼는 8/5 계약 시작부터 전 트림 기본 탑재(<a href="https://www.starnewskorea.com/business-life/2026/08/05/2026080509094993230">기사</a>).</li>

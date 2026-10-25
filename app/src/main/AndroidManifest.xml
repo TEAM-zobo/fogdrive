@@ -27,6 +27,8 @@
     <!-- Pleos NaviHelper SDK: get*Info / addWaypoint -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <!-- Pleos TextToSpeech SDK: voice lines (normal-level, granted at install) -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
 
     <!-- AAOS standard: gear selection (CarPropertyManager) -->
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
