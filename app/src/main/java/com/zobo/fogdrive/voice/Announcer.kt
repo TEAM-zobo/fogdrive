@@ -19,7 +19,7 @@ class Announcer(context: Context, private val enabled: () -> Boolean) {
     private var tts: TextToSpeech? = null
     @Volatile private var ready = false
     private var lastAt = 0L
-    private var queued = 0
+    @Volatile private var queued = 0
     private val app = context.applicationContext
 
     /** Engine starts lazily on the first line, so a parked car with voice off never binds one. */
@@ -40,6 +40,8 @@ class Announcer(context: Context, private val enabled: () -> Boolean) {
                 t.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                     override fun onStart(id: String?) = Unit
                     override fun onDone(id: String?) = dequeued()
+                    // Dropped or interrupted lines end here, not in onDone: they must free their slot too.
+                    override fun onStop(id: String?, interrupted: Boolean) = dequeued()
                     @Deprecated("Deprecated in Java")
                     override fun onError(id: String?) = dequeued()
                 })
@@ -52,6 +54,9 @@ class Announcer(context: Context, private val enabled: () -> Boolean) {
     fun warmUp() {
         if (enabled()) engine()
     }
+
+    /** A line is being spoken or waits to be (interface sounds keep quiet meanwhile). */
+    val speaking: Boolean get() = queued > 0
 
     @Synchronized
     private fun dequeued() {

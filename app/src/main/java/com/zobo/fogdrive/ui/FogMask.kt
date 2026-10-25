@@ -84,15 +84,23 @@ class FogMaskRenderer(
         val cells: () -> Set<Long>,
         /** Revisit counts (concurrent map), or null when worn roads are not drawn. */
         val revisits: Map<Long, Int>?,
-    )
+        /**
+         * Where the content changed since the last request (x0, y0, x1, y1 in zoom-20 tile units),
+         * or null for "anywhere": only that part is redrawn when the tile is otherwise the same.
+         */
+        val dirty: DoubleArray? = null,
+    ) {
+        fun withDirty(d: DoubleArray?) = if (d === dirty) this else Job(key, x0, y0, x1, y1, cellPx, cells, revisits, d)
+    }
 
     private val main = Handler(Looper.getMainLooper())
     private val lock = Any()
     private var queued: Job? = null
     /** The last tile made: chunks whose pixels did not change are handed on, not re-uploaded. */
     @Volatile private var last: FogMaskTile? = null
-    /** Whole-tile drawing surface (this thread only). */
+    /** Whole-tile drawing surface (this thread only), and what it was last drawn as. */
     private var full: Bitmap? = null
+    private var fullGeometry: List<Any?>? = null
     /** A chunk copy that turned out unchanged, kept for the next comparison (this thread only). */
     private val scratch = HashMap<Long, Bitmap>()
 
@@ -116,7 +124,11 @@ class FogMaskRenderer(
     private val wornCount = IntArray(FogOverlayView.WORN_LEVELS.size)
 
     fun submit(job: Job) {
-        synchronized(lock) { queued = job }
+        synchronized(lock) {
+            // A replaced request's changes are not in the bitmap yet: the newer one redraws them too.
+            val dropped = queued
+            queued = if (dropped == null) job else job.withDirty(union(dropped.dirty, job.dirty))
+        }
         executor.execute {
             // Requests that came in while one was rendering left only the newest queued.
             val next = synchronized(lock) { queued.also { queued = null } } ?: return@execute
@@ -129,6 +141,11 @@ class FogMaskRenderer(
             }
             if (tile != null) main.post { onTile(tile) } else main.post { onFailed(next) }
         }
+    }
+
+    private fun union(a: DoubleArray?, b: DoubleArray?): DoubleArray? {
+        if (a == null || b == null) return null
+        return doubleArrayOf(minOf(a[0], b[0]), minOf(a[1], b[1]), maxOf(a[2], b[2]), maxOf(a[3], b[3]))
     }
 
     private fun render(job: Job): FogMaskTile {
@@ -157,9 +174,42 @@ class FogMaskRenderer(
         val h = rows * CHUNK
         val bmp = full?.takeIf { it.width == w && it.height == h }
             ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { full = it }
-        bmp.eraseColor(Color.TRANSPARENT)
+        val wornScale = ceil(WORN_MIN_CELL_PX / px).toInt().coerceIn(1, WORN_MAX_SCALE)
+        // Same tile as last time apart from the data (driving: new cells near the car): redraw only
+        // the changed area of the bitmap, which keeps the rest. Thousands of cells were punched again
+        // every few hundred ms for a handful of new ones.
+        val geometry = listOf(gx0, gy0, cols, rows, px, key.dz, key.night, key.regions, key.regionsUnavailable, key.worn, wornScale)
+        val dirty = job.dirty?.takeIf { fullGeometry == geometry && wornScale == 1 }
+        fullGeometry = null  // until this render completes
         val c = canvas
         c.setBitmap(bmp)
+        // Area to scan for cells: the whole tile, or the changed part (plus a cell for the soft rims).
+        var sx0 = x0
+        var sy0 = y0
+        var sx1 = x1
+        var sy1 = y1
+        if (dirty != null) {
+            val rimWorld = RIM_CELLS * (1 shl key.dz)
+            val margin = 2.0 * (1 shl key.dz) + rimWorld
+            sx0 = maxOf(x0, dirty[0] - margin)
+            sy0 = maxOf(y0, dirty[1] - margin)
+            sx1 = minOf(x1, dirty[2] + margin)
+            sy1 = minOf(y1, dirty[3] + margin)
+            c.save()
+            // Whole pixels: a fractional clip edge blends old and new along it (a faint seam).
+            c.clipRect(
+                floor((sx0 - x0) * px).toInt(), floor((sy0 - y0) * px).toInt(),
+                ceil((sx1 - x0) * px).toInt(), ceil((sy1 - y0) * px).toInt(),
+            )
+            c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+            // Cells just outside still reach in with their rims: scan a little wider than the clip.
+            sx0 -= rimWorld
+            sy0 -= rimWorld
+            sx1 += rimWorld
+            sy1 += rimWorld
+        } else {
+            bmp.eraseColor(Color.TRANSPARENT)
+        }
         if (shaderNight != key.night) {
             shaderNight = key.night
             fogPaint.shader = BitmapShader(FogOverlayView.cloudTexture(key.night, light = false), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
@@ -180,16 +230,16 @@ class FogMaskRenderer(
             c.drawPaint(fogPaint)
             for (i in regions.counts.visitedDongs) {
                 val o = regions.atlas.dongs[i].outline
-                if (o.intersects(x0, y0, x1, y1)) drawOutline(c, o, i, px, x0, y0)
+                if (o.intersects(sx0, sy0, sx1, sy1)) drawOutline(c, o, i, px, x0, y0)
             }
         }
 
         val scale = (1 shl key.dz).toDouble()
         val cellMaskPx = (px * scale).toFloat()
-        val lx0 = floor(x0 / scale).toInt() - 1
-        val lx1 = floor(x1 / scale).toInt() + 1
-        val ly0 = floor(y0 / scale).toInt() - 1
-        val ly1 = floor(y1 / scale).toInt() + 1
+        val lx0 = floor(sx0 / scale).toInt() - 1
+        val lx1 = floor(sx1 / scale).toInt() + 1
+        val ly0 = floor(sy0 / scale).toInt() - 1
+        val ly1 = floor(sy1 / scale).toInt() + 1
         val radius = max(1.2f, cellMaskPx * 1.05f)
         var n = 0
         fun punch(cx: Int, cy: Int) {
@@ -222,13 +272,12 @@ class FogMaskRenderer(
             c.drawCircle(centres[i], centres[i + 1], radius, clearPaint)
             i += 2
         }
-        val wornScale = ceil(WORN_MIN_CELL_PX / px).toInt().coerceIn(1, WORN_MAX_SCALE)
         var worn: Bitmap? = null
         job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
             if (wornScale == 1) {
                 // Same resolution as the fog (driving zoom): drawn into the fog itself, so it is
                 // uploaded with the chunks it touches.
-                drawWornRoads(c, visits, x0, y0, x1, y1, px)
+                drawWornRoads(c, visits, x0, y0, x1, y1, px, sx0, sy0, sx1, sy1)
             } else {
                 // Zoomed out (parked): sharper than the fog, one bitmap of its own.
                 val wb = Bitmap.createBitmap(w * wornScale, h * wornScale, Bitmap.Config.ARGB_8888)
@@ -237,7 +286,9 @@ class FogMaskRenderer(
                 worn = wb
             }
         }
+        if (dirty != null) c.restore()
         c.setBitmap(null)
+        fullGeometry = geometry
         return FogMaskTile(chunk(bmp, gx0, gy0, cols, rows, px, key), cols, x0, y0, x1, y1, px, key, worn, wornScale)
     }
 
@@ -292,14 +343,18 @@ class FogMaskRenderer(
      * Roads driven on several trips get a tint that deepens with the count (see WORN_LEVELS), so
      * the daily routes stand out at a glance. Drawn into the fog bitmap, above the holes.
      */
-    private fun drawWornRoads(c: Canvas, visits: Map<Long, Int>, x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
+    private fun drawWornRoads(
+        c: Canvas, visits: Map<Long, Int>, x0: Double, y0: Double, x1: Double, y1: Double, px: Double,
+        // The part to scan for cells (default: all of it); positions stay relative to x0, y0.
+        sx0: Double = x0, sy0: Double = y0, sx1: Double = x1, sy1: Double = y1,
+    ) {
         if (visits.isEmpty()) return
         val levels = FogOverlayView.WORN_LEVELS
         val r = (px * 0.75).toFloat()
-        val lx0 = floor(x0).toInt()
-        val lx1 = floor(x1).toInt()
-        val ly0 = floor(y0).toInt()
-        val ly1 = floor(y1).toInt()
+        val lx0 = floor(sx0).toInt()
+        val lx1 = floor(sx1).toInt()
+        val ly0 = floor(sy0).toInt()
+        val ly1 = floor(sy1).toInt()
         // One scan buckets the cells by tint; each tint is then drawn in one layer.
         for (level in levels.indices) wornCount[level] = 0
         fun collect(cx: Int, cy: Int, n: Int) {
@@ -347,6 +402,8 @@ class FogMaskRenderer(
          */
         const val WORN_MIN_CELL_PX = 4.0
         const val WORN_MAX_SCALE = 2
+        /** Cells around a changed area that are redrawn too (their soft rims reach this far). */
+        private const val RIM_CELLS = 2.0
         /** Chunk edge in bitmap pixels. */
         const val CHUNK = 256
         /** One thread for every map view (each FogMap composition makes a new view; a per-view

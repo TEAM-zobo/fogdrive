@@ -1,5 +1,10 @@
 package com.zobo.fogdrive.ui
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -61,15 +66,20 @@ fun FogApp(
     val vehicle by viewModel.vehicle.collectAsState()
     // Back from a sub tab returns to the map instead of closing the app.
     BackHandler(enabled = tab != 0 && vehicle.drivingRestricted != true) { goTo(0) }
-    // Into the driving view (moving off) a chime, back to parked a falling pair.
-    // Only between two known states: the first report after launch (null → true when the app opens
-    // in a moving car) is not "moving off".
-    val restricted = vehicle.drivingRestricted
-    val lastRestricted = remember { arrayOf(restricted) }
-    LaunchedEffect(restricted) {
-        val was = lastRestricted[0]
-        if (was != null && restricted != null && was != restricted) Sfx.play(if (restricted) Sound.START else Sound.STOP, byControl = false)
-        lastRestricted[0] = restricted
+    // Into the driving view (moving off) a chime, back to parked a falling pair. Only while the app
+    // is in front, and only between two known states seen there: a change that happened in the
+    // background (or the first report after launch) sets the baseline instead of chiming late.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var was: Boolean? = null
+            viewModel.vehicle.map { it.drivingRestricted }.distinctUntilChanged().collect { restricted ->
+                if (was != null && restricted != null && was != restricted) {
+                    Sfx.play(if (restricted) Sound.START else Sound.STOP, byControl = false)
+                }
+                if (restricted != null) was = restricted
+            }
+        }
     }
 
     // While the car requires distraction optimization only the driving view is shown.

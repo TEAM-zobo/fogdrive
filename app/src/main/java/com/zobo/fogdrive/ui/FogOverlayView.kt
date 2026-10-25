@@ -13,6 +13,8 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
+import com.zobo.fogdrive.data.ExploreRepository
+import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.explore.RegionCounts
 import com.zobo.fogdrive.geo.Outline
 import com.zobo.fogdrive.geo.RegionAtlas
@@ -40,6 +42,10 @@ import kotlin.math.min
 class FogOverlayView(context: Context) : View(context) {
     var map: MapLibreMap? = null
     var cellsAtLevel: (Int) -> Set<Long> = { emptySet() }
+    /** The explored-cell log, to tell the renderer which part changed (see [changedArea]). */
+    var cellLog: CellLog? = null
+    /** Cells whose revisit count changed since a reading (see [changedArea]). */
+    var revisitLog: ((epoch: Int, from: Int) -> ExploreRepository.RevisitSlice)? = null
     /** Draw [revisits] at all (map / driving view / Settings toggle). */
     var showWornRoads = true
     /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
@@ -354,9 +360,54 @@ class FogOverlayView(context: Context) : View(context) {
             key, x0 - mx, y0 - my, x1 + mx, y1 + my, cellPx,
             { cellsAtLevel(wantDz) },
             if (key.worn) revisits() else null,
+            changedArea(key),
         )
         requested = job
         renderer.submit(job)
+    }
+
+    // What the last request covered, to work out what changed since (see [changedArea]).
+    private var logGeneration = Int.MIN_VALUE
+    private var logPosition = 0
+    private var revisitEpoch = Int.MIN_VALUE
+    private var revisitPosition = 0
+    private var lastRequestKey: FogMaskKey? = null
+
+    /**
+     * The area whose fog changed since the last request: the cells explored since then and the cells
+     * whose revisit count changed (worn roads). Null means "could be anywhere" (first request, a
+     * reset, the stored counts merged in, too many changes): the renderer redraws the whole tile.
+     */
+    private fun changedArea(key: FogMaskKey): DoubleArray? {
+        val log = cellLog ?: return null
+        val visits = revisitLog ?: return null
+        val slice = log.readSince(logGeneration, logPosition)
+        val sameLog = slice.generation == logGeneration
+        logGeneration = slice.generation
+        logPosition = slice.size
+        val revisited = visits(revisitEpoch, revisitPosition)
+        val sameEpoch = revisited.epoch == revisitEpoch
+        revisitEpoch = revisited.epoch
+        revisitPosition = revisited.size
+        val previous = lastRequestKey
+        lastRequestKey = key
+        if (previous == null || !sameLog || !sameEpoch) return null
+        if (slice.cells.size + revisited.cells.size > MAX_CHANGED_CELLS) return null
+        var minX = Double.MAX_VALUE
+        var minY = Double.MAX_VALUE
+        var maxX = -Double.MAX_VALUE
+        var maxY = -Double.MAX_VALUE
+        fun add(c: Long) {
+            val x = Tiles.x(c).toDouble()
+            val y = Tiles.y(c).toDouble()
+            if (x < minX) minX = x
+            if (y < minY) minY = y
+            if (x + 1 > maxX) maxX = x + 1
+            if (y + 1 > maxY) maxY = y + 1
+        }
+        for (c in slice.cells) add(c)
+        for (c in revisited.cells) add(c)
+        return if (minX == Double.MAX_VALUE) null else doubleArrayOf(minX, minY, maxX, maxY)
     }
 
     private var clusterX = FloatArray(64)
@@ -640,6 +691,8 @@ class FogOverlayView(context: Context) : View(context) {
         const val MASK_DIV = 3
         /** Extra fog rendered on each side of the view, as a share of its size. */
         private const val TILE_MARGIN = 0.3
+        /** More changed cells than this since the last fog (a jump, a long gap): redraw the whole tile. */
+        private const val MAX_CHANGED_CELLS = 4_000
         private const val DRIVING_TILE_MARGIN = 0.2
         /** At most one fog redraw this often for new cells alone (driving reveals cells every fix). */
         private const val DATA_REDRAW_MS = 300L

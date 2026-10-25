@@ -817,6 +817,8 @@ fun FogMap(
             holder.onMapReady(map)
             holder.overlay.map = map
             holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
+            holder.overlay.cellLog = FogRuntime.repo
+            holder.overlay.revisitLog = FogRuntime.repo::revisitsSince
             holder.overlay.revisits = { FogRuntime.repo.revisits }
             holder.overlay.onReady = {
                 holder.fogShown.value = true

@@ -110,10 +110,21 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         bump()
         _loaded.value = true
         val stored = revisited.await()
-        // Wiped meanwhile (기록 전체 삭제 right after launch): the visits read belong to deleted data.
-        if (synchronized(lock) { resetGeneration } != generation) return
-        // A revisit recorded meanwhile already counted the stored visits plus one.
-        stored.forEach { visitCounts.merge(it.cell, it.visits) { now, old -> maxOf(now, old) } }
+        synchronized(visitLock) {
+            // Wiped meanwhile (기록 전체 삭제 right after launch): the visits read belong to deleted data.
+            if (synchronized(lock) { resetGeneration } == generation) {
+                stored.forEach { visitCounts[it.cell] = it.visits }
+                // Repeats recorded while loading go on top: a cell stored with none was driven once.
+                pendingVisits.forEach { (c, k) -> visitCounts.merge(c, 1 + k) { old, _ -> old + k } }
+                // Now that the stored counts are read, store the repeats (once per repeat).
+                val byRepeats = pendingVisits.entries.groupBy({ it.value }, { it.key })
+                for ((k, list) in byRepeats) repeat(k) { storeVisits(list) }
+            }
+            pendingVisits.clear()
+            visitsLoaded = true
+            revisitLogSize = 0
+            revisitEpoch++
+        }
         revisitCounter.incrementAndGet()
     }
 
@@ -127,6 +138,35 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     /** Cells driven by more than one trip, with their trip count (read live by the map). */
     private val visitCounts = ConcurrentHashMap<Long, Int>(INITIAL_CELLS / 4)
+    /** Guards the switch from [pendingVisits] to [visitCounts] once the stored counts are loaded. */
+    private val visitLock = Any()
+    @Volatile private var visitsLoaded = false
+    /** Repeats recorded before the stored counts were read (see [revisit] and [load]). */
+    private val pendingVisits = HashMap<Long, Int>()
+    // Cells whose count changed, in order, so the map redraws only around them (see [revisitsSince]).
+    // A change everywhere (the stored counts merged in, a reset) starts a new epoch instead.
+    private var revisitLog = LongArray(1024)
+    private var revisitLogSize = 0
+    private var revisitEpoch = 0
+
+    /** What changed in [revisits] since a reading of it. */
+    class RevisitSlice(val epoch: Int, val size: Int, val cells: LongArray)
+
+    /** Cells whose revisit count changed since position [from] of [epoch]; a new epoch: all may have. */
+    fun revisitsSince(epoch: Int, from: Int): RevisitSlice = synchronized(visitLock) {
+        if (epoch != revisitEpoch || from > revisitLogSize) return RevisitSlice(revisitEpoch, revisitLogSize, LongArray(0))
+        RevisitSlice(revisitEpoch, revisitLogSize, revisitLog.copyOfRange(from, revisitLogSize))
+    }
+
+    private fun logRevisits(cells: Collection<Long>) {
+        if (revisitLogSize + cells.size > MAX_REVISIT_LOG) {
+            // Long session: start over (readers redraw everything once).
+            revisitLogSize = 0
+            revisitEpoch++
+        }
+        if (revisitLogSize + cells.size > revisitLog.size) revisitLog = revisitLog.copyOf(maxOf(revisitLog.size * 2, revisitLogSize + cells.size))
+        for (c in cells) revisitLog[revisitLogSize++] = c
+    }
     val revisits: Map<Long, Int> get() = visitCounts
     /** Bumped when [revisits] changes (no [version] bump for that, see [revisit]): the fog redraws on it. */
     private val revisitCounter = AtomicInteger()
@@ -135,9 +175,23 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     override fun revisit(cells: Collection<Long>) {
         // No version bump: that would rebuild the coarse fog levels on every fix over a known road.
         // [revisitVersion] tells the map to redraw the worn roads instead.
-        for (c in cells) visitCounts.merge(c, 2) { old, _ -> old + 1 }
+        val loaded = synchronized(visitLock) {
+            if (visitsLoaded) {
+                // A cell missing from the map was driven once before (only repeats are stored).
+                for (c in cells) visitCounts.merge(c, 2) { old, _ -> old + 1 }
+                logRevisits(cells)
+            } else {
+                // The stored counts aren't in yet: count the repeats, added on top once they are.
+                // Stored only then too, or the read in [load] could already include them (counted twice).
+                for (c in cells) pendingVisits.merge(c, 1, Int::plus)
+            }
+            visitsLoaded
+        }
         revisitCounter.incrementAndGet()
-        val list = cells.toList()
+        if (loaded) storeVisits(cells.toList())
+    }
+
+    private fun storeVisits(list: List<Long>) {
         scope.launch(Dispatchers.IO) { list.chunked(SQL_IN_LIMIT).forEach { db.dao().addVisit(it) } }
     }
 
@@ -252,7 +306,12 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         synchronized(lock) {
             resetGeneration++
             cells.clear()
-            visitCounts.clear()
+            synchronized(visitLock) {
+                visitCounts.clear()
+                pendingVisits.clear()
+                revisitLogSize = 0
+                revisitEpoch++
+            }
             revisitCounter.incrementAndGet()
             orderSize = 0
             levelCache.clear()
@@ -274,5 +333,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         /** Room for a long history up front: growing a concurrent set step by step while loading
          *  tens of thousands of cells took over a second at start-up. */
         const val INITIAL_CELLS = 1 shl 17
+        /** Revisited cells kept for the map's partial redraws before starting a new epoch. */
+        const val MAX_REVISIT_LOG = 1 shl 16
     }
 }

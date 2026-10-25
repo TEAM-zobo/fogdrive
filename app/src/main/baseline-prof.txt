@@ -1,0 +1,5 @@
+# App code compiled ahead of time on install (with the Compose / MapLibre libraries' own profiles
+# that ship in their AARs): start-up, the map, the driving camera and the fog renderer all run hot
+# from the first launch instead of being interpreted and JIT-compiled while the user waits.
+HSPLcom/zobo/fogdrive/**;->**(**)**
+Lcom/zobo/fogdrive/**;

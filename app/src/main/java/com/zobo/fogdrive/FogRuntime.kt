@@ -187,7 +187,8 @@ object FogRuntime {
         demoPrefs = DemoPrefs(app)
         mapPrefs = MapPrefs(app)
         announcer = Announcer(app) { mapPrefs.voice.value }
-        Sfx.init(enabled = { mapPrefs.sound.value }, volume = { mapPrefs.soundVolume.value / 100f })
+        // Quiet while a voice line plays: a tick over speech only gets in the way.
+        Sfx.init(enabled = { mapPrefs.sound.value && !announcer.speaking }, volume = { mapPrefs.soundVolume.value / 100f })
         stories = LocalStories(app)
         scope.launch { repo.load(beforeShown = ::seedRegionCounts) }
         // Keep the saved counts current while exploring, so a later start can reuse them.
