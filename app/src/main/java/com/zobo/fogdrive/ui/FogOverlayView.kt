@@ -2,8 +2,6 @@ package com.zobo.fogdrive.ui
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapShader
-import android.graphics.Shader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
@@ -11,9 +9,6 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
@@ -22,9 +17,9 @@ import com.zobo.fogdrive.geo.Outline
 import com.zobo.fogdrive.geo.RegionAtlas
 import com.zobo.fogdrive.geo.Tiles
 import org.maplibre.android.maps.MapLibreMap
-import kotlin.math.exp
+import kotlin.math.abs
 import kotlin.math.floor
-import kotlin.math.ln
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
@@ -34,7 +29,8 @@ import kotlin.math.min
  * The fog is painted into a reduced-resolution mask with tileable cloud textures, explored cells get
  * a soft blue rim, and each explored cell is punched out as a slightly oversized circle (neighbours
  * merge into smooth strips instead of a staircase). The mask is then scaled up with filtering,
- * which softens edges and clouds alike.
+ * which softens edges and clouds alike. It is rendered off the UI thread for an area a bit larger
+ * than the view ([FogMaskRenderer]) and only moved and scaled per frame.
  * Over the fog go the administrative boundaries (시·도 always, 시·군·구 and 읍·면·동 as the map zooms
  * in) and, for regions already entered, their name and achievement rate.
  * At low zoom it switches to coarser parent tiles so the cost stays bounded.
@@ -47,6 +43,8 @@ class FogOverlayView(context: Context) : View(context) {
     var showWornRoads = true
     /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
     var revisits: () -> Map<Long, Int> = { emptyMap() }
+    /** Changes whenever explored cells or revisit counts change (the fog is redrawn then). */
+    var dataVersion: () -> Long = { 0L }
     var current: Pair<Double, Double>? = null
     var landings: List<Pair<Double, Double>> = emptyList()
     var detour: Pair<Double, Double>? = null
@@ -61,8 +59,6 @@ class FogOverlayView(context: Context) : View(context) {
         set(value) {
             if (field != value) {
                 field = value
-                fogPaint.shader = null
-                lightFogPaint.shader = null
                 invalidate()
             }
         }
@@ -103,22 +99,7 @@ class FogOverlayView(context: Context) : View(context) {
         return true
     }
 
-    private var mask: Bitmap? = null
-    private val maskCanvas = Canvas()
-    private val clearPaint = Paint().apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-        isAntiAlias = true
-    }
     private val maskPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val fogPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val lightFogPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC)  // replaces the dark fog inside the outline
-    }
-    private val outlineMatrix = Matrix()
-    private val outlinePath = Path()
-    private val textureMatrix = Matrix()
-    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x00, 0x81, 0xF8) }
-    private var centres = FloatArray(512)
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0081F8") }
     private val dotRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -127,7 +108,6 @@ class FogOverlayView(context: Context) : View(context) {
     }
     private val density = resources.displayMetrics.density
     private val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
-    private val wornPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0x00, 0x71, 0xE0) }
     private val pinRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.STROKE
@@ -144,8 +124,6 @@ class FogOverlayView(context: Context) : View(context) {
         style = Paint.Style.STROKE
         strokeWidth = 6f
     }
-    private val src = Rect()
-    private val dst = RectF()
     private fun linePaint(argb: Int, width: Float, dash: Float = 0f) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = argb
         style = Paint.Style.STROKE
@@ -164,7 +142,6 @@ class FogOverlayView(context: Context) : View(context) {
     private val districtLineIn = Stroke(Color.argb(230, 0x2A, 0x30, 0x38), 1.8f)
     private val dongLine = Stroke(Color.argb(150, 0xAE, 0xB8, 0xC6), 1f, dashDp = 5f)
     private val dongLineIn = Stroke(Color.argb(210, 0x4A, 0x52, 0x60), 1.3f, dashDp = 5f)
-    private val strokes = listOf(provinceHalo, provinceLine, districtHalo, districtLine, districtHaloIn, districtLineIn, dongLine, dongLineIn)
     private val nameText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#F1F4F8")
         textSize = 22f * density
@@ -206,81 +183,8 @@ class FogOverlayView(context: Context) : View(context) {
         if (x1 <= x0 || y1 <= y0) return
         val pxPerCell = w / (x1 - x0)
 
-        val mw = max(1, w / MASK_DIV)
-        val mh = max(1, h / MASK_DIV)
-        val bmp = mask?.takeIf { it.width == mw && it.height == mh }
-            ?: Bitmap.createBitmap(mw, mh, Bitmap.Config.ARGB_8888).also { mask = it }
-        maskCanvas.setBitmap(bmp)
-        bmp.eraseColor(Color.TRANSPARENT)
-        if (fogPaint.shader == null) {
-            fogPaint.shader = BitmapShader(cloudTexture(night, light = false), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-            lightFogPaint.shader = BitmapShader(cloudTexture(night, light = true), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-        }
-        // Anchor the clouds to the map (not the screen) so they move with it when panning or re-basing.
-        val texSize = TEXTURE_SIZE.toDouble()
-        val ox = (-(x0 * pxPerCell / MASK_DIV)).mod(texSize).toFloat()
-        val oy = (-(y0 * pxPerCell / MASK_DIV)).mod(texSize).toFloat()
-        textureMatrix.setTranslate(ox, oy)
-        fogPaint.shader.setLocalMatrix(textureMatrix)
-        lightFogPaint.shader.setLocalMatrix(textureMatrix)
+        drawFog(canvas, x0, y0, x1, y1, pxPerCell)
         val regions = regions
-        if (regions == null) {
-            // Still loading: dark everywhere, so nothing unvisited flashes into view. If the atlas is
-            // missing for good, fall back to one strength of fog (the light one).
-            maskCanvas.drawPaint(if (regionsUnavailable) lightFogPaint else fogPaint)
-        } else {
-            maskCanvas.drawPaint(fogPaint)
-            for (i in regions.counts.visitedDongs) {
-                val o = regions.atlas.dongs[i].outline
-                if (visible(o, x0, y0, x1, y1)) drawOutline(maskCanvas, o, DONG, i, pxPerCell / MASK_DIV, x0, y0, lightFogPaint)
-            }
-        }
-
-        // Pick a level so one drawn tile covers at least ~1.5 mask pixels.
-        var dz = 0
-        while (dz < MAX_DZ && pxPerCell * (1 shl dz) / MASK_DIV < 1.5) dz++
-        val scale = (1 shl dz).toDouble()
-        val cellMaskPx = (pxPerCell * scale / MASK_DIV).toFloat()
-        val lx0 = floor(x0 / scale).toInt() - 1
-        val lx1 = floor(x1 / scale).toInt() + 1
-        val ly0 = floor(y0 / scale).toInt() - 1
-        val ly1 = floor(y1 / scale).toInt() + 1
-        val radius = max(1.2f, cellMaskPx * 1.05f)
-        var n = 0
-        fun punch(cx: Int, cy: Int) {
-            if (n + 2 > centres.size) centres = centres.copyOf(centres.size * 2)
-            centres[n++] = (((cx + 0.5) * scale - x0) * pxPerCell / MASK_DIV).toFloat()
-            centres[n++] = (((cy + 0.5) * scale - y0) * pxPerCell / MASK_DIV).toFloat()
-        }
-        val explored = cellsAtLevel(dz)
-        val visibleTiles = (lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1)
-        if (visibleTiles < explored.size) {
-            // Zoomed in on a large explored set: probe only the tiles on screen.
-            for (cx in lx0..lx1) for (cy in ly0..ly1) if (Tiles.pack(cx, cy) in explored) punch(cx, cy)
-        } else {
-            for (cell in explored) {
-                val cx = Tiles.x(cell)
-                val cy = Tiles.y(cell)
-                if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
-                punch(cx, cy)
-            }
-        }
-        // Rim first (larger circles over the fog), then punch the holes: only a soft edge remains.
-        val rim = radius + max(1f, radius * 0.3f)
-        var i = 0
-        while (i < n) {
-            maskCanvas.drawCircle(centres[i], centres[i + 1], rim, rimPaint)
-            i += 2
-        }
-        i = 0
-        while (i < n) {
-            maskCanvas.drawCircle(centres[i], centres[i + 1], radius, clearPaint)
-            i += 2
-        }
-        src.set(0, 0, mw, mh)
-        dst.set(0f, 0f, w.toFloat(), h.toFloat())
-        canvas.drawBitmap(bmp, src, dst, maskPaint)
-        drawWornRoads(canvas, x0, y0, x1, y1, pxPerCell)
         if (regions != null) {
             drawBoundaries(canvas, regions, pxPerCell, x0, y0, x1, y1)
             if (showLabels) {
@@ -329,61 +233,96 @@ class FogOverlayView(context: Context) : View(context) {
         }
     }
 
-    /**
-     * Roads driven on several trips get a blue tint that deepens with the count (2, 3-4, 5+), so
-     * the daily routes stand out at a glance. Only once single cells are visible (zoom ~13+).
-     */
-    private fun drawWornRoads(c: Canvas, x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
-        if (!showWornRoads || px < WORN_MIN_PX) return
-        val visits = revisits()
-        if (visits.isEmpty()) return
-        val r = (px * 0.75).toFloat()
-        val lx0 = floor(x0).toInt()
-        val lx1 = floor(x1).toInt()
-        val ly0 = floor(y0).toInt()
-        val ly1 = floor(y1).toInt()
-        // One scan buckets the on-screen cells by tint; each tint is then drawn in one layer.
-        for (level in WORN_LEVELS.indices) wornCount[level] = 0
-        fun collect(cx: Int, cy: Int, n: Int) {
-            var level = WORN_LEVELS.size - 1
-            while (level >= 0 && n < WORN_LEVELS[level].minTrips) level--
-            if (level < 0) return
-            val i = wornCount[level]
-            if (i + 2 > wornXy[level].size) wornXy[level] = wornXy[level].copyOf(wornXy[level].size * 2)
-            wornXy[level][i] = ((cx + 0.5 - x0) * px).toFloat()
-            wornXy[level][i + 1] = ((cy + 0.5 - y0) * px).toFloat()
-            wornCount[level] = i + 2
-        }
-        if ((lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1) < visits.size) {
-            // Zoomed in on a long history: probe only the cells on screen (as the fog mask does).
-            for (cx in lx0..lx1) for (cy in ly0..ly1) visits[Tiles.pack(cx, cy)]?.let { collect(cx, cy, it) }
-        } else {
-            for ((cell, n) in visits) {
-                val cx = Tiles.x(cell)
-                val cy = Tiles.y(cell)
-                if (cx < lx0 || cx > lx1 || cy < ly0 || cy > ly1) continue
-                collect(cx, cy, n)
-            }
-        }
-        // One layer per tint: opaque circles inside merge into an even band, and the layer's alpha
-        // is applied once (overlapping translucent circles used to show as a dotted pattern).
-        for (level in WORN_LEVELS.indices) {
-            val count = wornCount[level]
-            if (count == 0) continue
-            val xy = wornXy[level]
-            wornPaint.color = WORN_LEVELS[level].color
-            val layer = c.saveLayerAlpha(null, WORN_LEVELS[level].alpha)
-            var i = 0
-            while (i < count) {
-                c.drawCircle(xy[i], xy[i + 1], r, wornPaint)
-                i += 2
-            }
-            c.restoreToCount(layer)
-        }
+    private val renderer = FogMaskRenderer(onTile = { onTile(it) }, onFailed = { onRenderFailed(it) })
+    private var tile: FogMaskTile? = null
+    /** The tile the last frame drew: its bitmaps stay out of reuse until a later frame replaced it. */
+    private var drawn: FogMaskTile? = null
+    /** The newest request sent to [renderer] (its key and rectangle), so a frame doesn't resend it. */
+    private var requested: FogMaskRenderer.Job? = null
+    private var lastDataRequest = 0L
+    private val tileMatrix = Matrix()
+    private val fogFallback = Paint()
+
+    private fun onTile(t: FogMaskTile) {
+        // A tile that was never drawn is in no display list and can be reused right away; the drawn
+        // one is retired from [drawFog] once a frame has replaced it.
+        tile?.takeIf { it !== drawn }?.let { renderer.recycle(it) }
+        tile = t
+        invalidate()
     }
 
-    private val wornXy = Array(WORN_LEVELS.size) { FloatArray(256) }
-    private val wornCount = IntArray(WORN_LEVELS.size)
+    private fun onRenderFailed(job: FogMaskRenderer.Job) {
+        // Forget the request, or later frames would wait for it forever ("already on its way").
+        if (requested === job) requested = null
+        postInvalidateDelayed(DATA_REDRAW_MS)
+    }
+
+    /** The previous drawn tile may still be read by the render thread (or replayed unchanged by a
+     *  parent redraw) for a frame or two: its bitmaps are handed back for reuse only after a delay. */
+    private fun retire(old: FogMaskTile) {
+        postDelayed({ if (old !== tile && old !== drawn) renderer.recycle(old) }, RETIRE_MS)
+    }
+
+    /**
+     * Draws the fog from the current [tile] (moved and scaled to the view) and asks the renderer for a
+     * new one when the view left it, the zoom moved too far from it, or what it shows changed. Data
+     * changes are throttled to [DATA_REDRAW_MS]: while driving new cells arrive with every fix.
+     */
+    private fun drawFog(canvas: Canvas, x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
+        val cellPx = px / MASK_DIV
+        var dz = 0
+        while (dz < MAX_DZ && cellPx * (1 shl dz) < 1.5) dz++
+        val key = FogMaskKey(dataVersion(), dz, night, regions, regionsUnavailable, showWornRoads && px >= WORN_MIN_PX)
+        val t = tile
+        if (t != null) {
+            val s = px / t.cellPx
+            tileMatrix.setScale(s.toFloat(), s.toFloat())
+            tileMatrix.postTranslate(((t.x0 - x0) * px).toFloat(), ((t.y0 - y0) * px).toFloat())
+            if (!t.covers(x0, y0, x1, y1)) {
+                // Past the rendered area until the new tile lands: plain dark fog, never the bare map.
+                fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
+                canvas.drawPaint(fogFallback)
+            }
+            canvas.drawBitmap(t.bitmap, tileMatrix, maskPaint)
+            if (drawn !== t) {
+                drawn?.let { retire(it) }
+                drawn = t
+            }
+            t.worn?.let { worn ->
+                val ws = s / FogMaskRenderer.WORN_SHARPER
+                tileMatrix.setScale(ws.toFloat(), ws.toFloat())
+                tileMatrix.postTranslate(((t.x0 - x0) * px).toFloat(), ((t.y0 - y0) * px).toFloat())
+                canvas.drawBitmap(worn, tileMatrix, maskPaint)
+            }
+        } else {
+            fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
+            canvas.drawPaint(fogFallback)
+        }
+        fun fits(k: FogMaskKey, jx0: Double, jy0: Double, jx1: Double, jy1: Double, jCellPx: Double) = k.dz == dz &&
+            x0 >= jx0 && y0 >= jy0 && x1 <= jx1 && y1 <= jy1 && (cellPx / jCellPx) in 0.6..1.6
+        val r = requested
+        val tileFits = t != null && fits(t.key, t.x0, t.y0, t.x1, t.y1, t.cellPx)
+        if (tileFits && t!!.key == key) return
+        if (r != null && r.key == key && fits(r.key, r.x0, r.y0, r.x1, r.y1, r.cellPx)) return  // already on its way
+        val now = android.os.SystemClock.uptimeMillis()
+        if (tileFits && now - lastDataRequest < DATA_REDRAW_MS) {
+            // Only the content changed: keep showing the current tile a little longer.
+            postInvalidateDelayed(DATA_REDRAW_MS - (now - lastDataRequest))
+            return
+        }
+        lastDataRequest = now
+        // Render a margin around the view so panning and driving re-renders reuse the tile.
+        val mx = (x1 - x0) * TILE_MARGIN
+        val my = (y1 - y0) * TILE_MARGIN
+        val wantDz = dz
+        val job = FogMaskRenderer.Job(
+            key, x0 - mx, y0 - my, x1 + mx, y1 + my, cellPx,
+            { cellsAtLevel(wantDz) },
+            if (key.worn) revisits() else null,
+        )
+        requested = job
+        renderer.submit(job)
+    }
 
     private var clusterX = FloatArray(64)
     private var clusterY = FloatArray(64)
@@ -446,27 +385,15 @@ class FogOverlayView(context: Context) : View(context) {
         o.bbox[2] >= x0 && o.bbox[0] <= x1 && o.bbox[3] >= y0 && o.bbox[1] <= y1
 
     /**
-     * Outline paths are in tile units relative to their bbox corner (floats can't hold zoom-20
-     * coordinates to sub-tile precision); the offset to the view is computed in double.
-     */
-    private fun drawOutline(c: Canvas, o: Outline, level: Int, index: Int, scale: Double, x0: Double, y0: Double, vararg paints: Paint) {
-        outlineMatrix.setScale(scale.toFloat(), scale.toFloat())
-        outlineMatrix.postTranslate(((o.bbox[0] - x0) * scale).toFloat(), ((o.bbox[1] - y0) * scale).toFloat())
-        OutlinePaths.get(level, index, o).transform(outlineMatrix, outlinePath)
-        for (p in paints) c.drawPath(outlinePath, p)
-    }
-
-    /**
-     * Boundary lines are drawn through a canvas transform from the cached tile-unit paths, so no
-     * path is copied per frame; stroke widths and dashes are divided by the scale to stay in dp.
+     * Boundary lines are built in screen pixels from only the on-screen part of each outline (see
+     * [strokeOutline]); the strokes are therefore plain dp widths.
      */
     private fun drawBoundaries(c: Canvas, r: RegionLayer, px: Double, x0: Double, y0: Double, x1: Double, y1: Double) {
-        for (st in strokes) st.prepare(px.toFloat())
         val n = r.counts
         if (px >= DONG_LINES_PX) {
             r.atlas.dongs.forEachIndexed { i, d ->
                 if (visible(d.outline, x0, y0, x1, y1)) {
-                    strokeOutline(c, d.outline, DONG, i, px, x0, y0, if (n.dong[i] > 0) dongLineIn else dongLine)
+                    strokeOutline(c, d.outline, px, x0, y0, if (n.dong[i] > 0) dongLineIn else dongLine)
                 }
             }
         }
@@ -474,49 +401,102 @@ class FogOverlayView(context: Context) : View(context) {
             r.atlas.districts.forEachIndexed { i, d ->
                 val o = d.outline ?: return@forEachIndexed
                 if (!visible(o, x0, y0, x1, y1)) return@forEachIndexed
-                if (n.district[i] > 0) strokeOutline(c, o, DISTRICT, i, px, x0, y0, districtHaloIn, districtLineIn)
-                else strokeOutline(c, o, DISTRICT, i, px, x0, y0, districtHalo, districtLine)
+                if (n.district[i] > 0) strokeOutline(c, o, px, x0, y0, districtHaloIn, districtLineIn)
+                else strokeOutline(c, o, px, x0, y0, districtHalo, districtLine)
             }
         }
-        r.atlas.provinces.forEachIndexed { i, p ->
-            val o = p.outline ?: return@forEachIndexed
-            if (visible(o, x0, y0, x1, y1)) strokeOutline(c, o, PROVINCE, i, px, x0, y0, provinceHalo, provinceLine)
+        r.atlas.provinces.forEach { p ->
+            val o = p.outline ?: return@forEach
+            if (visible(o, x0, y0, x1, y1)) strokeOutline(c, o, px, x0, y0, provinceHalo, provinceLine)
         }
     }
 
-    private fun strokeOutline(c: Canvas, o: Outline, level: Int, index: Int, scale: Double, x0: Double, y0: Double, vararg strokes: Stroke) {
-        val save = c.save()
-        c.translate(((o.bbox[0] - x0) * scale).toFloat(), ((o.bbox[1] - y0) * scale).toFloat())
-        c.scale(scale.toFloat(), scale.toFloat())
-        val path = OutlinePaths.get(level, index, o)
+    /**
+     * Strokes the part of [o] that is on screen. Stroking the whole cached outline under a canvas
+     * scale made the GPU rasterise every province and district border in full (tens of thousands of
+     * points, almost all off screen) each time the fog was redrawn: ~35 ms per redraw, one dropped
+     * frame per driving re-render. Here segments outside the view are skipped and points closer than
+     * [MIN_SEGMENT_PX] merged, so only a few hundred short lines reach the GPU.
+     */
+    private fun strokeOutline(c: Canvas, o: Outline, scale: Double, x0: Double, y0: Double, vararg strokes: Stroke) {
+        val pad = 8f * density
+        val left = -pad
+        val top = -pad
+        val right = width + pad
+        val bottom = height + pad
+        val dashed = strokes.any { it.dashPeriod > 0f }
+        val path = boundaryPath
+        path.rewind()
+        // Dashes restart at every visible piece; each piece is drawn with the dash phase of its
+        // distance along the whole ring, so the dashes stay put on the map while it pans.
+        var runStart = 0.0
+        fun endRun() {
+            if (!dashed || path.isEmpty) return
+            for (st in strokes) {
+                if (st.dashPeriod > 0f) st.paint.pathEffect = st.dashAt((runStart % st.dashPeriod).toFloat())
+                c.drawPath(path, st.paint)
+            }
+            path.rewind()
+        }
+        for (r in o.rings) {
+            var penDown = false
+            var lastX = 0f
+            var lastY = 0f
+            var along = 0.0
+            var px0 = ((r[0] - x0) * scale).toFloat()
+            var py0 = ((r[1] - y0) * scale).toFloat()
+            var k = 2
+            // Closing segment included: rings are stored open.
+            val n = r.size
+            while (k <= n) {
+                val i = if (k == n) 0 else k
+                val px1 = ((r[i] - x0) * scale).toFloat()
+                val py1 = ((r[i + 1] - y0) * scale).toFloat()
+                val onScreen = max(px0, px1) >= left && min(px0, px1) <= right && max(py0, py1) >= top && min(py0, py1) <= bottom
+                if (onScreen) {
+                    if (!penDown) {
+                        path.moveTo(px0, py0)
+                        lastX = px0
+                        lastY = py0
+                        runStart = along
+                        penDown = true
+                    }
+                    if (abs(px1 - lastX) + abs(py1 - lastY) >= MIN_SEGMENT_PX || k == n) {
+                        path.lineTo(px1, py1)
+                        lastX = px1
+                        lastY = py1
+                    }
+                } else if (penDown) {
+                    // Through the last merged point too, so the corner just inside the edge is kept.
+                    if (lastX != px0 || lastY != py0) path.lineTo(px0, py0)
+                    path.lineTo(px1, py1)
+                    penDown = false
+                    endRun()
+                }
+                if (dashed) along += hypot((px1 - px0).toDouble(), (py1 - py0).toDouble())
+                px0 = px1
+                py0 = py1
+                k += 2
+            }
+            if (penDown) endRun()
+        }
+        if (dashed || path.isEmpty) return
         for (st in strokes) c.drawPath(path, st.paint)
-        c.restoreToCount(save)
     }
 
-    /** A line style in dp, re-expressed in tile units for the current scale (see [drawBoundaries]). */
-    private inner class Stroke(argb: Int, private val widthDp: Float, private val dashDp: Float = 0f) {
+    private val boundaryPath = Path()
+
+    /** A line style in dp (boundaries are stroked in screen pixels, see [strokeOutline]). */
+    private inner class Stroke(argb: Int, widthDp: Float, dashDp: Float = 0f) {
+        private val dash = if (dashDp > 0) floatArrayOf(dashDp * density, dashDp * density * 0.8f) else null
+        /** Length of one dash and gap, or 0 for a solid line. */
+        val dashPeriod = dash?.sum() ?: 0f
+        fun dashAt(phase: Float) = DashPathEffect(dash, phase)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = argb
             style = Paint.Style.STROKE
             strokeJoin = Paint.Join.ROUND
-        }
-        private var scale = 0f
-        private var dashStep = Int.MIN_VALUE
-
-        fun prepare(newScale: Float) {
-            if (newScale == scale) return
-            scale = newScale
-            paint.strokeWidth = widthDp * density / newScale
-            if (dashDp > 0) {
-                // A new dash effect only per ~9 % zoom step: during camera animation the scale changes
-                // every frame, and dashes that are a few percent off are invisible.
-                val step = Math.round(ln(newScale.toDouble()) / DASH_STEP_LN).toInt()
-                if (step != dashStep) {
-                    dashStep = step
-                    val on = (dashDp * density / exp(step * DASH_STEP_LN)).toFloat()
-                    paint.pathEffect = DashPathEffect(floatArrayOf(on, on * 0.8f), 0f)
-                }
-            }
+            strokeWidth = widthDp * density
         }
     }
 
@@ -551,7 +531,7 @@ class FogOverlayView(context: Context) : View(context) {
         }
     }
 
-    private companion object {
+    companion object {
         const val PROVINCE = 0
         const val DISTRICT = 1
         const val DONG = 2
@@ -574,9 +554,15 @@ class FogOverlayView(context: Context) : View(context) {
         )
         /** Drop-off pins closer than this on screen are shown as one numbered pin. */
         const val CLUSTER_DP = 44f
-        /** ln(2) / 8: dash lengths are refreshed every eighth of a zoom level. */
-        val DASH_STEP_LN = ln(2.0) / 8
+        /** Boundary points closer than this (screen px, Manhattan) are merged when stroking. */
+        private const val MIN_SEGMENT_PX = 1.5f
         const val MASK_DIV = 3
+        /** Extra fog rendered on each side of the view, as a share of its size. */
+        private const val TILE_MARGIN = 0.3
+        /** At most one fog redraw this often for new cells alone (driving reveals cells every fix). */
+        private const val DATA_REDRAW_MS = 300L
+        /** How long a replaced tile's bitmaps stay untouched before the renderer may reuse them. */
+        private const val RETIRE_MS = 250L
         const val MAX_DZ = 10
         const val TEXTURE_SIZE = 128
         private val textures = HashMap<Pair<Boolean, Boolean>, Bitmap>()
@@ -586,6 +572,7 @@ class FogOverlayView(context: Context) : View(context) {
          * Dark fog is fully opaque, so nothing of a never-entered 동 shows. Light fog is a grey
          * at ~62-70 % so the map of an entered 동 shows faintly through it.
          */
+        @Synchronized
         fun cloudTexture(night: Boolean, light: Boolean): Bitmap = textures.getOrPut(night to light) {
             val size = TEXTURE_SIZE
             val base = when {

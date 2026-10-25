@@ -88,11 +88,16 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     /** Cells driven by more than one trip, with their trip count (read live by the map). */
     private val visitCounts = ConcurrentHashMap<Long, Int>()
     val revisits: Map<Long, Int> get() = visitCounts
+    /** Bumped when [revisits] changes (no [version] bump for that, see [revisit]): the fog redraws on it. */
+    @Volatile
+    var revisitVersion = 0
+        private set
 
     override fun revisit(cells: Collection<Long>) {
         // No version bump: that would rebuild the coarse fog levels on every fix over a known road.
-        // The map redraws on each fix anyway and reads [revisits] live.
+        // [revisitVersion] tells the map to redraw the worn roads instead.
         for (c in cells) visitCounts.merge(c, 2) { old, _ -> old + 1 }
+        revisitVersion++
         val list = cells.toList()
         scope.launch(Dispatchers.IO) { list.chunked(SQL_IN_LIMIT).forEach { db.dao().addVisit(it) } }
     }
@@ -209,6 +214,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             resetGeneration++
             cells.clear()
             visitCounts.clear()
+            revisitVersion++
             orderSize = 0
             levelCache.clear()
             tripCells.clear()

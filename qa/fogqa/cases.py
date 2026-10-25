@@ -344,8 +344,8 @@ def tc_detour(ctx):
     ctx.dev.tap_text("설정")
     ctx.dev.tap_text("시연 시작")
     ctx.dev.tap_text("지도")
-    # The demo stays parked for only ~6 s, so card and button are checked from one UI dump.
-    end = time.time() + 6
+    # The demo stays parked for only ~1 s, so card and button are checked from one UI dump.
+    end = time.time() + 3
     nodes = []
     while time.time() < end:
         try:

@@ -43,6 +43,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.TransitionOptions
 import kotlin.math.abs
 
 private const val TAG = "FogMap"
@@ -63,8 +64,8 @@ private const val FIX_HISTORY = 8
 private const val MIN_LAG_MS = 400
 private const val MAX_LAG_MS = 2_500
 private const val LAG_EASE_MS = 2_000.0
-/** Replay delay after a snap, before the fix rate is known: about one 1 Hz interval. */
-private const val START_LAG_MS = 1_200.0
+/** Replay delay after a snap, before the fix rate is known (eases to the measured one from there). */
+private const val START_LAG_MS = 600.0
 private const val ZOOM_ANIM_MS = 250
 /** Margin around a region framed from the dex. */
 private const val FOCUS_PADDING_PX = 120
@@ -337,6 +338,11 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         car.visibility = if (value) View.VISIBLE else View.GONE
         overlay.showCurrent = !value
         overlay.showLabels = !value
+        // Driving slides the pan layer every frame, and without a layer the fog's whole display list
+        // (bitmap, boundary paths, an offscreen pass per worn-road level) was replayed on each one:
+        // ~19 fps with 50-150 ms frames. As a hardware layer it is drawn once per change (a re-render
+        // or new cells) and then only composited. Parked, the fog redraws on every camera move anyway.
+        overlay.setLayerType(if (value) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE, null)
         if (value) {
             startTicking()
         } else {
@@ -357,6 +363,10 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         m.uiSettings.isRotateGesturesEnabled = false
         m.uiSettings.isTiltGesturesEnabled = false
         m.style?.let { style ->
+            // Labels fade in over 300 ms after every camera move. Driving re-renders around the car
+            // ~3 times a second, so the fades kept the map rendering at its frame cap (~16 fps of a
+            // 2200 px surface) and starved the UI of GPU time; while driving labels just appear.
+            style.transition = if (driving) TransitionOptions(0, 0, false) else TransitionOptions(300, 0, true)
             for (id in DRIVING_HIDDEN_LAYERS) {
                 style.getLayer(id)?.setProperties(PropertyFactory.visibility(if (driving) Property.NONE else Property.VISIBLE))
             }
@@ -630,6 +640,7 @@ fun FogMap(
             holder.overlay.map = map
             holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
             holder.overlay.revisits = { FogRuntime.repo.revisits }
+            holder.overlay.dataVersion = { FogRuntime.repo.version.value.toLong() shl 32 or FogRuntime.repo.revisitVersion.toLong() }
             map.uiSettings.isRotateGesturesEnabled = false
             map.uiSettings.isTiltGesturesEnabled = false
             map.uiSettings.isCompassEnabled = false
@@ -668,11 +679,16 @@ fun FogMap(
         }
         if (layer == null) holder.overlay.regionsUnavailable = true else holder.overlay.regions = layer
     }
-    LaunchedEffect(version, current, landings, detour) {
-        holder.overlay.current = current
+    LaunchedEffect(version, landings, detour) {
         holder.overlay.landings = landings
         holder.overlay.detour = detour
         holder.overlay.invalidate()
+    }
+    LaunchedEffect(current, driving) {
+        holder.overlay.current = current
+        // The car dot is drawn only when parked; while driving a fix alone changes nothing in the fog
+        // (new cells bump `version`), and redrawing it 5 times a second cost a full CPU mask each time.
+        if (!driving) holder.overlay.invalidate()
     }
     LaunchedEffect(driving) {
         if (holder.map != null) holder.setDriving(driving)
