@@ -347,7 +347,10 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         textureShift.setTranslate(((nextCamX - camX) * pxPerX).toFloat(), ((nextCamY - camY) * pxPerY).toFloat())
         tv.setTransform(textureShift)
         val gen = recenterGen
-        Choreographer.getInstance().postFrameCallback { if (recenterPending && gen == recenterGen) adoptRenderedCamera() }
+        Choreographer.getInstance().postFrameCallback { vsync ->
+            frameMs = vsync / 1_000_000
+            if (recenterPending && gen == recenterGen) adoptRenderedCamera()
+        }
     }
 
     private var night: Boolean? = null
@@ -603,7 +606,13 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         step()
     }
 
+    /** Vsync time of the frame being drawn (uptime ms), or 0 outside the frame loop. */
+    private var frameMs = 0L
+
     override fun doFrame(frameTimeNanos: Long) {
+        // Position the car for the vsync this frame belongs to, not for when the callback happened
+        // to run (0-10 ms later, varying): steps then match the frame intervals and the glide is even.
+        frameMs = frameTimeNanos / 1_000_000
         step()
         // Keep ticking only while the glide is running or a re-base is due; at a standstill (no new
         // fixes) the loop sleeps until the next fix instead of waking the main thread every vsync.
@@ -612,13 +621,15 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             Choreographer.getInstance().postFrameCallback(this)
         } else {
             ticking = false
+            frameMs = 0
         }
     }
 
     /** Slides the pan layer to the shown position, and re-renders around the car near the margin. */
     private fun step() {
         if (driving && hasFix && camReady) {
-            replay(SystemClock.uptimeMillis())
+            // frameMs and the fix times share the monotonic clock (uptimeMillis / System.nanoTime).
+            replay(if (frameMs > 0) frameMs else SystemClock.uptimeMillis())
             val dx = ((Tiles.lngToX(shownLng) - camX) * pxPerX).toFloat()
             val dy = ((Tiles.latToY(shownLat) - camY) * pxPerY).toFloat()
             if (forceStep || abs(-dx - mapFrame.slideX) >= MIN_STEP_PX || abs(-dy - mapFrame.slideY) >= MIN_STEP_PX) {
@@ -637,6 +648,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
 
     fun stopTicking() {
         ticking = false
+        frameMs = 0
         Choreographer.getInstance().removeFrameCallback(this)
     }
 }

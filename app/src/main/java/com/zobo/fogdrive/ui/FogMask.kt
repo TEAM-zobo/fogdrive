@@ -224,6 +224,16 @@ class FogMaskRenderer(
         }
         c.setBitmap(null)
         val wornScale = ceil(WORN_MIN_CELL_PX / px).toInt().coerceIn(1, WORN_MAX_SCALE)
+        if (wornScale == 1) {
+            // Same resolution as the fog (driving zoom): drawn into the fog bitmap itself, so each
+            // new tile is one texture upload instead of two.
+            job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
+                c.setBitmap(bmp)
+                drawWornRoads(c, visits, x0, y0, job.x1, job.y1, px)
+                c.setBitmap(null)
+            }
+            return FogMaskTile(bmp, x0, y0, job.x1, job.y1, px, key, null, 1)
+        }
         val worn = job.revisits?.takeIf { it.isNotEmpty() }?.let { visits ->
             val wb = obtain(max(1, (w * wornScale)), max(1, (h * wornScale))).also { made.add(it) }
             wb.eraseColor(Color.TRANSPARENT)
