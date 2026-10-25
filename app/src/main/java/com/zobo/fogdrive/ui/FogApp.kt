@@ -1,5 +1,6 @@
 package com.zobo.fogdrive.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,9 +23,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,7 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.BackHandler
+import com.zobo.fogdrive.voice.Sfx
+import com.zobo.fogdrive.voice.Sound
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     MAP("지도", Icons.Outlined.Map),
@@ -49,9 +53,24 @@ fun FogApp(
     onRequestBackground: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    // Changing screen sounds a glide; played right away so the tap that caused it isn't ticked too.
+    fun goTo(t: Int) {
+        if (t != tab) Sfx.play(Sound.SCREEN)
+        tab = t
+    }
     val vehicle by viewModel.vehicle.collectAsState()
     // Back from a sub tab returns to the map instead of closing the app.
-    BackHandler(enabled = tab != 0 && vehicle.drivingRestricted != true) { tab = 0 }
+    BackHandler(enabled = tab != 0 && vehicle.drivingRestricted != true) { goTo(0) }
+    // Into the driving view (moving off) a chime, back to parked a falling pair.
+    // Only between two known states: the first report after launch (null → true when the app opens
+    // in a moving car) is not "moving off".
+    val restricted = vehicle.drivingRestricted
+    val lastRestricted = remember { arrayOf(restricted) }
+    LaunchedEffect(restricted) {
+        val was = lastRestricted[0]
+        if (was != null && restricted != null && was != restricted) Sfx.play(if (restricted) Sound.START else Sound.STOP)
+        lastRestricted[0] = restricted
+    }
 
     // While the car requires distraction optimization only the driving view is shown.
     if (vehicle.drivingRestricted == true) {
@@ -66,7 +85,7 @@ fun FogApp(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Tab.entries.forEachIndexed { i, t -> RailItem(t, selected = tab == i) { tab = i } }
+                Tab.entries.forEachIndexed { i, t -> RailItem(t, selected = tab == i) { goTo(i) } }
             }
             Box(Modifier.fillMaxHeight().width(1.dp).background(FogColors.Outline))
             Box(Modifier.fillMaxSize()) {
@@ -74,11 +93,11 @@ fun FogApp(
                     Tab.MAP -> MapScreen(viewModel)
                     Tab.RECORD -> RecordScreen(viewModel, onShowTrip = { trip ->
                         viewModel.showTrip(trip)
-                        tab = Tab.MAP.ordinal
+                        goTo(Tab.MAP.ordinal)
                     })
                     Tab.DEX -> DexScreen(viewModel, onShowOnMap = { region ->
                         viewModel.mapFocus.value = region.bounds
-                        tab = Tab.MAP.ordinal
+                        goTo(Tab.MAP.ordinal)
                     })
                     Tab.SETTINGS -> SettingsScreen(viewModel, onStartDemo, onStopDemo, onRequestBackground)
                 }

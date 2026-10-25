@@ -3,31 +3,32 @@ package com.zobo.fogdrive
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
-import java.io.File
 import com.zobo.fogdrive.car.Fix
 import com.zobo.fogdrive.car.NaviBridge
 import com.zobo.fogdrive.car.VehicleSignals
 import com.zobo.fogdrive.data.CloudSync
 import com.zobo.fogdrive.data.ExploreRepository
-import com.zobo.fogdrive.demo.DemoPrefs
-import com.zobo.fogdrive.ui.MapPrefs
 import com.zobo.fogdrive.data.FogDb
-import com.zobo.fogdrive.explore.RegionTally
-import com.zobo.fogdrive.geo.RegionAtlas
+import com.zobo.fogdrive.demo.DemoPrefs
 import com.zobo.fogdrive.explore.CrewMission
 import com.zobo.fogdrive.explore.LocalStories
+import com.zobo.fogdrive.explore.RegionTally
 import com.zobo.fogdrive.explore.Story
+import com.zobo.fogdrive.geo.RegionAtlas
 import com.zobo.fogdrive.record.StampCode
 import com.zobo.fogdrive.record.TripStats
+import com.zobo.fogdrive.ui.MapPrefs
 import com.zobo.fogdrive.voice.Announcer
+import com.zobo.fogdrive.voice.Sfx
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import java.io.File
 
 /** What the recording service is doing right now, for the UI. */
 data class LiveStatus(
@@ -93,6 +94,7 @@ object FogRuntime {
             .onSuccess { Log.i("FogRuntime", "region atlas loaded in ${SystemClock.elapsedRealtime() - start} ms") }
             .onFailure { Log.e("FogRuntime", "region atlas unavailable", it) }
             .getOrNull()
+            .also { regionsLoaded.value = true }
     }
     private lateinit var appContext: Context
 
@@ -101,6 +103,9 @@ object FogRuntime {
         get() = File(appContext.getExternalFilesDir(null) ?: appContext.filesDir, "fogdrive-backup.json")
 
     val live = MutableStateFlow(LiveStatus())
+    /** The region atlas has been read (or failed to): the first step of the launch loading screen. */
+    val regionsLoaded = MutableStateFlow(false)
+
     /** The map's fog has been drawn with the region data once: the launch loading screen can go. */
     val fogReady = MutableStateFlow(false)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -180,6 +185,7 @@ object FogRuntime {
         demoPrefs = DemoPrefs(app)
         mapPrefs = MapPrefs(app)
         announcer = Announcer(app) { mapPrefs.voice.value }
+        Sfx.init(enabled = { mapPrefs.sound.value }, volume = { mapPrefs.soundVolume.value / 100f })
         stories = LocalStories(app)
         scope.launch { repo.load(beforeShown = ::seedRegionCounts) }
         // Keep the saved counts current while exploring, so a later start can reuse them.

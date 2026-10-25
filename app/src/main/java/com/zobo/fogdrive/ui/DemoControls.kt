@@ -182,7 +182,8 @@ fun DemoCourseSelect(viewModel: MainViewModel, modifier: Modifier = Modifier, en
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.width(with(density) { anchorWidth.toDp() }),
+                // A popup is its own window, outside the root's click sounds.
+                modifier = Modifier.width(with(density) { anchorWidth.toDp() }).clickSounds(),
                 offset = DpOffset(0.dp, 6.dp),
                 shape = shape,
                 containerColor = FogColors.Surface,

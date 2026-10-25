@@ -77,6 +77,8 @@ fun DrivingScreen(viewModel: MainViewModel) {
             driving = true,
             showWornRoads = showWornRoads,
         )
+        // Stamps, missions, drop-offs: a moment on screen below the header, then gone.
+        EventToast(live.lastEvent, viewModel::eventShown, Modifier.padding(top = 128.dp).align(Alignment.TopCenter))
         Row(
             modifier = Modifier
                 // Live numbers stay on screen, but accessibility gets one stable label: TalkBack does

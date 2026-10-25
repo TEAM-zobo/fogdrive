@@ -52,8 +52,6 @@ fun MapScreen(viewModel: MainViewModel) {
     val destination by viewModel.navi.destination.collectAsState()
     val vehicle by viewModel.vehicle.collectAsState()
     val here by viewModel.here.collectAsState()
-    val nationwide by viewModel.nationwide.collectAsState()
-    val tripNewDongs by viewModel.tripNewDongs.collectAsState()
     val focus by viewModel.mapFocus.collectAsState()
     // Opened from the dex: frame that region instead of chasing the car.
     var follow by remember { mutableStateOf(viewModel.mapFocus.value == null) }
@@ -96,7 +94,8 @@ fun MapScreen(viewModel: MainViewModel) {
             showWornRoads = showWornRoads,
         )
 
-        // Header: level, where the car is in the region dex, and this trip.
+        // Header: level and where the car is in the region dex. The nationwide count is in the dex
+        // and this trip's progress on the driving view, so the map keeps to the essentials.
         FogCard(
             modifier = Modifier.padding(24.dp).width(560.dp).align(Alignment.TopStart),
             color = FogColors.Surface.copy(alpha = 0.95f),
@@ -133,19 +132,9 @@ fun MapScreen(viewModel: MainViewModel) {
                     Pill("${h.province.name} ${formatRate(h.province.rate)}", FogColors.TextSub)
                 }
             }
-            nationwide?.let { (visited, dongs) ->
-                Text("전국 읍·면·동 $visited / $dongs 개척", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
-            }
-            if (live.tripActive) {
-                Text(
-                    "이번 주행 +${Area.formatCells(live.trip.newCells, lat)} · 새 동 ${tripNewDongs}곳 · ${formatKm(live.trip.distanceMeters)}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = FogColors.Amber,
-                )
-            }
-            live.lastEvent?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub) }
         }
 
+        EventToast(live.lastEvent, viewModel::eventShown, Modifier.padding(top = 24.dp).align(Alignment.TopCenter))
         DemoControls(viewModel, Modifier.padding(24.dp).align(Alignment.TopEnd))
 
         shownTrip?.let { t ->

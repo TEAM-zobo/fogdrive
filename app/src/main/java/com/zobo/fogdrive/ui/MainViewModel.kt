@@ -301,6 +301,21 @@ class MainViewModel : ViewModel() {
     fun setOnboardingDone(done: Boolean) = FogRuntime.mapPrefs.setOnboardingDone(done)
 
     val voice = FogRuntime.mapPrefs.voice
+    val sound = FogRuntime.mapPrefs.sound
+
+    fun setSound(on: Boolean) {
+        FogRuntime.mapPrefs.setSound(on)
+    }
+    val soundVolume = FogRuntime.mapPrefs.soundVolume
+
+    fun setSoundVolume(percent: Int) {
+        FogRuntime.mapPrefs.setSoundVolume(percent)
+    }
+
+    /** The event notice [message] has been shown: clear it unless a newer one replaced it meanwhile. */
+    fun eventShown(message: String) {
+        FogRuntime.live.update { if (it.lastEvent == message) it.copy(lastEvent = null) else it }
+    }
 
     fun setVoice(on: Boolean) {
         FogRuntime.mapPrefs.setVoice(on)

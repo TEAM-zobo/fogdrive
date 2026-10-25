@@ -1,10 +1,10 @@
 package com.zobo.fogdrive.ui
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
-import android.content.res.Configuration
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
@@ -17,12 +17,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalConfiguration
@@ -30,12 +34,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zobo.fogdrive.FogRuntime
 import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.geo.TileBox
 import com.zobo.fogdrive.geo.Tiles
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -53,6 +59,7 @@ import kotlin.math.abs
 
 private const val TAG = "FogMap"
 private const val DRIVING_ZOOM = 16.0
+private const val PARKED_ZOOM = 14.0
 private const val DRIVING_MAX_FPS = 20
 /** Re-base anyway if the re-rendered map hasn't reached the screen by then (no frame, lost surface). */
 private const val ADOPT_TIMEOUT_MS = 400L
@@ -234,6 +241,106 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     var driving = false
         private set
 
+    /** The fog has been drawn with the region data (the map's loading cover can go). */
+    val fogShown = MutableStateFlow(false)
+    /** The map is set up (the screen effects that need [map] wait for this, see [FogMap]). */
+    val ready = MutableStateFlow(false)
+    // Set by the screen showing the map now (the map outlives screens, see [LocalFogMapHolder]).
+    var onUserMoved: () -> Unit = {}
+    var onFocusShown: () -> Unit = {}
+    /** The data [version] the region layer was last built for (re-attaching need not rebuild it). */
+    var regionsVersion = -1
+    /** Who attached last: a late detach from a screen that already left must not stop the next one. */
+    private var attachedBy: Any? = null
+
+    // The map view's lifecycle. The holder outlives the screens that show it: created once, started
+    // and resumed while a screen shows it and the activity is in front, stopped when it leaves.
+    private var created = false
+    private var started = false
+    private var resumed = false
+    private var lifecycle: Lifecycle? = null
+    private val lifecycleObserver = LifecycleEventObserver { _, event ->
+        when (event) {
+            Lifecycle.Event.ON_START -> start()
+            Lifecycle.Event.ON_RESUME -> resume()
+            Lifecycle.Event.ON_PAUSE -> pause()
+            Lifecycle.Event.ON_STOP -> stop()
+            else -> Unit
+        }
+    }
+
+    /** Creates the map once; [setup] runs when it is ready. Later calls do nothing. */
+    fun create(setup: (MapLibreMap) -> Unit) {
+        if (created) return
+        created = true
+        mapView.onCreate(null)
+        mapView.getMapAsync {
+            setup(it)
+            ready.value = true
+        }
+    }
+
+    /**
+     * A screen shows the map: follow [owner]'s lifecycle (brought up to its current state at once).
+     * Returns the token to pass to [detach].
+     */
+    fun attach(owner: LifecycleOwner): Any {
+        detach()
+        val token = Any()
+        attachedBy = token
+        lifecycle = owner.lifecycle
+        owner.lifecycle.addObserver(lifecycleObserver)
+        return token
+    }
+
+    /** The screen left: stop rendering, keep everything else for the next one. Ignored for a stale [token]. */
+    fun detach(token: Any? = null) {
+        if (token != null && token !== attachedBy) return
+        attachedBy = null
+        onUserMoved = {}
+        onFocusShown = {}
+        lifecycle?.removeObserver(lifecycleObserver)
+        lifecycle = null
+        pause()
+        stop()
+    }
+
+    fun destroy() {
+        detach()
+        if (created) {
+            created = false
+            map = null
+            ready.value = false
+            mapView.onDestroy()
+        }
+    }
+
+    private fun start() {
+        if (started) return
+        started = true
+        mapView.onStart()
+        onStart()
+    }
+
+    private fun resume() {
+        if (resumed) return
+        resumed = true
+        mapView.onResume()
+    }
+
+    private fun pause() {
+        if (!resumed) return
+        resumed = false
+        mapView.onPause()
+    }
+
+    private fun stop() {
+        stopTicking()
+        if (!started) return
+        started = false
+        mapView.onStop()
+    }
+
     // Recent fixes (when taken, on the uptime clock; position), replayed [lag] ms behind real time.
     private val fixAt = LongArray(FIX_HISTORY)
     /** How late each fix reached the map (delivery through the recorder and recomposition). */
@@ -385,6 +492,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
 
     /** Driving/parked map settings; called on mode change and again once the style loads. */
     fun setDriving(value: Boolean) {
+        val wasDriving = driving
         driving = value
         mapFrame.margin = if (value) PAN_MARGIN_PX else 0
         applyMode()
@@ -411,6 +519,8 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
             overlay.freezeTransform = false
             mapFrame.slide(0f, 0f)
             overlay.invalidate()
+            // The map outlives the driving view: back to the parked zoom it would have opened at.
+            if (wasDriving) map?.moveCamera(CameraUpdateFactory.zoomTo(PARKED_ZOOM))
         }
     }
 
@@ -681,37 +791,33 @@ fun FogMap(
     showWornRoads: Boolean = true,
 ) {
     val context = LocalContext.current
-    val holder = remember {
+    // One map for the whole activity when it provides one: switching tabs (or into the driving
+    // view) re-attaches it instead of building a new map, style, tiles and fog every time.
+    val shared = LocalFogMapHolder.current
+    val holder = shared ?: remember {
         MapLibre.getInstance(context)
         FogMapHolder(context)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val latestOnUserMoved by rememberUpdatedState(onUserMoved)
+    val latestOnFocusShown by rememberUpdatedState(onFocusShown)
+    val mapReady by holder.ready.collectAsState()
 
-    DisposableEffect(lifecycleOwner) {
-        val mv = holder.mapView
-        mv.onCreate(null)
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> {
-                    mv.onStart()
-                    holder.onStart()
-                }
-                Lifecycle.Event.ON_RESUME -> mv.onResume()
-                Lifecycle.Event.ON_PAUSE -> mv.onPause()
-                Lifecycle.Event.ON_STOP -> {
-                    holder.stopTicking()
-                    mv.onStop()
-                }
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        mv.getMapAsync { map ->
+    // The setup below runs once per map, possibly after this screen has left: it must not use this
+    // screen's parameters beyond the starting camera (the effects keyed on mapReady apply them).
+    DisposableEffect(holder, lifecycleOwner) {
+        val token = holder.attach(lifecycleOwner)
+        holder.onUserMoved = { latestOnUserMoved() }
+        holder.onFocusShown = { latestOnFocusShown() }
+        holder.create { map ->
             holder.onMapReady(map)
             holder.overlay.map = map
             holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
             holder.overlay.revisits = { FogRuntime.repo.revisits }
-            holder.overlay.onReady = { FogRuntime.fogReady.value = true }
+            holder.overlay.onReady = {
+                holder.fogShown.value = true
+                FogRuntime.fogReady.value = true
+            }
             holder.overlay.cellsVersion = { FogRuntime.repo.version.value }
             holder.overlay.revisitVersion = { FogRuntime.repo.revisitVersion }
             map.uiSettings.isRotateGesturesEnabled = false
@@ -721,27 +827,21 @@ fun FogMap(
             map.setMaxZoomPreference(18.0)
             map.cameraPosition = CameraPosition.Builder()
                 .target(LatLng(current?.first ?: DemoCourses.START.lat, current?.second ?: DemoCourses.START.lng))
-                .zoom(if (driving) DRIVING_ZOOM else 14.0)
+                .zoom(if (driving) DRIVING_ZOOM else PARKED_ZOOM)
                 .build()
             holder.setNight(context, isNight(context))
             // While driving the fog is re-based only when a re-render lands (adoptRenderedCamera).
             map.addOnCameraMoveListener { if (!holder.driving) holder.overlay.invalidate() }
             map.addOnCameraIdleListener { if (!holder.driving) holder.overlay.invalidate() }
             map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
-                override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) = onUserMoved()
+                override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) = holder.onUserMoved()
                 override fun onMove(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
                 override fun onMoveEnd(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
             })
-            holder.setDriving(driving)
-            current?.let { holder.onFix(it.first, it.second, fixTimeMs) }
-            if (holder.showFocus(animate = false)) onFocusShown()
+            if (holder.showFocus(animate = false)) holder.onFocusShown()
         }
         onDispose {
-            holder.stopTicking()
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mv.onPause()
-            mv.onStop()
-            mv.onDestroy()
+            if (shared == null) holder.destroy() else holder.detach(token)
         }
     }
 
@@ -750,11 +850,13 @@ fun FogMap(
         // Not before the stored cells are in: a layer counted from an empty log would let the first
         // tile (and the launch loading screen's fogReady) go out with dark fog everywhere.
         if (!cellsLoaded) return@LaunchedEffect
+        if (holder.regionsVersion == version) return@LaunchedEffect  // a re-attached map already has it
         // Light fog over the 읍·면·동 already entered, boundaries, and the rates in the labels.
         val layer = withContext(Dispatchers.Default) {
             FogRuntime.regions?.let { RegionLayer(it.atlas, it.levels(FogRuntime.repo)) }
         }
         if (layer == null) holder.overlay.regionsUnavailable = true else holder.overlay.regions = layer
+        holder.regionsVersion = version
     }
     LaunchedEffect(version, landings, detour) {
         holder.overlay.landings = landings
@@ -767,14 +869,14 @@ fun FogMap(
         // (new cells bump `version`), and redrawing it 5 times a second cost a full CPU mask each time.
         if (!driving) holder.overlay.invalidate()
     }
-    LaunchedEffect(driving) {
-        if (holder.map != null) holder.setDriving(driving)
+    LaunchedEffect(driving, mapReady) {
+        if (mapReady) holder.setDriving(driving)
     }
     val night = (LocalConfiguration.current.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
     LaunchedEffect(night) {
         holder.setNight(context, night)
     }
-    LaunchedEffect(current, follow, driving) {
+    LaunchedEffect(current, follow, driving, mapReady) {
         val map = holder.map ?: return@LaunchedEffect
         if (current == null) return@LaunchedEffect
         if (driving) {
@@ -810,11 +912,20 @@ fun FogMap(
         }
     }
 
-    AndroidView(
-        modifier = modifier.clipToBounds(),
-        factory = {
-            (holder.frame.parent as? ViewGroup)?.removeView(holder.frame)
-            holder.frame
-        },
-    )
+    val fogShown by holder.fogShown.collectAsState()
+    Box(modifier.clipToBounds()) {
+        AndroidView(
+            // The map's own touches (pan, zoom, tap) are not button taps: no click sound.
+            modifier = Modifier.fillMaxSize().muteClickSounds(),
+            factory = {
+                (holder.frame.parent as? ViewGroup)?.removeView(holder.frame)
+                holder.frame
+            },
+        )
+        // Only until this map's fog is first drawn (a shared map that is already up shows at once).
+        MapLoadingCover(visible = !fogShown)
+    }
 }
+
+/** The activity's one map (see [FogMap]); null where none is provided (a map per screen then). */
+val LocalFogMapHolder = staticCompositionLocalOf<FogMapHolder?> { null }

@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,14 +14,27 @@ import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import com.zobo.fogdrive.FogRuntime
 import kotlinx.coroutines.launch
+import org.maplibre.android.MapLibre
 import com.zobo.fogdrive.record.RecordingService
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
+    /** The one map every screen shows (see FogMap): made on first use, destroyed with the activity. */
+    private var mapHolder: FogMapHolder? = null
+    private fun mapHolder(): FogMapHolder = mapHolder ?: run {
+        MapLibre.getInstance(this)
+        FogMapHolder(this).also { mapHolder = it }
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { startRecordingIfAllowed() }
+
+    override fun onDestroy() {
+        mapHolder?.destroy()
+        mapHolder = null
+        super.onDestroy()
+    }
 
     override fun onStop() {
         super.onStop()
@@ -32,18 +46,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // QA starts most cases with the tutorial already seen (its own case starts without it).
         if (intent?.getBooleanExtra(EXTRA_SKIP_ONBOARDING, false) == true) FogRuntime.mapPrefs.setOnboardingDone(true)
+        // Made here, not in the content: a recomposition after onDestroy must not build a new map.
+        val holder = mapHolder()
         setContent {
             FogTheme {
-                Box(Modifier.fillMaxSize()) {
-                    FogApp(
-                        viewModel = viewModel,
-                        onStartDemo = { RecordingService.start(this@MainActivity, RecordingService.ACTION_DEMO_START) },
-                        onStopDemo = { RecordingService.start(this@MainActivity, RecordingService.ACTION_DEMO_STOP) },
-                        onRequestBackground = {
-                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-                        },
-                    )
-                    LoadingOverlay()
+                CompositionLocalProvider(LocalFogMapHolder provides holder) {
+                    Box(Modifier.fillMaxSize().clickSounds()) {
+                        FogApp(
+                            viewModel = viewModel,
+                            onStartDemo = { RecordingService.start(this@MainActivity, RecordingService.ACTION_DEMO_START) },
+                            onStopDemo = { RecordingService.start(this@MainActivity, RecordingService.ACTION_DEMO_STOP) },
+                            onRequestBackground = {
+                                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+                            },
+                        )
+                        LoadingOverlay()
+                    }
                 }
             }
         }

@@ -39,6 +39,27 @@ class MapPrefs(context: Context) {
         prefs.edit().putBoolean(KEY_VOICE, on).apply()
     }
 
+    private val _sound = MutableStateFlow(prefs.getBoolean(KEY_SOUND, true))
+    /** Interface sounds (taps, screen changes, switches, driving start/stop). */
+    val sound: StateFlow<Boolean> = _sound.asStateFlow()
+
+    fun setSound(on: Boolean) {
+        _sound.value = on
+        prefs.edit().putBoolean(KEY_SOUND, on).apply()
+    }
+
+    private val _soundVolume = MutableStateFlow(prefs.getInt(KEY_SOUND_VOLUME, 100))
+    /** Interface sound volume, 0–100 % (of the car's system-sound volume). */
+    val soundVolume: StateFlow<Int> = _soundVolume.asStateFlow()
+
+    fun setSoundVolume(percent: Int) {
+        val v = percent.coerceIn(0, 100)
+        // The slider reports every drag frame: write only when the level actually changes.
+        if (v == _soundVolume.value) return
+        _soundVolume.value = v
+        prefs.edit().putInt(KEY_SOUND_VOLUME, v).apply()
+    }
+
     private val _stories = MutableStateFlow(prefs.getBoolean(KEY_STORIES, true))
     /** "동네 이야기": landmark lines for 동 from Wikipedia (sends the 동's centre point, not the car's). */
     val stories: StateFlow<Boolean> = _stories.asStateFlow()
@@ -75,6 +96,8 @@ class MapPrefs(context: Context) {
         private const val KEY_ONBOARDING = "onboarding_done"
         private const val KEY_VOICE = "voice_on"
         private const val KEY_STORIES = "stories_on"
+        private const val KEY_SOUND = "sound_on"
+        private const val KEY_SOUND_VOLUME = "sound_volume"
 
         fun today(): String = SimpleDateFormat("yyyyMMdd", Locale.KOREA).format(Date())
     }

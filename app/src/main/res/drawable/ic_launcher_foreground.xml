@@ -1,42 +1,98 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A patch of map cleared out of the fog: the road driven (orange), the car's pin (blue), and fog
-     drifting over the edges. Kept inside the 66dp safe zone of the adaptive icon. -->
+<!-- 안개지도: a patch of map cleared out of the fog, drawn in the app's own language: the blue rim
+     explored areas get, white-cased roads, the orange road driven, the car's blue arrow at its end,
+     and wisps of fog drifting over the edge. Everything that matters stays inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- Soft glow around the cleared map. -->
-    <path android:pathData="M54,57m-29,0a29,29 0,1 1,58 0a29,29 0,1 1,-58 0">
-        <aapt:attr name="android:fillColor">
-            <gradient android:type="radial" android:centerX="54" android:centerY="57" android:gradientRadius="29"
-                android:startColor="#33A9C9FF" android:endColor="#00A9C9FF" />
-        </aapt:attr>
-    </path>
-    <group>
-        <clip-path android:pathData="M54,57m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
-        <!-- Map paper. -->
-        <path android:fillColor="#FFF1F4F8" android:pathData="M30,33h48v48h-48z" />
-        <path android:fillColor="#FFE2EEDF" android:pathData="M58,62c6,-3 14,-1 20,3v16h-22c-2,-7 -3,-15 2,-19z" />
-        <!-- Streets. -->
-        <path android:strokeColor="#FFD3DAE3" android:strokeWidth="2.2" android:strokeLineCap="round"
-            android:pathData="M28,48L80,40M40,82L60,32M30,64L82,58" />
-        <!-- The road driven. -->
-        <path android:strokeColor="#FFFF9900" android:strokeWidth="5" android:strokeLineCap="round"
-            android:strokeLineJoin="round" android:fillColor="#00000000"
-            android:pathData="M30,74C38,70 42,64 48,61C55,58 58,52 64,47C68,44 72,43 78,42" />
+
+    <!-- The whole mark at 86 %, so the night fog around the clearing reads as fog. -->
+    <group android:pivotX="54" android:pivotY="55" android:scaleX="0.86" android:scaleY="0.86">
+        <!-- Blue rim of the cleared area (as explored cells have on the map). -->
+        <path android:pathData="M54,55m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="54" android:centerY="55" android:gradientRadius="30">
+                    <item android:offset="0.78" android:color="#AA3D9BFF" />
+                    <item android:offset="0.86" android:color="#553D9BFF" />
+                    <item android:offset="1" android:color="#003D9BFF" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <group>
+            <clip-path android:pathData="M54,55m-24.5,0a24.5,24.5 0,1 1,49 0a24.5,24.5 0,1 1,-49 0" />
+            <!-- Map paper, a touch darker at the edge. -->
+            <path android:pathData="M28,29h52v52h-52z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="radial" android:centerX="52" android:centerY="50" android:gradientRadius="30"
+                        android:startColor="#FFF7F9FC" android:endColor="#FFE3E9F1" />
+                </aapt:attr>
+            </path>
+            <!-- Park and river. -->
+            <path android:fillColor="#FFDCEBD6"
+                android:pathData="M28,52C33,49 39,50 42,54C45,58 44,64 39,67C35,70 30,69 28,68Z" />
+            <path android:strokeColor="#FFC9E1F7" android:strokeWidth="4.2" android:strokeLineCap="round" android:fillColor="#00000000"
+                android:pathData="M52,82C55,74 62,72 68,73C74,74 78,70 82,64" />
+            <!-- City blocks. -->
+            <path android:fillColor="#FFEAEEF4"
+                android:pathData="M57,33h9a1.6,1.6 0,0 1,1.6 1.6v6.8a1.6,1.6 0,0 1,-1.6 1.6h-9a1.6,1.6 0,0 1,-1.6 -1.6v-6.8a1.6,1.6 0,0 1,1.6 -1.6zM70,46h8a1.6,1.6 0,0 1,1.6 1.6v7a1.6,1.6 0,0 1,-1.6 1.6h-8a1.6,1.6 0,0 1,-1.6 -1.6v-7a1.6,1.6 0,0 1,1.6 -1.6zM36,34h9a1.6,1.6 0,0 1,1.6 1.6v6a1.6,1.6 0,0 1,-1.6 1.6h-9a1.6,1.6 0,0 1,-1.6 -1.6v-6a1.6,1.6 0,0 1,1.6 -1.6z" />
+            <!-- Streets: grey casing, white road. -->
+            <path android:strokeColor="#FFD2D9E3" android:strokeWidth="4.4" android:strokeLineCap="round" android:fillColor="#00000000"
+                android:pathData="M26,45L82,38M48,30L58,82M30,74L84,60" />
+            <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:fillColor="#00000000"
+                android:pathData="M26,45L82,38M48,30L58,82M30,74L84,60" />
+            <!-- The road driven: white casing, orange line. -->
+            <path android:strokeColor="#FFFFFFFF" android:strokeWidth="7.4" android:strokeLineCap="round" android:strokeLineJoin="round"
+                android:fillColor="#00000000"
+                android:pathData="M27,79C34,75 39,70 43,65C47,60 49,56 54,54C58,52 60,50 61,47" />
+            <path android:strokeColor="#FFFF9900" android:strokeWidth="4.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+                android:fillColor="#00000000"
+                android:pathData="M27,79C34,75 39,70 43,65C47,60 49,56 54,54C58,52 60,50 61,47" />
+        </group>
+
+        <!-- Fog as clouds over the edge of the clearing: the road comes out of the lower one. -->
+        <group android:pivotX="25" android:pivotY="78" android:scaleX="0.72" android:scaleY="0.72" android:translateX="-1">
+            <!-- Lower-left cloud. -->
+            <group android:translateY="1.8">
+                <path android:fillColor="#2E06101C" android:pathData="M25,78h26a5,5 0,0 0,1 -9.9a8,8 0,0 0,-14.6 -5.6a10,10 0,0 0,-17.8 4.4a6.5,6.5 0,0 0,5.4 11.1z" />
+            </group>
+            <path android:pathData="M25,78h26a5,5 0,0 0,1 -9.9a8,8 0,0 0,-14.6 -5.6a10,10 0,0 0,-17.8 4.4a6.5,6.5 0,0 0,5.4 11.1z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="0" android:startY="57" android:endX="0" android:endY="78">
+                        <item android:offset="0" android:color="#FFFFFFFF" />
+                        <item android:offset="0.6" android:color="#FFEFF3F8" />
+                        <item android:offset="1" android:color="#FFD6DEE8" />
+                    </gradient>
+                </aapt:attr>
+            </path>
+        </group>
+        <group android:pivotX="30" android:pivotY="43" android:scaleX="0.7" android:scaleY="0.7" android:translateX="40" android:translateY="25">
+            <!-- Small cloud on the right edge, under the car. -->
+            <group android:translateY="1.8">
+                <path android:fillColor="#2E06101C" android:pathData="M30,43h17a4,4 0,0 0,0.6 -8a6,6 0,0 0,-10.8 -3.6a7,7 0,0 0,-11.6 3.8a4.8,4.8 0,0 0,4.8 7.8z" />
+            </group>
+            <path android:pathData="M30,43h17a4,4 0,0 0,0.6 -8a6,6 0,0 0,-10.8 -3.6a7,7 0,0 0,-11.6 3.8a4.8,4.8 0,0 0,4.8 7.8z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="0" android:startY="28" android:endX="0" android:endY="43">
+                        <item android:offset="0" android:color="#FFFFFFFF" />
+                        <item android:offset="0.6" android:color="#FFEFF3F8" />
+                        <item android:offset="1" android:color="#FFD6DEE8" />
+                    </gradient>
+                </aapt:attr>
+            </path>
+        </group>
+
+        <!-- The car: the map's blue arrow with its halo, heading along the road. -->
+        <path android:fillColor="#383D9BFF" android:pathData="M61,46m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+        <group android:pivotX="61" android:pivotY="46" android:rotation="24">
+            <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.2" android:strokeLineJoin="round"
+                android:pathData="M61,36.5L68,53L61,49.2L54,53Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient android:type="linear" android:startX="61" android:startY="36.5" android:endX="61" android:endY="53"
+                        android:startColor="#FF2E9BFF" android:endColor="#FF0068D6" />
+                </aapt:attr>
+            </path>
+        </group>
     </group>
-    <!-- Fog drifting over the edges. -->
-    <path android:fillColor="#F2D9E0E8"
-        android:pathData="M20,79c0,-3.6 2.9,-6.5 6.5,-6.5c0.6,0 1.2,0.1 1.8,0.3c1.6,-3.6 5.2,-6.1 9.4,-6.1c4.6,0 8.5,3 9.8,7.2c0.5,-0.1 1,-0.2 1.5,-0.2c3.2,0 5.8,2.6 5.8,5.8c0,0.5 -0.1,1 -0.2,1.5h-34.4c-0.1,-0.7 -0.2,-1.3 -0.2,-2z" />
-    <path android:fillColor="#E6C7D0DB"
-        android:pathData="M62,37c0,-2.8 2.3,-5.1 5.1,-5.1c0.5,0 1,0.1 1.4,0.2c1.3,-2.8 4.1,-4.7 7.4,-4.7c4.3,0 7.8,3.3 8.1,7.6c2,0.6 3.4,2.4 3.4,4.6c0,0.4 0,0.8 -0.1,1.2h-25.1c-0.1,-0.6 -0.2,-1.2 -0.2,-1.8z" />
-    <!-- Pin shadow and pin. -->
-    <path android:fillColor="#30000000" android:pathData="M54,66m-6,0a6,2 0,1 1,12 0a6,2 0,1 1,-12 0" />
-    <path android:pathData="M54,30c-6.9,0 -12.5,5.6 -12.5,12.5c0,9 12.5,21.5 12.5,21.5s12.5,-12.5 12.5,-21.5c0,-6.9 -5.6,-12.5 -12.5,-12.5z">
-        <aapt:attr name="android:fillColor">
-            <gradient android:type="linear" android:startX="54" android:startY="30" android:endX="54" android:endY="64"
-                android:startColor="#FF2B9BFF" android:endColor="#FF0068D6" />
-        </aapt:attr>
-    </path>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M54,42.5m-4.8,0a4.8,4.8 0,1 1,9.6 0a4.8,4.8 0,1 1,-9.6 0" />
 </vector>

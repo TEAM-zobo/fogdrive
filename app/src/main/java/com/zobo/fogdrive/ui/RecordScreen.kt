@@ -115,7 +115,8 @@ private fun ShareCardDialog(file: File, onClose: () -> Unit) {
         }
     }
     Dialog(onDismissRequest = onClose) {
-        FogCard(Modifier.width(860.dp), padding = 28.dp) {
+        // A dialog is its own window, outside the root's click sounds.
+        FogCard(Modifier.width(860.dp).clickSounds(), padding = 28.dp) {
             Text("내 안개지도 카드", style = MaterialTheme.typography.headlineSmall)
             preview?.let { Image(it, contentDescription = "내 안개지도 카드", modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) }
             Text(

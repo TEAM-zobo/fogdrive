@@ -1,5 +1,9 @@
 package com.zobo.fogdrive.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,15 +29,21 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.zobo.fogdrive.voice.Sfx
+import com.zobo.fogdrive.voice.Sound
+import kotlinx.coroutines.delay
 
 /** Built-in apps use near-square panels and buttons. */
 val CardShape = RoundedCornerShape(6.dp)
@@ -159,7 +171,11 @@ fun MapButton(icon: ImageVector, description: String, onClick: () -> Unit, tint:
 fun FogSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Switch(
         checked = checked,
-        onCheckedChange = onCheckedChange,
+        onCheckedChange = {
+            // Change first, then sound: turning the sound setting itself on is heard, off is silent.
+            onCheckedChange(it)
+            Sfx.play(if (it) Sound.TOGGLE_ON else Sound.TOGGLE_OFF)
+        },
         colors = SwitchDefaults.colors(
             checkedThumbColor = FogColors.OnAccent,
             checkedTrackColor = FogColors.Accent,
@@ -193,6 +209,48 @@ fun WornRoadsButton(on: Boolean, onToggle: () -> Unit) {
         Icons.Outlined.Timeline,
         if (on) "자주 다닌 길 끄기" else "자주 다닌 길 켜기",
         tint = if (on) FogColors.Accent else FogColors.TextSub,
-        onClick = onToggle,
+        onClick = {
+            Sfx.play(if (on) Sound.TOGGLE_OFF else Sound.TOGGLE_ON)
+            onToggle()
+        },
     )
 }
+
+/**
+ * A short notice (a stamp, a mission, a drop-off, a reset) that shows for a few seconds and goes,
+ * instead of a line that stays in the map's header card. [onShown] is called once it has been on
+ * screen for its full time, so the caller can clear it: coming back to a screen doesn't repeat an old
+ * message, a notice cut short by a screen change shows again on the next one, and the same text
+ * arriving again later (a second demo run, a second reset) is shown again.
+ */
+@Composable
+fun EventToast(message: String?, onShown: (String) -> Unit, modifier: Modifier = Modifier) {
+    var visible by remember { mutableStateOf(false) }
+    // Kept after hiding so the card keeps its text while it fades out.
+    var text by remember { mutableStateOf("") }
+    LaunchedEffect(message) {
+        if (message == null) return@LaunchedEffect
+        text = message
+        visible = true
+        delay(TOAST_MS)
+        visible = false
+        onShown(message)
+    }
+    AnimatedVisibility(visible = visible, modifier = modifier, enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
+        Surface(
+            shape = CardShape,
+            color = FogColors.Surface.copy(alpha = 0.97f),
+            border = BorderStroke(1.dp, FogColors.Outline),
+            shadowElevation = 4.dp,
+        ) {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = FogColors.TextMain,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
+            )
+        }
+    }
+}
+
+private const val TOAST_MS = 4_000L

@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.zobo.fogdrive.car.DriveMode
 import com.zobo.fogdrive.demo.DemoCourses
 import com.zobo.fogdrive.demo.DemoDrive
+import com.zobo.fogdrive.voice.Sfx
+import com.zobo.fogdrive.voice.Sound
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -158,6 +160,38 @@ fun SettingsScreen(
                 "주행 중 새 동네, 스탬프, 도착, 동승자 미션, 주행 요약을 짧게 말해 줘요. 화면을 보지 않아도 돼요.",
                 voice,
             ) { viewModel.setVoice(it) }
+            val sound by viewModel.sound.collectAsState()
+            PrefToggle(
+                "버튼 효과음",
+                "버튼, 화면 전환, 스위치, 주행 시작과 종료에 짧은 소리를 내요. 소리는 앱이 직접 만들어 내요.",
+                sound,
+            ) { viewModel.setSound(it) }
+            val soundVolume by viewModel.soundVolume.collectAsState()
+            Row(
+                Modifier.padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text("효과음 크기", style = MaterialTheme.typography.titleMedium, color = if (sound) FogColors.TextMain else FogColors.TextSub)
+                Slider(
+                    value = soundVolume.toFloat(),
+                    onValueChange = { viewModel.setSoundVolume((it / 10).roundToInt() * 10) },
+                    // A tick at the new level when the thumb is let go, to hear what was picked.
+                    onValueChangeFinished = { Sfx.play(Sound.TAP) },
+                    valueRange = 0f..100f,
+                    steps = 9,
+                    enabled = sound,
+                    colors = SliderDefaults.colors(
+                        thumbColor = FogColors.Accent,
+                        activeTrackColor = FogColors.Accent,
+                        inactiveTrackColor = FogColors.SurfaceHigh,
+                        activeTickColor = FogColors.OnAccent,
+                        inactiveTickColor = FogColors.Outline,
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+                Text("$soundVolume%", style = MaterialTheme.typography.titleMedium, color = if (sound) FogColors.Accent else FogColors.TextSub)
+            }
             val stories by viewModel.stories.collectAsState()
             PrefToggle(
                 "동네 이야기",
