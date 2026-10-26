@@ -100,6 +100,7 @@ cmd_doctor() {
     [ -n "$devs" ] && ok "실행 중인 기기: $devs" || echo "  [정보] 실행 중인 에뮬레이터 없음 — setup.sh boot"
     for s in $devs; do
       if "$ADB" -s "$s" shell pm path "$PACKAGE" >/dev/null 2>&1; then ok "$s: 앱 설치됨"; else echo "  [정보] $s: 앱 미설치 — setup.sh app"; fi
+      if pleos_stable "$s"; then ok "$s: 차량 서비스 정상"; else miss "$s: 차량 서비스가 계속 재시작됨(eth0에 10.0.2.15 없음) — setup.sh stop 후 boot"; fi
     done
   fi
   [ "$MISSING" = 0 ] && say "준비 완료" || say "빠진 항목이 있습니다. 'tools/setup/setup.sh all'로 한 번에 설치할 수 있습니다."
@@ -231,6 +232,21 @@ cmd_avd() {
 
 booted() { [ "$("$ADB" -s "$1" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; }
 
+# The image's Pleos vehicle services (DDS) bind to 10.0.2.15, which eth0 only gets once the emulated
+# modem's data call succeeds. Until then they abort at start and init restarts them every ~5 s; if
+# that call never succeeds the loop never ends (the emulator crawls). A fresh boot fixes it.
+pleos_pid() { "$ADB" -s "$1" shell 'ps -A -o PID,NAME | grep diagnostic_report' 2>/dev/null | tr -d '\r '; }
+pleos_stable() {
+  "$ADB" -s "$1" shell ip -4 -o addr show eth0 2>/dev/null | grep -q '10\.0\.2\.15' || return 1
+  local a; a=$(pleos_pid "$1"); sleep 10
+  [ -n "$a" ] && [ "$a" = "$(pleos_pid "$1")" ]
+}
+wait_pleos_stable() {
+  local end=$(( $(date +%s) + 90 ))
+  while [ "$(date +%s)" -lt "$end" ]; do pleos_stable "$1" && return 0; sleep 5; done
+  return 1
+}
+
 cmd_boot() {
   local headless=0 record=0 avd=$AVD_NAME serial=$SCREEN_SERIAL vc=8088
   if [ "${1:-}" = "--headless" ] || [ "${1:-}" = "--record" ]; then headless=1; avd=$QA_AVD_NAME; serial=$QA_SERIAL; vc=18088; fi
@@ -260,6 +276,8 @@ cmd_boot() {
     sleep 5   # vehicle / navi services come up just after boot_completed
     ok "부팅 완료"
   fi
+  if wait_pleos_stable "$serial"; then ok "차량 서비스 정상 (eth0 10.0.2.15)"
+  else echo "  [주의] 차량 서비스가 계속 재시작됩니다(모바일 데이터 연결 실패). setup.sh stop 후 다시 boot 하세요."; fi
   # Network time would pull the recording clock back to now.
   [ $record = 1 ] && "$ADB" -s "$serial" shell settings put global auto_time 0 && ok "시계: $("$ADB" -s "$serial" shell date | tr -d '\r') (녹화용, 자동 시간 끔)"
   "$ADB" -s "$serial" emu geo fix "$HOME_LNG" "$HOME_LAT" >/dev/null

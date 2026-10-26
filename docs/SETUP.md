@@ -132,7 +132,7 @@ powershell -ExecutionPolicy Bypass -File $s stop
 
 Gradle은 `gradlew.bat`, adb는 `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`입니다. 아래 공통 명령의 `adb`는 PATH에 `platform-tools`를 넣었다고 가정합니다.
 
-> 이 Windows 스크립트는 macOS에서 작성했고 아직 실제 Windows에서 돌려 보지 못했습니다. 문제가 생기면 아래 "Android Studio로 직접 셋팅"으로 진행해도 결과는 같습니다.
+> 이 Windows 스크립트는 Windows 11(Windows PowerShell 5.1)에서 `sdk`부터 `app`까지 돌려 확인했습니다. 문제가 생기면 아래 "Android Studio로 직접 셋팅"으로 진행해도 결과는 같습니다.
 
 ---
 
@@ -194,6 +194,8 @@ curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 | Gradle `SDK location not found` | `local.properties`가 없습니다. `sdk` 단계를 실행하거나 `sdk.dir=`을 직접 적기 |
 | Gradle이 `ai.pleos.playground` 의존성을 못 받음 | `https://nexus-playground.pleos.ai`에 접속할 수 있어야 합니다(사내망·프록시 확인) |
 | 앱은 떴는데 화면이 검정 | 기어가 P가 아님 → Virtual Console에서 P |
+| 에뮬레이터가 갑자기 느림, `app` 설치가 몇 분 걸림, 소리가 안 남 | 이미지의 Pleos 차량 서비스(DDS)가 `10.0.2.15`에 묶이는데, 이 주소는 에뮬레이터의 모바일 데이터 연결이 성공해야 eth0에 생깁니다. 연결이 실패한 부팅에서는 서비스가 5초마다 죽고 다시 떠서 시스템이 과부하됩니다. `boot`가 이를 감지해 한 번 다시 켜고, `doctor`가 `차량 서비스` 줄로 보여 줍니다. 그래도 남으면 `stop` 후 `boot`. 비행기 모드를 껐다 켜는 것으로는 돌아오지 않습니다 |
+| Windows에서 에뮬레이터 소리가 안 남 | 소리는 에뮬레이터를 켤 때의 Windows 기본 출력 장치로 나갑니다. 출력 장치를 바꿨으면 에뮬레이터를 다시 켜세요 |
 | 위치가 바다·엉뚱한 곳 | Cold boot마다 위치가 초기화됩니다. `boot`를 다시 실행하거나 `geo fix` |
 | 내비 경로 안내가 안 됨 | 에뮬레이터 내비는 GPS 체크섬 문제로 경로 안내를 못 합니다. 시연 모드가 회전 안내·도착 이벤트를 대신 만듭니다 |
 | Virtual Console 값 변경이 무시됨 | 콘솔은 브라우저 세션이 살아 있을 때만 쓰기를 받습니다. 브라우저로 페이지를 열어 두거나 QA 도구(`fogqa`)를 쓰세요 |

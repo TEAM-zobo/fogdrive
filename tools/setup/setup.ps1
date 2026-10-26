@@ -106,6 +106,21 @@ function Invoke-Adb {
 }
 function Test-Booted($serial) { (Invoke-Adb -s $serial shell getprop sys.boot_completed) -match "^1" }
 
+# The image's Pleos vehicle services (DDS) bind to 10.0.2.15, which eth0 only gets once the emulated
+# modem's data call succeeds. Until then they abort at start and init restarts them every ~5 s; if
+# that call never succeeds the loop never ends (load ~20, adb install takes minutes, audio dies).
+function Get-PleosPid($serial) { "$(Invoke-Adb -s $serial shell 'ps -A -o PID,NAME | grep diagnostic_report')".Trim() }
+function Test-PleosStable($serial) {
+  if ("$(Invoke-Adb -s $serial shell ip -4 -o addr show eth0)" -notmatch '10\.0\.2\.15') { return $false }
+  $a = Get-PleosPid $serial; Start-Sleep 10
+  return ($a -and $a -eq (Get-PleosPid $serial))
+}
+function Wait-PleosStable($serial) {
+  $end = (Get-Date).AddSeconds(90)
+  do { if (Test-PleosStable $serial) { return $true }; Start-Sleep 5 } while ((Get-Date) -lt $end)
+  return $false
+}
+
 # --- doctor -----------------------------------------------------------------------------------
 
 function Cmd-Doctor {
@@ -139,6 +154,8 @@ function Cmd-Doctor {
     if ($devs.Count) { Ok "실행 중인 기기: $($devs -join ' ')" } else { Write-Host "  [정보] 실행 중인 에뮬레이터 없음 — setup.ps1 boot" }
     foreach ($s in $devs) {
       if (Invoke-Adb -s $s shell pm path $Package) { Ok "${s}: 앱 설치됨" } else { Write-Host "  [정보] ${s}: 앱 미설치 — setup.ps1 app" }
+      if (Test-PleosStable $s) { Ok "${s}: 차량 서비스 정상" }
+      else { Miss "${s}: 차량 서비스가 계속 재시작됨(eth0에 10.0.2.15 없음) — setup.ps1 stop 후 boot" }
     }
   }
   if (-not $script:Missing) { Say "준비 완료" } else { Say "빠진 항목이 있습니다. 'setup.ps1 all'로 한 번에 설치할 수 있습니다." }
@@ -310,6 +327,16 @@ function Cmd-Boot {
       Ok "부팅 완료"
     }
   }
+  if (Wait-PleosStable $serial) { Ok "차량 서비스 정상 (eth0 10.0.2.15)" }
+  elseif (-not $script:Rebooted) {
+    # Toggling airplane mode does not bring the data call back; a fresh boot does.
+    Write-Host "  [주의] 차량 서비스가 계속 재시작됩니다(모바일 데이터 연결 실패). 에뮬레이터를 한 번 다시 켭니다." -ForegroundColor Yellow
+    $script:Rebooted = $true
+    Cmd-Stop
+    Cmd-Boot
+    return
+  }
+  else { Write-Host "  [주의] 다시 켜도 차량 서비스가 계속 재시작됩니다. 에뮬레이터가 느리면 setup.ps1 stop 후 boot 하세요." -ForegroundColor Yellow }
   if ($Record) { Invoke-Adb -s $serial shell settings put global auto_time 0 | Out-Null; Ok "시계: $(Invoke-Adb -s $serial shell date) (녹화용, 자동 시간 끔)" }
   Invoke-Adb -s $serial emu geo fix $HomeLng $HomeLat | Out-Null
   Invoke-Adb -s $serial forward "tcp:$vc" tcp:8088 | Out-Null
