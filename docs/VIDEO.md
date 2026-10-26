@@ -74,15 +74,19 @@ tools/setup/setup.sh stop --record
 
 ## 3. 편집과 렌더링
 
+> **녹화 없이 바로 렌더링할 수 있습니다.** 지금 영상에 쓴 장면 클립·배경음악·글꼴은 GitHub Release [`demo-assets-v1`](https://github.com/TEAM-zobo/fogdrive/releases/tag/demo-assets-v1)(약 120MB)에 있습니다. 녹화본(`tools/demo/out/raw`, 2.6GB)은 git에 없으므로, 새 컴퓨터에서는 2절 녹화를 건너뛰고 아래 명령부터 실행하면 됩니다. `prepare_assets.sh`가 녹화본이 없으면 Release를 받습니다. 비공개 저장소라 [GitHub CLI](https://cli.github.com)(`gh`) 로그인이 필요합니다(`gh auth login`).
+
 ```bash
 cd tools/demo/promo
-./prepare_assets.sh                 # 녹화본 → 장면 클립(assets/shots), Pretendard 글꼴, 배경음악(Fretless), 효과음(assets/sfx), 앱 아이콘 SVG
+./prepare_assets.sh                 # 녹화본 → 장면 클립(assets/shots). 녹화본이 없으면 Release에서 받음. 글꼴·배경음악·효과음·앱 아이콘도 준비
 python3 build.py                    # 장면 목록 → index.html + compositions/*.html
 npx hyperframes@0.8.196 check       # 오류 0개인지
 npx hyperframes@0.8.196 snapshot --at 3,23,53,68,98      # 원하는 시각의 프레임 PNG (.hyperframes/artifacts/snapshots)
 npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o renders/fogdrive-promo.mp4
 ```
 
+- `prepare_assets.sh`는 끝에서 모든 소재를 `assets.sha256`과 비교합니다. "every asset matches"가 나오면 커밋된 영상과 같은 소재입니다. 2026-10-26에 녹화본 없는 새 클론에서 Release로 숏폼을 렌더링해 비교했더니 소리는 비트 단위로 같고, 화면은 1,410프레임 중 101프레임에서만 눈에 안 보이는 차이(가장 큰 차이도 PSNR 52.8dB)가 있었습니다.
+- 녹화본이 있어도 Release 소재로 렌더링하려면 `./prepare_assets.sh --release`.
 - 렌더링은 약 4분 걸립니다(M 시리즈 Mac 기준).
 - 미리 보며 고치려면 `npx hyperframes@0.8.196 preview`를 실행합니다. 브라우저 편집기(Studio)가 열리고, HyperFrames 데스크톱 앱으로도 열 수 있습니다.
 
@@ -101,6 +105,7 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 - **장면 순서·길이:** `scene("id", 시작 초, 길이, ...)`를 고칩니다. 장면은 2초 단위로 맞추고, 다음 장면과 0.6초 겹치며 크로스페이드됩니다.
 - **임팩트:** 제목 착지는 `slam_words()`, 파랑 플러드는 `brand_scene`·`stat` 카드·`claim_scene`, 몽타주 휩은 `whip=True` 장면입니다.
 - **효과음:** `SFX = [(파일, 시작 초, 볼륨, ...)]`에 한 줄씩. 파일은 `assets/sfx/`에 있고 `prepare_assets.sh`가 media-use 스킬 라이브러리에서 복사합니다. 효과음을 늘리면 렌더 뒤 피크가 -1 dBFS를 넘지 않는지 봅니다.
+- **다시 녹화했다면:** 새 녹화본은 화면 타이밍이 조금씩 달라서 `prepare_assets.sh`의 자르는 구간과 `build.py`의 카메라를 다시 맞춰야 합니다. 확정되면 `shasum -a 256 assets/shots/*.mp4 assets/music/fretless.mp3 assets/fonts/Pretendard-*.woff2 assets/sfx/*.mp3 > assets.sha256`으로 체크섬을 갱신하고, 클립·음악·글꼴을 zip으로 묶어 새 Release(`demo-assets-v2`)로 올린 뒤 스크립트의 `BUNDLE`을 바꿉니다.
 - **음악:** 다른 곡을 쓰려면 `assets/music/`에 넣고 `index_html()`의 `src`와 볼륨 곡선(`duck`)을 바꿉니다. 곡마다 기본 음량이 달라서 렌더 뒤 전체 음량을 확인합니다(-16~-18 LUFS). 엔딩 화면의 출처 표기도 같이 바꿉니다.
 
 ## 4. 라이선스와 표기
@@ -111,7 +116,7 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 | --- | --- | --- |
 | 배경음악 "Fretless" (Kevin MacLeod, incompetech.com) | CC BY 4.0 | 엔딩 화면 하단 |
 | 글꼴 Pretendard | SIL OFL 1.1 | 필요 없음 |
-| 효과음 (media-use 스킬 라이브러리, Pixabay) | Pixabay Content License | 필요 없음 |
+| 효과음 (media-use 스킬 라이브러리, Pixabay) | Pixabay Content License | 필요 없음. 파일만 따로 재배포할 수 없어 Release 묶음에는 넣지 않음 |
 | 지도 타일 | OpenStreetMap contributors (ODbL), OpenFreeMap | 엔딩 화면 하단 + 앱 화면 자체 표기 |
 | HyperFrames | Apache-2.0 | 필요 없음 |
 
@@ -123,7 +128,7 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 - 소재: 홍보 영상의 `assets/`(장면 클립, 글꼴, 음악, 효과음, 아이콘)를 그대로 씁니다. `build.py`가 `tools/demo/shortform/assets`를 `../promo/assets`로 연결합니다(심볼릭 링크를 만들 수 없는 Windows에서는 복사).
 
 ```bash
-tools/demo/promo/prepare_assets.sh          # 홍보 영상과 같은 준비(이미 했으면 생략)
+tools/demo/promo/prepare_assets.sh          # 홍보 영상과 같은 준비(이미 했으면 생략, 녹화본이 없으면 Release에서 받음)
 cd tools/demo/shortform
 python3 build.py                            # 장면 목록 → index.html + compositions/*.html
 npx hyperframes@0.8.196 check
@@ -140,6 +145,8 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 
 | 증상 | 원인·해결 |
 | --- | --- |
+| `prepare_assets.sh`가 "gh(GitHub CLI)가 필요합니다" 또는 release not found | 녹화본이 없어 Release를 받으려는 것입니다. `brew install gh`(Windows `winget install GitHub.cli`) 후 `gh auth login`으로 TEAM-zobo 저장소에 권한 있는 계정으로 로그인합니다 |
+| "differ from assets.sha256" 경고 | 소재가 커밋된 영상과 다릅니다. 다시 녹화했다면 정상(위 「다시 녹화했다면」). 아니라면 효과음 스킬이 업데이트된 경우가 많습니다: `assets/sfx`를 지우고 다시 실행하거나, 이전 효과음 파일을 구합니다 |
 | 지도가 야간 모드(어두움)로 찍힘 | 앱은 차 위치의 실제 일출·일몰을 따릅니다. `boot --record`로 띄우면 시계가 오전 11시입니다. adb로는 시간을 바꿀 수 없어서(권한 없음) 부팅할 때 `-qemu -rtc base=...T02:00:00`으로 정합니다 |
 | `prepare_demo.py`에서 "불러올 파일이 없어요" | AAOS에서는 adb가 운전자 계정의 외부 앱 폴더에 쓸 수 없습니다. 스크립트는 `run-as`로 앱 내부 폴더에 복사하고, 앱의 불러오기도 그 폴더를 봅니다(`FogRuntime.importCandidates`). 최신 디버그 APK인지 확인하세요 |
 | 녹화본 소리가 작음 | 에뮬레이터 출력이 원래 작습니다(음성 최대 -27 dBFS). `prepare_assets.sh`가 음성 클립을 +22dB 올리고, 렌더 뒤 전체 -17~-20 LUFS, 피크 -1 dBFS 이하면 정상입니다(현재 -19.4 LUFS, 피크 -1.9) |

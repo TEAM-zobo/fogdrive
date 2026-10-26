@@ -229,6 +229,8 @@ tools/setup/setup.sh boot --record  # 녹화용 QA 에뮬레이터(소리 켬, �
 # 녹화 → 편집 → 렌더링 순서와 수정 방법: docs/VIDEO.md
 ```
 
+녹화 없이 지금 영상을 그대로 다시 렌더링할 수도 있습니다. 장면 클립·음악·글꼴은 GitHub Release `demo-assets-v1`에 있고, `tools/demo/promo/prepare_assets.sh`가 녹화본이 없으면 자동으로 받습니다(`gh auth login` 필요).
+
 자세한 절차, 장면 구성, 수정 방법, 라이선스, 문제 해결은 **[docs/VIDEO.md](docs/VIDEO.md)** 에 있습니다.
 
 ## QA

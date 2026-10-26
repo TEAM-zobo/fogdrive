@@ -3,7 +3,7 @@
 접수양식 02-8에 링크를 적는 세로 영상입니다. 본상 가산점은 없고, 별도 특별상(50만 원)이 있습니다.
 
 - 파일: `tools/demo/shortform/renders/fogdrive-shortform.mp4` (1080×1920, 30fps, 47초, git 제외). 만드는 방법은 [docs/VIDEO.md](../VIDEO.md#5-숏폼)
-- 가이드: 길이 30초–1분, 세로 9:16(1080×1920), 필수 해시태그 `#HMG차량용앱개발공모전`(영상 마지막 화면에도 넣음)
+- 가이드: 길이 30초–1분, 세로 9:16(1080×1920), Instagram 릴스 또는 YouTube Shorts에 게시. 필수 해시태그 `#HMG차량용앱개발공모전`을 포함해 **해시태그 총 2~3개**를 본문·설명란에 달아야 정상 참여로 인정(제안: `#PleosAppMarket` `#HMG앱공모전`). 근거: [숏폼 챌린지](https://appdevchallenge.auto-hmg.io/guide/shortform), [FAQ](https://appdevchallenge.auto-hmg.io/faq)
 - 게시 채널과 세부 조건: 공모전 「숏폼 챌린지」 안내를 따릅니다(게시 전 다시 확인)
 - 계정: 실명·개인 계정이 드러나지 않게 팀 zobo 계정으로 올립니다
 - 소재: 홍보 영상과 같은 실제 에뮬레이터 녹화본을 세로로 다시 짠 것. 누적 기록은 시연용 예시(마지막 화면에 표시)
@@ -30,6 +30,6 @@
 
 - [ ] 처음부터 끝까지 재생해 소리·자막·화면이 맞는지 본다(음량은 측정값 -19.1 LUFS, 피크 -1.9 dBFS로만 확인했으므로 직접 들어 본다)
 - [ ] 휴대폰에서 업로드 화면으로 미리 보고, 자막이 플랫폼 버튼·설명에 가리지 않는지 본다
-- [ ] 게시글 본문에 `#HMG차량용앱개발공모전`과 음악 출처를 적는다: Music: "Fretless" Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License
+- [ ] 게시글 본문에 해시태그 3개(`#HMG차량용앱개발공모전 #PleosAppMarket #HMG앱공모전`)와 음악 출처를 적는다: Music: "Fretless" Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License
 - [ ] 화면·파일 이름·계정 이름에 성명·이메일·개인 계정 ID가 없다
 - [ ] 링크를 `02-app-introduction.md`의 【기입 필요: 숏폼 링크】와 [`email.md`](email.md), `private/email.txt`에 넣고 `python3 tools/submission/build_form.py`로 양식을 다시 만든다
