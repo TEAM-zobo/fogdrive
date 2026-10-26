@@ -84,7 +84,8 @@ done
 python3 vector2svg.py > "$A/icon.svg.tmp"
 mv "$A/icon.svg.tmp" "$A/icon.svg"
 # Same inputs as the committed films? Fresh recordings always differ (re-record → update assets.sha256 and the bundle).
-if sha256 -c --quiet assets.sha256; then
+# Without the CRs Git for Windows (core.autocrlf) adds, or every file name ends in \r.
+if tr -d '\r' < assets.sha256 | sha256 -c --quiet; then
   echo "done: every asset matches assets.sha256"
 else
   echo "done, but the files above differ from assets.sha256: the films will not match the committed renders" >&2

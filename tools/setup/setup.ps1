@@ -68,8 +68,40 @@ function Get-JavaMajor($jh) {
   return 0
 }
 
+# Start a long-running process outside this script's handles and job object. A child started with
+# Start-Process (the emulator, the adb server adb forks) inherits the caller's output pipe, so a
+# caller that reads our output never sees it close, and it dies when the caller's job ends.
+function Start-Detached($cmdline) {
+  $r = Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmdline; CurrentDirectory = $Root }
+  if ($r.ReturnValue) { Die "실행 실패: $cmdline" }
+  return $r.ProcessId
+}
+
+# The emulator of an AVD: cmd, emulator.exe and qemu. emulator.exe outlives qemu by ~20 s on exit
+# and keeps the log open, so a new boot must wait for all of them.
+function Get-EmulatorProcess($avd) {
+  Get-CimInstance Win32_Process | Where-Object {
+    $_.Name -match '^(cmd|emulator|qemu-system.*)\.exe$' -and $_.CommandLine -match "-avd $([regex]::Escape($avd))( |$)"
+  }
+}
+# Its log stays open ~20 s longer still, by a helper that inherited it; cmd cannot reopen it until then.
+function Test-LogFree($log) {
+  try { [IO.File]::Open($log, 'OpenOrCreate', 'Write', 'None').Close(); $true } catch { $false }
+}
+
 # Windows PowerShell 5.1 turns redirected native stderr into errors under "Stop", so relax it here.
-function Invoke-Adb { $ErrorActionPreference = "Continue"; & $Adb @args 2>$null }
+function Invoke-Adb {
+  $ErrorActionPreference = "Continue"
+  if (-not $script:AdbUp) {
+    if (-not (Get-NetTCPConnection -LocalPort 5037 -State Listen -ErrorAction SilentlyContinue)) {
+      Start-Detached "`"$Adb`" start-server"
+      $end = (Get-Date).AddSeconds(20)
+      while (-not (Get-NetTCPConnection -LocalPort 5037 -State Listen -ErrorAction SilentlyContinue) -and (Get-Date) -lt $end) { Start-Sleep 1 }
+    }
+    $script:AdbUp = $true
+  }
+  & $Adb @args 2>$null
+}
 function Test-Booted($serial) { (Invoke-Adb -s $serial shell getprop sys.boot_completed) -match "^1" }
 
 # --- doctor -----------------------------------------------------------------------------------
@@ -80,8 +112,9 @@ function Cmd-Doctor {
   $jh = Get-JavaHome
   if ($jh -and (Get-JavaMajor $jh) -ge 17) { Ok "JDK $(Get-JavaMajor $jh): $jh" }
   else { Miss "JDK 17 이상 — Android Studio 설치(내장 JDK) 또는 winget install EclipseAdoptium.Temurin.17.JDK" }
-  $py = Get-Command python -ErrorAction SilentlyContinue
-  if ($py) { Ok "python $((& python --version) -replace 'Python ','') (QA 도구용)" } else { Miss "python 3 (QA 도구용) — winget install Python.Python.3.12" }
+  # The Microsoft Store alias in WindowsApps is a stub that prints nothing, not Python.
+  $pyVer = try { & python -c "import sys; print('%d.%d.%d' % sys.version_info[:3])" 2>$null } catch { $null }
+  if ($pyVer -match '^3\.') { Ok "python $pyVer (QA·영상 도구용)" } else { Miss "python 3 (QA·영상 도구용) — winget install Python.Python.3.12 (설치 뒤 PowerShell을 다시 열기)" }
   if (Test-Path $Sdk) { Ok "Android SDK: $Sdk" } else { Miss "Android SDK ($Sdk) — setup.ps1 sdk" }
   if (Test-Path $SdkManager) { Ok "cmdline-tools (sdkmanager)" } else { Miss "cmdline-tools — setup.ps1 sdk" }
   if (Test-Path $Adb) { Ok "platform-tools (adb)" } else { Miss "platform-tools — setup.ps1 sdk" }
@@ -132,7 +165,11 @@ function Cmd-Sdk {
   }
   Say "SDK 패키지 설치 (라이선스 자동 동의)"
   $ErrorActionPreference = "Continue"   # sdkmanager prints warnings on stderr
-  (1..30 | ForEach-Object { "y" }) | & $SdkManager "--sdk_root=$Sdk" --licenses | Out-Null
+  # sdkmanager.bat misses answers piped from PowerShell 5.1; cmd's input redirect works.
+  $yes = Join-Path $env:TEMP "fogdrive-yes.txt"
+  [IO.File]::WriteAllText($yes, "y`r`n" * 30)
+  & cmd /c "`"$SdkManager`" --sdk_root=`"$Sdk`" --licenses < `"$yes`"" | Out-Null
+  Remove-Item $yes
   & $SdkManager "--sdk_root=$Sdk" "platform-tools" "emulator" "platforms;android-35" "build-tools;35.0.0"
   if ($LASTEXITCODE) { Die "sdkmanager 실패" }
   $props = Join-Path $Root "local.properties"
@@ -239,7 +276,6 @@ function Cmd-Boot {
   $avd = $AvdName; $serial = $ScreenSerial; $vc = 8088
   if ($Headless -or $Record) { $avd = $QaAvdName; $serial = $QaSerial; $vc = 18088 }
   if (-not (Test-Path "$AvdHome\$avd.ini")) { Die "AVD $avd 가 없습니다. setup.ps1 avd$(if ($Headless -or $Record) { ' -qa' })" }
-  Invoke-Adb start-server | Out-Null
   if (Test-Booted $serial) {
     Ok "$serial 이미 실행 중"
     if ($Record) { Write-Host "  [주의] 이미 켜진 에뮬레이터는 소리·시계 설정이 녹화용이 아닐 수 있습니다. setup.ps1 stop -record 후 다시 boot -record 하세요." }
@@ -253,10 +289,20 @@ function Cmd-Boot {
       $emuArgs += @("-no-window", "-qemu", "-rtc", "base=$((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))T02:00:00")
     } elseif ($Headless) { $emuArgs += @("-no-window", "-no-audio") }
     Say "$avd 부팅 ($serial$(if ($Headless -or $Record) { ', 창 없음' })) · 로그 $log"
-    Start-Process -FilePath $Emulator -ArgumentList $emuArgs -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+    # Still booting or still exiting: wait for one of the two.
+    $end = (Get-Date).AddMinutes(7)
+    while ((Get-EmulatorProcess $avd) -and -not (Test-Booted $serial) -and (Get-Date) -lt $end) { Start-Sleep 5 }
+    if (Test-Booted $serial) { Start-Sleep 5; Ok "부팅 완료" }
+  }
+  if (-not (Test-Booted $serial)) {
+    if (Get-EmulatorProcess $avd) { Die "$avd 에뮬레이터가 실행 중인데 $serial 로 연결되지 않습니다. setup.ps1 stop 후 다시 실행하세요." }
+    $end = (Get-Date).AddSeconds(60)
+    while (-not (Test-LogFree $log) -and (Get-Date) -lt $end) { Start-Sleep 2 }
+    $launcher = Start-Detached "cmd /c `"`"$Emulator`" $($emuArgs -join ' ') > `"$log`" 2> `"$log.err`"`""
     $end = (Get-Date).AddMinutes(7)
     while (-not (Test-Booted $serial)) {
       if ((Get-Date) -gt $end) { Die "부팅 시간 초과(7분). 로그: $log" }
+      if (-not (Get-Process -Id $launcher -ErrorAction SilentlyContinue)) { Die "에뮬레이터가 부팅 중에 종료됐습니다. 로그: $log, $log.err" }
       Start-Sleep 5
     }
     Start-Sleep 5   # vehicle / navi services come up just after boot_completed
@@ -270,7 +316,16 @@ function Cmd-Boot {
 
 function Cmd-Stop {
   $serial = if ($Headless -or $Record) { $QaSerial } else { $ScreenSerial }
-  if (Test-Booted $serial) { Invoke-Adb -s $serial emu kill | Out-Null; Ok "$serial 종료" } else { Ok "$serial 실행 중 아님" }
+  $avd = if ($Headless -or $Record) { $QaAvdName } else { $AvdName }
+  if (-not (Test-Booted $serial) -and -not (Get-EmulatorProcess $avd)) { Ok "$serial 실행 중 아님"; return }
+  $booted = Test-Booted $serial
+  Invoke-Adb -s $serial emu kill | Out-Null   # a still-booting one ignores this and is killed below
+  # The emulator takes ~20 s to exit; a boot right after must not find it still running.
+  $end = (Get-Date).AddSeconds($(if ($booted) { 60 } else { 10 }))
+  $log = Join-Path $env:TEMP "fogdrive-$avd.log"
+  while (((Get-EmulatorProcess $avd) -or -not (Test-LogFree $log)) -and (Get-Date) -lt $end) { Start-Sleep 2 }
+  if (Get-EmulatorProcess $avd) { Get-EmulatorProcess $avd | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } }
+  Ok "$serial 종료"
 }
 
 # --- build / run ------------------------------------------------------------------------------
