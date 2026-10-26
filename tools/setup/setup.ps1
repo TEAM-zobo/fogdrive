@@ -94,9 +94,11 @@ function Invoke-Adb {
   $ErrorActionPreference = "Continue"
   if (-not $script:AdbUp) {
     if (-not (Get-NetTCPConnection -LocalPort 5037 -State Listen -ErrorAction SilentlyContinue)) {
-      Start-Detached "`"$Adb`" start-server"
+      Start-Detached "`"$Adb`" start-server" | Out-Null   # its pid must not end up in adb's output
       $end = (Get-Date).AddSeconds(20)
       while (-not (Get-NetTCPConnection -LocalPort 5037 -State Listen -ErrorAction SilentlyContinue) -and (Get-Date) -lt $end) { Start-Sleep 1 }
+      # Otherwise the next adb call would fork the server itself, attached to our output pipe.
+      if (-not (Get-NetTCPConnection -LocalPort 5037 -State Listen -ErrorAction SilentlyContinue)) { Die "adb 서버가 20초 안에 시작되지 않았습니다." }
     }
     $script:AdbUp = $true
   }
@@ -293,20 +295,20 @@ function Cmd-Boot {
     $end = (Get-Date).AddMinutes(7)
     while ((Get-EmulatorProcess $avd) -and -not (Test-Booted $serial) -and (Get-Date) -lt $end) { Start-Sleep 5 }
     if (Test-Booted $serial) { Start-Sleep 5; Ok "부팅 완료" }
-  }
-  if (-not (Test-Booted $serial)) {
-    if (Get-EmulatorProcess $avd) { Die "$avd 에뮬레이터가 실행 중인데 $serial 로 연결되지 않습니다. setup.ps1 stop 후 다시 실행하세요." }
-    $end = (Get-Date).AddSeconds(60)
-    while (-not (Test-LogFree $log) -and (Get-Date) -lt $end) { Start-Sleep 2 }
-    $launcher = Start-Detached "cmd /c `"`"$Emulator`" $($emuArgs -join ' ') > `"$log`" 2> `"$log.err`"`""
-    $end = (Get-Date).AddMinutes(7)
-    while (-not (Test-Booted $serial)) {
-      if ((Get-Date) -gt $end) { Die "부팅 시간 초과(7분). 로그: $log" }
-      if (-not (Get-Process -Id $launcher -ErrorAction SilentlyContinue)) { Die "에뮬레이터가 부팅 중에 종료됐습니다. 로그: $log, $log.err" }
-      Start-Sleep 5
+    else {
+      if (Get-EmulatorProcess $avd) { Die "$avd 에뮬레이터가 실행 중인데 $serial 로 연결되지 않습니다. setup.ps1 stop 후 다시 실행하세요." }
+      $end = (Get-Date).AddSeconds(60)
+      while (-not (Test-LogFree $log) -and (Get-Date) -lt $end) { Start-Sleep 2 }
+      $launcher = Start-Detached "cmd /c `"`"$Emulator`" $($emuArgs -join ' ') > `"$log`" 2> `"$log.err`"`""
+      $end = (Get-Date).AddMinutes(7)
+      while (-not (Test-Booted $serial)) {
+        if ((Get-Date) -gt $end) { Die "부팅 시간 초과(7분). 로그: $log" }
+        if (-not (Get-Process -Id $launcher -ErrorAction SilentlyContinue)) { Die "에뮬레이터가 부팅 중에 종료됐습니다. 로그: $log, $log.err" }
+        Start-Sleep 5
+      }
+      Start-Sleep 5   # vehicle / navi services come up just after boot_completed
+      Ok "부팅 완료"
     }
-    Start-Sleep 5   # vehicle / navi services come up just after boot_completed
-    Ok "부팅 완료"
   }
   if ($Record) { Invoke-Adb -s $serial shell settings put global auto_time 0 | Out-Null; Ok "시계: $(Invoke-Adb -s $serial shell date) (녹화용, 자동 시간 끔)" }
   Invoke-Adb -s $serial emu geo fix $HomeLng $HomeLat | Out-Null
@@ -350,13 +352,17 @@ function Cmd-App {
   Invoke-Gradle :app:assembleDebug
   $apk = "$Root\app\build\outputs\apk\debug\app-debug.apk"
   Say "설치 → $serial (런타임 권한 자동 허용)"
+  Invoke-Adb start-server | Out-Null   # with FOG_SERIAL nothing above started a detached server yet
   & $Adb -s $serial install -r -g $apk
   if ($LASTEXITCODE) { Die "설치 실패" }
   Say "실행"
   # AAOS runs apps as the current (non-system) user.
-  Invoke-Adb -s $serial shell am start --user current -n "$Package/.ui.MainActivity" | Out-Null
-  Start-Sleep 3
-  if (Invoke-Adb -s $serial shell pidof $Package) { Ok "앱 실행 중 ($serial)" }
+  $started = Invoke-Adb -s $serial shell am start --user current -n "$Package/.ui.MainActivity"
+  if ($started -match '^Error') { Die "앱 실행 실패: $($started -join ' ')" }
+  # Right after a cold boot the first start can take well over 3 s.
+  $end = (Get-Date).AddSeconds(30)
+  do { Start-Sleep 3; $running = Invoke-Adb -s $serial shell pidof $Package } while (-not $running -and (Get-Date) -lt $end)
+  if ($running) { Ok "앱 실행 중 ($serial)" }
   else { Die "앱 프로세스가 없습니다. adb -s $serial logcat -b crash 로 확인하세요." }
 }
 

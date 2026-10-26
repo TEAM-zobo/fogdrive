@@ -295,7 +295,12 @@ cmd_app() {
   say "실행"
   # AAOS runs apps as the current (non-system) user.
   "$ADB" -s "$serial" shell am start --user current -n "$PACKAGE/.ui.MainActivity" >/dev/null
-  sleep 3
+  # Right after a cold boot the first start can take well over 3 s.
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 3
+    "$ADB" -s "$serial" shell pidof "$PACKAGE" >/dev/null && break
+  done
   if "$ADB" -s "$serial" shell pidof "$PACKAGE" >/dev/null; then ok "앱 실행 중 ($serial)"
   else die "앱 프로세스가 없습니다. adb -s $serial logcat -b crash 로 확인하세요."; fi
 }
