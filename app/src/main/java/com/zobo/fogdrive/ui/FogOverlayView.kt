@@ -32,7 +32,8 @@ import kotlin.math.min
  * never entered, lighter inside the ones already entered; the map shows through both. The veil is
  * painted into a reduced-resolution mask and opened along every driven route as one straight band
  * with a soft white edge, then scaled up with filtering, which softens the edges.
- * The driven routes are drawn over it as a gold trail, the navigation destination as a checkered flag. It is rendered off the UI thread for an area a bit larger
+ * The driven routes are drawn over it as a gold trail, the navigation destination as a pennant and
+ * its 집 bookmark as a base camp tent. It is rendered off the UI thread for an area a bit larger
  * than the view ([FogMaskRenderer]) and only moved and scaled per frame.
  * Over the fog go the administrative boundaries (시·도 always, 시·군·구 and 읍·면·동 as the map zooms
  * in) and, for regions already entered, their name and achievement rate.
@@ -62,8 +63,10 @@ class FogOverlayView(context: Context) : View(context) {
     var route: TripRoute? = null
     /** Every trip's route: the fog is opened along it and it is drawn as a gold trail. */
     var tracks = Tracks()
-    /** Navigation destination, drawn as a checkered flag. */
+    /** Navigation destination, drawn as a pennant. */
     var destination: Pair<Double, Double>? = null
+    /** The navigation's 집 bookmark, drawn as a base camp tent. */
+    var home: Pair<Double, Double>? = null
     /** Draw the car dot here (parked). While driving a fixed centre marker is used instead. */
     var showCurrent = true
     /** Keep drawing with the transform from [captureTransform] (driving: fog moves with the slid map). */
@@ -192,8 +195,11 @@ class FogOverlayView(context: Context) : View(context) {
     private val trailShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
     private val flagShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0, 0, 0) }
     private val flagPole = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5A3D26") }
-    private val flagWhite = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-    private val flagInk = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#2F4A2C") }
+    private val flagRed = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF6B6B") }
+    private val campDisc = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFFAF0") }
+    private val campTent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFB04F") }
+    private val campDoor = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#C9762A") }
+    private val markPath = Path()
     private val flagEdge = linePaint(Color.parseColor("#2F4A2C"), 1.2f)
 
     override fun onDraw(canvas: Canvas) {
@@ -251,6 +257,7 @@ class FogOverlayView(context: Context) : View(context) {
         }
         if (route == null) drawTrail(canvas, tracks, x0, y0, pxPerCell)
         drawLandingPins(canvas, x0, y0, pxPerCell)
+        home?.let { (lat, lng) -> toScreen(lat, lng).let { drawBaseCamp(canvas, it.x, it.y) } }
         destination?.let { (lat, lng) -> toScreen(lat, lng).let { drawFlag(canvas, it.x, it.y) } }
         detour?.let { (lat, lng) ->
             val p = toScreen(lat, lng)
@@ -280,19 +287,39 @@ class FogOverlayView(context: Context) : View(context) {
         c.drawPath(trailPath, trailShine)
     }
 
-    /** Checkered flag on a pole whose foot is at ([x], [y]). */
+    /** Pennant on a pole whose foot is at ([x], [y]). */
     private fun drawFlag(c: Canvas, x: Float, y: Float) {
         val d = density
         c.drawOval(x - 9 * d, y - 3 * d, x + 9 * d, y + 3 * d, flagShadow)
         c.drawRect(x - 1.6f * d, y - 40 * d, x + 1.6f * d, y, flagPole)
-        val left = x + 1.6f * d
-        val top = y - 40 * d
-        val cell = 7 * d
-        c.drawRect(left, top, left + 4 * cell, top + 2 * cell, flagWhite)
-        for (row in 0 until 2) for (col in 0 until 4) {
-            if ((row + col) % 2 == 0) c.drawRect(left + col * cell, top + row * cell, left + (col + 1) * cell, top + (row + 1) * cell, flagInk)
-        }
-        c.drawRect(left, top, left + 4 * cell, top + 2 * cell, flagEdge)
+        markPath.rewind()
+        markPath.moveTo(x + 1.6f * d, y - 40 * d)
+        markPath.lineTo(x + 28 * d, y - 32 * d)
+        markPath.lineTo(x + 1.6f * d, y - 24 * d)
+        markPath.close()
+        c.drawPath(markPath, flagRed)
+        c.drawPath(markPath, flagEdge)
+    }
+
+    /** Base camp (the navigation's 집): a tent on a cream disc centred at ([x], [y]). */
+    private fun drawBaseCamp(c: Canvas, x: Float, y: Float) {
+        val d = density
+        c.drawCircle(x + 1.5f * d, y + 2.5f * d, 21 * d, flagShadow)
+        c.drawCircle(x, y, 21 * d, campDisc)
+        c.drawCircle(x, y, 21 * d, flagEdge)
+        markPath.rewind()
+        markPath.moveTo(x - 13 * d, y + 9 * d)
+        markPath.lineTo(x, y - 13 * d)
+        markPath.lineTo(x + 13 * d, y + 9 * d)
+        markPath.close()
+        c.drawPath(markPath, campTent)
+        c.drawPath(markPath, flagEdge)
+        markPath.rewind()
+        markPath.moveTo(x - 4 * d, y + 9 * d)
+        markPath.lineTo(x, y - 2 * d)
+        markPath.lineTo(x + 4 * d, y + 9 * d)
+        markPath.close()
+        c.drawPath(markPath, campDoor)
     }
 
     private val renderer = FogMaskRenderer(onTile = { onTile(it) }, onFailed = { onRenderFailed(it) })

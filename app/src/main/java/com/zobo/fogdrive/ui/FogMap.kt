@@ -55,6 +55,8 @@ fun FogMap(
     showWornRoads: Boolean = true,
     /** Navigation destination, marked with a flag. */
     destination: Pair<Double, Double>? = null,
+    /** The navigation's 집, marked as the base camp. */
+    home: Pair<Double, Double>? = null,
 ) {
     val context = LocalContext.current
     // One map for the whole activity when it provides one: switching tabs (or into the driving
@@ -161,8 +163,9 @@ fun FogMap(
         holder.overlay.showWornRoads = showWornRoads
         holder.overlay.invalidate()
     }
-    LaunchedEffect(destination) {
+    LaunchedEffect(destination, home) {
         holder.overlay.destination = destination
+        holder.overlay.home = home
         holder.overlay.invalidate()
     }
     LaunchedEffect(route) {

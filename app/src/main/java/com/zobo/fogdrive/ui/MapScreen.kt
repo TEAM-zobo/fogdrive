@@ -51,6 +51,7 @@ fun MapScreen(viewModel: MainViewModel) {
     val landings by viewModel.landings.collectAsState()
     val detour by viewModel.detour.collectAsState()
     val destination by viewModel.navi.destination.collectAsState()
+    val home by viewModel.navi.home.collectAsState()
     val vehicle by viewModel.vehicle.collectAsState()
     val here by viewModel.here.collectAsState()
     val focus by viewModel.mapFocus.collectAsState()
@@ -94,6 +95,7 @@ fun MapScreen(viewModel: MainViewModel) {
             // Roads driven show as the gold trail; the worn-road tint would band around it.
             showWornRoads = false,
             destination = destination?.let { it.lat to it.lng },
+            home = home?.let { it.lat to it.lng },
         )
 
         // Header: level and where the car is in the region dex. The nationwide count is in the dex

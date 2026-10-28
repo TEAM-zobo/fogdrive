@@ -5,6 +5,7 @@ import ai.pleos.playground.navi.constants.NavigationStatus
 import ai.pleos.playground.navi.constants.RouteOption
 import ai.pleos.playground.navi.constants.TurnType
 import ai.pleos.playground.navi.constants.WaypointIndex
+import ai.pleos.playground.navi.constants.BookmarkType
 import ai.pleos.playground.navi.data.BookmarkInfo
 import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.DestinationInfo
@@ -45,6 +46,10 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     private val _bookmarks = MutableStateFlow<List<Place>?>(null)
     val bookmarks: StateFlow<List<Place>?> = _bookmarks.asStateFlow()
+
+    /** The bookmark saved as 집 in the navigation (the map's base camp), if any. */
+    private val _home = MutableStateFlow<Place?>(null)
+    val home: StateFlow<Place?> = _home.asStateFlow()
 
     private val _destination = MutableStateFlow<Place?>(null)
     val destination: StateFlow<Place?> = _destination.asStateFlow()
@@ -182,6 +187,16 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     override fun onBookmarkInfo(bookmarkInfoList: List<BookmarkInfo>) {
         _bookmarks.value = bookmarkInfoList.map { Place(it.name ?: "즐겨찾기", it.latitude, it.longitude, it.address) }
+        // An unset 집 comes through as (0, 0) (seen on the emulator): no base camp then.
+        _home.value = bookmarkInfoList.firstOrNull { it.category == BookmarkType.HOME && (it.latitude != 0.0 || it.longitude != 0.0) }
+            ?.let { Place(it.name ?: "집", it.latitude, it.longitude, it.address) }
+        // Counts only: the places themselves stay out of the log.
+        Log.i(TAG, "bookmarks: ${bookmarkInfoList.size}, by category ${bookmarkInfoList.groupingBy { it.category }.eachCount()}")
+    }
+
+    override fun onBookMarkChanged() {
+        val h = helper ?: return
+        call("bookmark") { h.getBookmarkInfo() }
     }
 
     override fun onDestinationInfo(destinationInfo: DestinationInfo) {
