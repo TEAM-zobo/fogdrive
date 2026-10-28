@@ -29,7 +29,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-COURSES = os.path.join(ROOT, "app/src/main/java/com/zobo/fogdrive/demo/DemoCourses.kt")
+COURSES = os.path.join(ROOT, "app/src/main/java/com/zobo/burung/demo/DemoCourses.kt")
 OUT = os.path.join(ROOT, "tools", "demo", "out", "fogdrive-backup.json")
 
 KST = timezone(timedelta(hours=9))

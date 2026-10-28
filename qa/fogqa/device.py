@@ -6,7 +6,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 
-PACKAGE = "com.zobo.fogdrive"
+PACKAGE = "com.zobo.burung"
 ACTIVITY = f"{PACKAGE}/.ui.MainActivity"
 RUNTIME_PERMISSIONS = [
     "android.permission.ACCESS_FINE_LOCATION",
@@ -181,7 +181,7 @@ class Device:
 
     def top_activity(self):
         out = self.shell("dumpsys", "activity", "activities")
-        # e.g. topResumedActivity=ActivityRecord{76b3727 u10 com.zobo.fogdrive/.ui.MainActivity t1000017}
+        # e.g. topResumedActivity=ActivityRecord{76b3727 u10 com.zobo.burung/.ui.MainActivity t1000017}
         m = re.search(r"topResumedActivity=ActivityRecord\{\S+ \S+ (\S+)", out)
         return m.group(1) if m else ""
 
@@ -274,7 +274,7 @@ def shutdown(dev):
 
 def demo_route():
     """Road path of the default demo course (single source: DemoCourses.kt, SEONGSU_ROUTE)."""
-    src = os.path.join(ROOT, "app/src/main/java/com/zobo/fogdrive/demo/DemoCourses.kt")
+    src = os.path.join(ROOT, "app/src/main/java/com/zobo/burung/demo/DemoCourses.kt")
     with open(src, encoding="utf-8") as f:
         body = f.read().split("val SEONGSU_ROUTE", 1)[1].split("\n    )", 1)[0]
     return [(float(a), float(b)) for a, b in re.findall(r"(\d+\.\d+) to (\d+\.\d+)", body)]

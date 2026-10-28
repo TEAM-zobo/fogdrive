@@ -23,7 +23,7 @@ QA_SERIAL="emulator-5556"
 IMAGE_PKG_DIR="system-images/android-34/pleos_car_emulator"
 HOME_LNG=126.89592                        # 고양시 향동 향기5로 66, start of every demo course
 HOME_LAT=37.60852
-PACKAGE="com.zobo.fogdrive"
+PACKAGE="com.zobo.burung"
 CMDLINE_TOOLS_BUILD=11076708
 
 case "$(uname -s)" in

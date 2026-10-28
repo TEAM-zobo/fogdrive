@@ -93,7 +93,7 @@ def a1_first_launch():
     """First open: loading, the five-page tutorial, then the fogged map with the navigation's recent
     places already cleared."""
     record("a1_first_launch", 26, [
-        (0.5, lambda: dev.shell("am", "start", "--user", "current", "-n", "com.zobo.fogdrive/.ui.MainActivity")),
+        (0.5, lambda: dev.shell("am", "start", "--user", "current", "-n", "com.zobo.burung/.ui.MainActivity")),
         *[(t, lambda: tap(TUTORIAL_NEXT)) for t in (7.5, 10.5, 13.5, 16.5, 19.5)],
     ])
 

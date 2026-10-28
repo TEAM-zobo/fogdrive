@@ -159,7 +159,7 @@ Gradle은 `gradlew.bat`, adb는 `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.e
 
 ```bash
 adb devices                                    # emulator-5554  device
-adb shell pidof com.zobo.fogdrive              # 숫자가 나오면 실행 중
+adb shell pidof com.zobo.burung              # 숫자가 나오면 실행 중
 adb exec-out screencap -p > screen.png         # 화면 캡처
 curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 ```

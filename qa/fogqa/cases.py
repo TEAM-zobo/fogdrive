@@ -416,7 +416,7 @@ def tc_back(ctx):
     ctx.check(ctx.dev.wait_text("나의 개척 기록", timeout=5), "기록 화면")
     ctx.dev.key("back")
     ctx.check(ctx.dev.wait_text("Lv.", timeout=5), "지도 화면 복귀")
-    ctx.check("com.zobo.fogdrive" in ctx.dev.top_activity(), "앱 포그라운드 유지")
+    ctx.check("com.zobo.burung" in ctx.dev.top_activity(), "앱 포그라운드 유지")
 
 
 @case("TC-16", "튜토리얼", "첫 실행 때 튜토리얼이 뜨고, 끝내면 다시 뜨지 않으며, 설정에서 다시 볼 수 있다",

@@ -14,11 +14,11 @@ val keystoreProps = Properties().apply {
 }
 
 android {
-    namespace = "com.zobo.fogdrive"
+    namespace = "com.zobo.burung"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.zobo.fogdrive"
+        applicationId = "com.zobo.burung"
         // Pleos Connect requires API 28+ (signing key rotation / lineage).
         minSdk = 28
         targetSdk = 35

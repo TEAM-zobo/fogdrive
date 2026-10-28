@@ -28,7 +28,7 @@ $ImageRepo = "https://nexus-playground.pleos.ai/repository/raw-releases/connect-
 $ImagePkgDir = "system-images\android-34\pleos_car_emulator"
 $HomeLng = "126.89592"                   # 고양시 향동 향기5로 66, start of every demo course
 $HomeLat = "37.60852"
-$Package = "com.zobo.fogdrive"
+$Package = "com.zobo.burung"
 $CmdlineToolsBuild = "11076708"
 
 function Say($m) { Write-Host "==> $m" -ForegroundColor Cyan }

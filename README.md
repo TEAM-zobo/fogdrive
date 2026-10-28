@@ -22,7 +22,7 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 ## APK
 
 - Release APK: [`apk/zobo_FogDrive_release.apk`](apk/zobo_FogDrive_release.apk)
-- 패키지: `com.zobo.fogdrive` · 버전 0.1.0 · minSdk 28 · targetSdk 35 · ABI arm64-v8a, x86_64
+- 패키지: `com.zobo.burung` · 버전 0.1.0 · minSdk 28 · targetSdk 35 · ABI arm64-v8a, x86_64
 - Release 빌드는 R8 + 리소스 축소를 적용합니다(74MB → 약 36MB). 대부분은 지도 엔진(MapLibre) 네이티브 라이브러리 두 ABI(26MB)이고, 설치 후 압축을 풀어 복사하지 않고 바로 매핑하도록 비압축으로 넣습니다.
 
 ## 주요 기능
@@ -143,7 +143,7 @@ powershell -ExecutionPolicy Bypass -File tools\setup\setup.ps1 all
 
 ```bash
 adb install -r -g apk/zobo_FogDrive_release.apk
-adb shell am start -n com.zobo.fogdrive/.ui.MainActivity
+adb shell am start -n com.zobo.burung/.ui.MainActivity
 ```
 
 `-g`를 빼고 설치하면 첫 실행 때 위치·FusedLocation·알림 권한을 요청합니다. 권한을 허용하면 기록 서비스가 시작됩니다.
@@ -240,7 +240,7 @@ Pleos 에뮬레이터에서 실제 SDK 경로로 기능별 TC 21개를 자동 �
 ## 구조
 
 ```
-app/src/main/java/com/zobo/fogdrive/
+app/src/main/java/com/zobo/burung/
   car/        Vehicle SDK·AAOS 신호(창문·주행 모드·주행 가능 거리 포함), 위치 피드, NaviHelper 브리지
   record/     기록 규칙·스탬프(TripRecorder, 단위 테스트), 포그라운드 서비스, 부팅 수신기
   data/       Room DB(v4), 탐험 저장소, 백업, 클라우드 동기화
