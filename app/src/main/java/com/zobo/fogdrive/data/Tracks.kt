@@ -3,8 +3,8 @@ package com.zobo.fogdrive.data
 import com.zobo.fogdrive.geo.Tiles
 
 /**
- * Every trip's driven route in zoom-20 tile units: the map opens the ground along it. Loaded with the
- * cells, then extended by the recorder; read by the map threads.
+ * Every trip's driven route in zoom-20 tile units: the map opens the ground along it and draws it as
+ * the gold trail. Loaded with the cells, then extended by the recorder; read by the map threads.
  */
 class Tracks {
     private class Line {

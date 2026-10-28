@@ -402,7 +402,7 @@ class RecordingService : Service() {
         }
         demoSession = true
         val course = DemoCourses.byId(FogRuntime.demoPrefs.courseId.value)
-        FogRuntime.navi.setDemoDestination(course.destination, course.route)
+        FogRuntime.navi.setDemoDestination(course.destination)
         val d = DemoDrive(
             scope = scope,
             onFix = { fix -> scope.launch { handleFix(fix) } },

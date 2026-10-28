@@ -49,13 +49,6 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     private val _destination = MutableStateFlow<Place?>(null)
     val destination: StateFlow<Place?> = _destination.asStateFlow()
 
-    /**
-     * The road the guidance will follow, when its shape is known: only the demo's course for now,
-     * since NaviHelper reports the destination and waypoints but not the route line between them.
-     */
-    private val _plannedRoute = MutableStateFlow<List<Pair<Double, Double>>?>(null)
-    val plannedRoute: StateFlow<List<Pair<Double, Double>>?> = _plannedRoute.asStateFlow()
-
     private val _guidance = MutableStateFlow(Guidance())
     /**
      * The demo drives its own guidance. The real navigation keeps reporting for where the car really
@@ -158,9 +151,8 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     /** Demo mode stand-in when no navigation destination exists in the emulator. */
-    fun setDemoDestination(place: Place?, route: List<Pair<Double, Double>>? = null) {
+    fun setDemoDestination(place: Place?) {
         _destination.value = place
-        _plannedRoute.value = route
         if (place == null) refreshDestination()
     }
 
