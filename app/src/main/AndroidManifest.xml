@@ -72,7 +72,7 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
-        <!-- Hands the "내 안개지도" card image to a share target, when the car has one. -->
+        <!-- Hands the "내 탐험 지도" card image to a share target, when the car has one. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.cards"

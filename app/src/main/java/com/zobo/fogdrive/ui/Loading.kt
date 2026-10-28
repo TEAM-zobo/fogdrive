@@ -115,7 +115,7 @@ fun LoadingOverlay() {
                 }
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    "안개지도",
+                    "부릉탐험대",
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
                     color = FogColors.TextMain,
                 )

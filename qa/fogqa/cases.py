@@ -422,30 +422,30 @@ def tc_back(ctx):
 @case("TC-16", "튜토리얼", "첫 실행 때 튜토리얼이 뜨고, 끝내면 다시 뜨지 않으며, 설정에서 다시 볼 수 있다",
       "앱 데이터 초기화, 튜토리얼 건너뛰기 없이 실행",
       ["앱 첫 실행", "다음 4번 → 시작하기", "앱 재시작", "설정 → 튜토리얼 다시 보기 → 건너뛰기"],
-      ["'안개지도 둘러보기 1/5' 표시", "시작하기 후 닫힘", "재시작해도 다시 뜨지 않음", "설정에서 다시 열리고 건너뛰기로 닫힘"])
+      ["'부릉탐험대 둘러보기 1/5' 표시", "시작하기 후 닫힘", "재시작해도 다시 뜨지 않음", "설정에서 다시 열리고 건너뛰기로 닫힘"])
 def tc_tutorial(ctx):
     ctx.vc.reset()
     ctx.dev.app_stop()
     ctx.dev.app_reset()
     ctx.dev.geo(*START)
     ctx.dev.app_start(tutorial=True)
-    ctx.check(ctx.dev.wait_text("안개지도 둘러보기 1/5", timeout=10, exact=True), "튜토리얼 1/5 표시")
+    ctx.check(ctx.dev.wait_text("부릉탐험대 둘러보기 1/5", timeout=10, exact=True), "튜토리얼 1/5 표시")
     ctx.shot("tutorial")
     for _ in range(4):
         ctx.dev.tap_text("다음")
         time.sleep(0.5)
-    ctx.check(ctx.dev.find("안개지도 둘러보기 5/5") is not None, "마지막 장")
+    ctx.check(ctx.dev.find("부릉탐험대 둘러보기 5/5") is not None, "마지막 장")
     ctx.dev.tap_text("시작하기")
-    ctx.check(ctx.dev.wait_text("안개지도 둘러보기", timeout=5, present=False), "시작하기 후 닫힘")
+    ctx.check(ctx.dev.wait_text("부릉탐험대 둘러보기", timeout=5, present=False), "시작하기 후 닫힘")
     ctx.dev.app_stop()
     ctx.dev.app_start(tutorial=True)
     time.sleep(2)
-    ctx.check(ctx.dev.find("안개지도 둘러보기 1/5") is None, "재시작해도 다시 뜨지 않음")
+    ctx.check(ctx.dev.find("부릉탐험대 둘러보기 1/5") is None, "재시작해도 다시 뜨지 않음")
     ctx.dev.tap_text("설정")
     tap_scrolling(ctx, "다시 보기")
-    ctx.check(ctx.dev.wait_text("안개지도 둘러보기 1/5", timeout=5, exact=True), "설정에서 다시 열림")
+    ctx.check(ctx.dev.wait_text("부릉탐험대 둘러보기 1/5", timeout=5, exact=True), "설정에서 다시 열림")
     ctx.dev.tap_text("건너뛰기")
-    ctx.check(ctx.dev.wait_text("안개지도 둘러보기", timeout=5, present=False), "건너뛰기로 닫힘")
+    ctx.check(ctx.dev.wait_text("부릉탐험대 둘러보기", timeout=5, present=False), "건너뛰기로 닫힘")
 
 
 @case("TC-17", "상황 스탬프", "창문을 열고 새 길을 달리면 '바람길 개척'을 얻는다",
@@ -513,9 +513,9 @@ def tc_vehicle_extras(ctx):
     ctx.check("주행 가능 250 km" in state, "주행 가능 거리 250 km")
 
 
-@case("TC-21", "공유 카드", "기록 탭에서 '내 안개지도 카드'를 만들면 이미지가 저장되고 미리보기가 뜬다",
+@case("TC-21", "공유 카드", "기록 탭에서 '내 탐험 지도 카드'를 만들면 이미지가 저장되고 미리보기가 뜬다",
       "앱 초기화 후 한 번 주행",
-      ["기어 D로 10개 지점 주행 후 P", "기록 탭 → 내 안개지도 카드", "미리보기 확인 후 닫기"],
+      ["기어 D로 10개 지점 주행 후 P", "기록 탭 → 내 탐험 지도 카드", "미리보기 확인 후 닫기"],
       ["미리보기 대화상자와 '이미지로 저장했어요' 표시", "앱 저장소에 PNG 파일 생성"])
 def tc_share_card(ctx):
     fresh(ctx)
@@ -524,7 +524,7 @@ def tc_share_card(ctx):
     park(ctx)
     ctx.dev.tap_text("기록")
     ctx.dev.shell("logcat", "-c")
-    ctx.dev.tap_text("내 안개지도 카드")
+    ctx.dev.tap_text("내 탐험 지도 카드")
     ctx.check(ctx.dev.wait_text("이미지로 저장했어요", timeout=10), "저장 안내 표시")
     ctx.shot("share_card")
     # The driver profile's app folder isn't readable over adb; the app logs what it saved.

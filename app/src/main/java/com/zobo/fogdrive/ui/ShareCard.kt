@@ -21,7 +21,7 @@ import kotlin.math.ln
 import kotlin.math.max
 
 /**
- * "내 안개지도" card: the explored footprint drawn as glowing cells on the fog, with level, area,
+ * "내 탐험 지도" card: the explored footprint drawn as glowing cells on the fog, with level, area,
  * 읍·면·동 count and the best-explored 시·군·구, saved as a PNG to share. Drawn from the explored set
  * itself (not a screenshot), so it works offline and never shows street detail around home.
  */
@@ -85,7 +85,7 @@ object ShareCard {
         val big = text(96f, Color.rgb(0x2E, 0xD3, 0xB7), bold = true)
         val value = text(54f, Color.WHITE, bold = true)
         val label = text(30f, Color.rgb(0x8C, 0x98, 0xAB))
-        c.drawText("안개지도 · 나의 개척 기록", x, 120f, title)
+        c.drawText("부릉탐험대 · 나의 개척 기록", x, 120f, title)
         c.drawText("Lv.${s.level}", x, 250f, big)
         var y = 360f
         fun row(name: String, v: String) {
@@ -97,7 +97,7 @@ object ShareCard {
         row("개척한 읍·면·동", "${s.dongs}곳 · 하차 ${s.landings}곳")
         row("모은 스탬프", "${s.stampKinds}종")
         s.topDistrict?.let { c.drawText("가장 많이 밝힌 곳  $it ${formatRate(s.topRate)}", x, y + 10f, label) }
-        c.drawText(SimpleDateFormat("yyyy.MM.dd", Locale.KOREA).format(Date()) + "  ·  #안개지도", x, HEIGHT - 60f, title)
+        c.drawText(SimpleDateFormat("yyyy.MM.dd", Locale.KOREA).format(Date()) + "  ·  #부릉탐험대", x, HEIGHT - 60f, title)
     }
 
     /**

@@ -71,7 +71,7 @@ fun RecordScreen(viewModel: MainViewModel, onShowTrip: (TripEntity) -> Unit) {
             Spacer(Modifier.width(12.dp))
             OutlinedButton(onClick = { viewModel.makeShareCard(context) }, shape = RoundedCornerShape(4.dp)) {
                 Icon(Icons.Outlined.Share, contentDescription = null, tint = FogColors.Accent)
-                Text("내 안개지도 카드", modifier = Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), color = FogColors.TextMain)
+                Text("내 탐험 지도 카드", modifier = Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp), color = FogColors.TextMain)
             }
         }
         cardMessage?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = FogColors.Amber) }
@@ -169,8 +169,8 @@ private fun ShareCardDialog(file: File, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose) {
         // A dialog is its own window, outside the root's click sounds.
         FogCard(Modifier.width(860.dp).clickSounds(), padding = 28.dp) {
-            Text("내 안개지도 카드", style = MaterialTheme.typography.headlineSmall)
-            preview?.let { Image(it, contentDescription = "내 안개지도 카드", modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) }
+            Text("내 탐험 지도 카드", style = MaterialTheme.typography.headlineSmall)
+            preview?.let { Image(it, contentDescription = "내 탐험 지도 카드", modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) }
             Text(
                 if (share != null) "이미지로 저장했어요. 공유 버튼으로 보낼 수 있어요."
                 else "이미지로 저장했어요. USB나 adb로 옮길 수 있어요:\n${file.path}",
@@ -180,7 +180,7 @@ private fun ShareCardDialog(file: File, onClose: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 share?.let { intent ->
                     Button(
-                        onClick = { context.startActivity(Intent.createChooser(intent, "내 안개지도 공유").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
+                        onClick = { context.startActivity(Intent.createChooser(intent, "내 탐험 지도 공유").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
                         shape = RoundedCornerShape(4.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = FogColors.Accent, contentColor = FogColors.OnAccent),
                     ) { Text("공유", modifier = Modifier.padding(8.dp)) }

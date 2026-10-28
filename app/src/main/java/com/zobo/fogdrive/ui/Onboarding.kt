@@ -90,7 +90,7 @@ fun Onboarding(onDone: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 IconBadge(p.icon, p.color, size = 72.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("안개지도 둘러보기 ${page + 1}/${all.size}", style = MaterialTheme.typography.titleSmall, color = FogColors.TextSub)
+                    Text("부릉탐험대 둘러보기 ${page + 1}/${all.size}", style = MaterialTheme.typography.titleSmall, color = FogColors.TextSub)
                     Text(p.title, style = MaterialTheme.typography.headlineMedium, color = FogColors.TextMain)
                 }
             }

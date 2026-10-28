@@ -39,7 +39,7 @@ enum class StampCode(val title: String, val description: String) {
     MARATHON("마라톤 드라이브", "한 번의 주행으로 100 km 넘게 달렸어요"),
     ALL_NEW("완전 개척", "5 km 넘는 주행을 90% 넘게 새 길로만 달렸어요"),
     HOMECOMING("귀소 본능", "10 km 넘게 달린 뒤 출발한 곳으로 돌아와 내렸어요"),
-    FIRST_DRIVE("첫 시동", "안개지도와 함께 첫 주행을 시작했어요"),
+    FIRST_DRIVE("첫 시동", "부릉탐험대와 함께 첫 주행을 시작했어요"),
     DONG_HOPPER("동네 순례", "한 번의 주행으로 새 읍·면·동을 5곳 넘게 지났어요"),
     PROVINCE_CROSS("경계 넘어", "한 번의 주행으로 시·도 경계를 넘었어요"),
     NEW_PROVINCE("새 땅 밟기", "처음 가 보는 시·도에 들어섰어요"),

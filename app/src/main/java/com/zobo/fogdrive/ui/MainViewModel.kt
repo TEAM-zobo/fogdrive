@@ -408,7 +408,7 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    /** The last "내 안개지도" card made on the record screen (shown until closed), or why it failed. */
+    /** The last "내 탐험 지도" card made on the record screen (shown until closed), or why it failed. */
     val shareCard = MutableStateFlow<java.io.File?>(null)
     val shareCardMessage = MutableStateFlow<String?>(null)
 

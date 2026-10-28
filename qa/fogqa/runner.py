@@ -177,7 +177,7 @@ def tc_doc(path):
         )
     page = f"""<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>안개지도 테스트 케이스</title>
+<title>부릉탐험대 테스트 케이스</title>
 <style>
 :root{{--bg:#f6f7f9;--surface:#fff;--surface-2:#eef1f5;--text:#151a21;--sub:#5b6676;--line:#dde2e9;--accent:#0a9b72;--accent-soft:#e2f6ef}}
 @media (prefers-color-scheme: dark){{:root:not([data-theme="light"]){{--bg:#0e1218;--surface:#161c25;--surface-2:#1f2733;--text:#eef2f6;--sub:#9aa6b5;--line:#2a3340;--accent:#5ee6b8;--accent-soft:#143329}}}}
@@ -191,7 +191,7 @@ td.id{{font-weight:700;white-space:nowrap}} ol,ul{{margin:0;padding-left:18px}} 
 .tag{{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;white-space:nowrap}}
 code{{background:var(--surface-2);padding:1px 6px;border-radius:6px}}
 </style></head><body><main>
-<h1>안개지도 기능별 테스트 케이스</h1>
+<h1>부릉탐험대 기능별 테스트 케이스</h1>
 <p class="sub">{len(CASES)}개 TC · 모두 자동화. 이 문서는 <code>qa/fogqa/cases.py</code>에서 생성됩니다(<code>python3 -m fogqa tc-doc</code>).</p>
 <p>모든 TC는 Pleos Connect Emulator에서 실제 SDK 경로로 실행됩니다. 차량 신호는 Virtual Console API로, 위치는 <code>adb emu geo fix</code>로 주입하고, 화면은 UIAutomator로 판독합니다. 각 TC는 앱 데이터 초기화와 차량 상태 초기화(P단, 도어 닫힘, 와이퍼·전조등 끔, 동승자 없음)에서 시작합니다.</p>
 <div class="wrap"><table><thead><tr><th>ID</th><th>기능</th><th>테스트</th><th>단계</th><th>기대 결과</th><th>방식</th></tr></thead>
