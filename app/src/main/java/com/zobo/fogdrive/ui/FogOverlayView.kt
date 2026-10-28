@@ -193,14 +193,29 @@ class FogOverlayView(context: Context) : View(context) {
     private val trailCasing = linePaint(Color.parseColor("#A5742F"), 15f).apply { strokeCap = Paint.Cap.ROUND }
     private val trailGold = linePaint(Color.parseColor("#FFD25E"), 10f).apply { strokeCap = Paint.Cap.ROUND }
     private val trailShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
-    private val flagShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0, 0, 0) }
-    private val flagPole = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5A3D26") }
+    private val markShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(64, 0, 0, 0) }
+    private val flagPole = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#8A5A3A") }
     private val flagRed = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF6B6B") }
-    private val campDisc = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFFAF0") }
+    private val flagKnob = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFD25E") }
     private val campTent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFB04F") }
     private val campDoor = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#C9762A") }
+    private val campLog = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#8A5A3A") }
+    private val campFire = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFB03B") }
     private val markPath = Path()
-    private val flagEdge = linePaint(Color.parseColor("#2F4A2C"), 1.2f)
+    private val markRect = RectF()
+    /** Ink outlines in marker units (see [beginMark]), so they scale with it. */
+    private fun markInk(width: Float) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#2F4A2C")
+        style = Paint.Style.STROKE
+        strokeWidth = width
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val markInk2 = markInk(2f)
+    private val markInk25 = markInk(2.5f)
+    private val markInk3 = markInk(3f)
+    private val markInk35 = markInk(3.5f)
+    private val markInk4 = markInk(4f)
 
     override fun onDraw(canvas: Canvas) {
         if (map == null) return
@@ -289,39 +304,70 @@ class FogOverlayView(context: Context) : View(context) {
         c.drawPath(trailPath, trailShine)
     }
 
-    /** Pennant on a pole whose foot is at ([x], [y]). */
-    private fun drawFlag(c: Canvas, x: Float, y: Float) {
-        val d = density
-        c.drawOval(x - 9 * d, y - 3 * d, x + 9 * d, y + 3 * d, flagShadow)
-        c.drawRect(x - 1.6f * d, y - 40 * d, x + 1.6f * d, y, flagPole)
-        markPath.rewind()
-        markPath.moveTo(x + 1.6f * d, y - 40 * d)
-        markPath.lineTo(x + 28 * d, y - 32 * d)
-        markPath.lineTo(x + 1.6f * d, y - 24 * d)
-        markPath.close()
-        c.drawPath(markPath, flagRed)
-        c.drawPath(markPath, flagEdge)
+    /**
+     * The markers are drawn in their design's units (a pole ~110 tall), scaled to the screen with
+     * the foot at ([x], [y]); [MARK_DP] dp per unit puts the flag at ~70 dp.
+     */
+    private fun beginMark(c: Canvas, x: Float, y: Float) {
+        c.save()
+        c.translate(x, y)
+        c.scale(MARK_DP * density, MARK_DP * density)
     }
 
-    /** Base camp (the navigation's 집): a tent on a cream disc centred at ([x], [y]). */
-    private fun drawBaseCamp(c: Canvas, x: Float, y: Float) {
-        val d = density
-        c.drawCircle(x + 1.5f * d, y + 2.5f * d, 21 * d, flagShadow)
-        c.drawCircle(x, y, 21 * d, campDisc)
-        c.drawCircle(x, y, 21 * d, flagEdge)
+    /** Destination: a thick pole with a gold knob and a waving red pennant. */
+    private fun drawFlag(c: Canvas, x: Float, y: Float) {
+        beginMark(c, x, y)
+        c.drawOval(-26f, -3.3f, 26f, 11.3f, markShadow)
+        markRect.set(-4f, -110f, 4f, 0f)
+        c.drawRoundRect(markRect, 4f, 4f, flagPole)
+        c.drawRoundRect(markRect, 4f, 4f, markInk3)
         markPath.rewind()
-        markPath.moveTo(x - 13 * d, y + 9 * d)
-        markPath.lineTo(x, y - 13 * d)
-        markPath.lineTo(x + 13 * d, y + 9 * d)
+        markPath.moveTo(4f, -104f)
+        markPath.quadTo(30f, -108f, 62f, -88f)
+        markPath.quadTo(30f, -74f, 4f, -70f)
+        markPath.close()
+        c.drawPath(markPath, flagRed)
+        c.drawPath(markPath, markInk4)
+        c.drawCircle(0f, -112f, 7f, flagKnob)
+        c.drawCircle(0f, -112f, 7f, markInk25)
+        c.restore()
+    }
+
+    /** Base camp (the navigation's 집): a big tent with a pennant on top and a campfire beside it. */
+    private fun drawBaseCamp(c: Canvas, x: Float, y: Float) {
+        beginMark(c, x, y)
+        c.drawOval(-46f, -8.9f, 46f, 16.9f, markShadow)
+        markPath.rewind()
+        markPath.moveTo(-46f, 0f)
+        markPath.lineTo(0f, -78f)
+        markPath.lineTo(46f, 0f)
         markPath.close()
         c.drawPath(markPath, campTent)
-        c.drawPath(markPath, flagEdge)
+        c.drawPath(markPath, markInk4)
         markPath.rewind()
-        markPath.moveTo(x - 4 * d, y + 9 * d)
-        markPath.lineTo(x, y - 2 * d)
-        markPath.lineTo(x + 4 * d, y + 9 * d)
+        markPath.moveTo(-12f, 0f)
+        markPath.lineTo(0f, -40f)
+        markPath.lineTo(12f, 0f)
         markPath.close()
         c.drawPath(markPath, campDoor)
+        c.drawPath(markPath, markInk3)
+        c.drawLine(0f, -78f, 0f, -104f, markInk35)
+        markPath.rewind()
+        markPath.moveTo(0f, -104f)
+        markPath.lineTo(24f, -96f)
+        markPath.lineTo(0f, -88f)
+        markPath.close()
+        c.drawPath(markPath, flagRed)
+        c.drawPath(markPath, markInk25)
+        c.drawCircle(56f, -6f, 9f, campLog)
+        markPath.rewind()
+        markPath.moveTo(56f, -30f)
+        markPath.quadTo(66f, -12f, 56f, -8f)
+        markPath.quadTo(46f, -12f, 56f, -30f)
+        markPath.close()
+        c.drawPath(markPath, campFire)
+        c.drawPath(markPath, markInk2)
+        c.restore()
     }
 
     private val renderer = FogMaskRenderer(onTile = { onTile(it) }, onFailed = { onRenderFailed(it) })
@@ -737,6 +783,8 @@ class FogOverlayView(context: Context) : View(context) {
 
     companion object {
         const val DONG = 2
+        /** Marker scale: dp per design unit (the destination flag is ~110 units tall). */
+        const val MARK_DP = 0.64f
         /** Screen px per grid cell from which 읍·면·동 (zoom ~13) / 시·군·구 (zoom ~9) are drawn. */
         const val DONG_LINES_PX = 4.0
         const val DISTRICT_LINES_PX = 0.25
