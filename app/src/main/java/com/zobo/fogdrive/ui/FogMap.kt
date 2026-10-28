@@ -55,6 +55,8 @@ fun FogMap(
     showWornRoads: Boolean = true,
     /** Navigation destination, marked with a flag. */
     destination: Pair<Double, Double>? = null,
+    /** The route being guided, drawn as a gold bar (when its shape is known). */
+    plannedRoute: List<Pair<Double, Double>>? = null,
 ) {
     val context = LocalContext.current
     // One map for the whole activity when it provides one: switching tabs (or into the driving
@@ -161,8 +163,9 @@ fun FogMap(
         holder.overlay.showWornRoads = showWornRoads
         holder.overlay.invalidate()
     }
-    LaunchedEffect(destination) {
+    LaunchedEffect(destination, plannedRoute) {
         holder.overlay.destination = destination
+        holder.overlay.plannedRoute = plannedRoute
         holder.overlay.invalidate()
     }
     LaunchedEffect(route) {

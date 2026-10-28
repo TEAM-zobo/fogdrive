@@ -32,7 +32,7 @@ import kotlin.math.min
  * never entered, lighter inside the ones already entered; the map shows through both. The veil is
  * painted into a reduced-resolution mask and opened along every driven route as one straight band
  * with a soft white edge, then scaled up with filtering, which softens the edges.
- * The driven routes are drawn over it as a gold trail, the navigation destination as a checkered flag. It is rendered off the UI thread for an area a bit larger
+ * The route the navigation is guiding along is drawn as a gold bar, its destination as a checkered flag. It is rendered off the UI thread for an area a bit larger
  * than the view ([FogMaskRenderer]) and only moved and scaled per frame.
  * Over the fog go the administrative boundaries (시·도 always, 시·군·구 and 읍·면·동 as the map zooms
  * in) and, for regions already entered, their name and achievement rate.
@@ -60,8 +60,10 @@ class FogOverlayView(context: Context) : View(context) {
     var detour: Pair<Double, Double>? = null
     /** A past trip picked on the record screen: its route as a line, or (older trips) its cells as dots. */
     var route: TripRoute? = null
-    /** Every trip's route: the fog is opened along it and it is drawn as a gold trail. */
+    /** Every trip's route: the fog is opened along it. */
     var tracks = Tracks()
+    /** The route the navigation is guiding along, drawn as a gold bar. */
+    var plannedRoute: List<Pair<Double, Double>>? = null
     /** Navigation destination, drawn as a checkered flag. */
     var destination: Pair<Double, Double>? = null
     /** Draw the car dot here (parked). While driving a fixed centre marker is used instead. */
@@ -185,11 +187,11 @@ class FogOverlayView(context: Context) : View(context) {
     private val routeDot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(170, 0xFF, 0x99, 0x00) }
     private val routeStart = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#111111") }
     private val routeEnd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
-    // The road driven on this trip: gold over a brown edge, with a light dashed centre line.
-    private val trailPath = Path()
-    private val trailCasing = linePaint(Color.parseColor("#A5742F"), 15f).apply { strokeCap = Paint.Cap.ROUND }
-    private val trailGold = linePaint(Color.parseColor("#FFD25E"), 10f).apply { strokeCap = Paint.Cap.ROUND }
-    private val trailShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
+    // The planned route: gold over a brown edge, with a light dashed centre line.
+    private val planPath = Path()
+    private val planCasing = linePaint(Color.parseColor("#A5742F"), 15f).apply { strokeCap = Paint.Cap.ROUND }
+    private val planGold = linePaint(Color.parseColor("#FFD25E"), 10f).apply { strokeCap = Paint.Cap.ROUND }
+    private val planShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
     private val flagShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0, 0, 0) }
     private val flagPole = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5A3D26") }
     private val flagWhite = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
@@ -249,7 +251,7 @@ class FogOverlayView(context: Context) : View(context) {
                 for ((lat, lng) in r.points) canvas.drawCircle(sx(lng), sy(lat), radius, routeDot)
             }
         }
-        if (route == null) drawTrail(canvas, tracks, x0, y0, pxPerCell)
+        if (route == null) plannedRoute?.let { drawPlannedRoute(canvas, it, x0, y0, pxPerCell) }
         drawLandingPins(canvas, x0, y0, pxPerCell)
         destination?.let { (lat, lng) -> toScreen(lat, lng).let { drawFlag(canvas, it.x, it.y) } }
         detour?.let { (lat, lng) ->
@@ -262,22 +264,17 @@ class FogOverlayView(context: Context) : View(context) {
         }
     }
 
-    private fun drawTrail(c: Canvas, t: Tracks, x0: Double, y0: Double, px: Double) {
-        trailPath.rewind()
-        var drawn = false
-        t.forEach { xs, ys, n ->
-            if (n < 2) return@forEach
-            drawn = true
-            for (i in 0 until n) {
-                val x = ((xs[i] - x0) * px).toFloat()
-                val y = ((ys[i] - y0) * px).toFloat()
-                if (i == 0) trailPath.moveTo(x, y) else trailPath.lineTo(x, y)
-            }
+    private fun drawPlannedRoute(c: Canvas, points: List<Pair<Double, Double>>, x0: Double, y0: Double, px: Double) {
+        if (points.size < 2) return
+        planPath.rewind()
+        points.forEachIndexed { i, (lat, lng) ->
+            val x = ((Tiles.lngToX(lng) - x0) * px).toFloat()
+            val y = ((Tiles.latToY(lat) - y0) * px).toFloat()
+            if (i == 0) planPath.moveTo(x, y) else planPath.lineTo(x, y)
         }
-        if (!drawn) return
-        c.drawPath(trailPath, trailCasing)
-        c.drawPath(trailPath, trailGold)
-        c.drawPath(trailPath, trailShine)
+        c.drawPath(planPath, planCasing)
+        c.drawPath(planPath, planGold)
+        c.drawPath(planPath, planShine)
     }
 
     /** Checkered flag on a pole whose foot is at ([x], [y]). */
@@ -715,7 +712,7 @@ class FogOverlayView(context: Context) : View(context) {
         const val WORN_MIN_PX = 3.0
         /**
          * Worn-road levels: pale gold over the first few repeats, deepening through amber to a
-         * red-orange, so they sit with the gold trail and daily commutes still read apart.
+         * red-orange, so they sit with the gold route and daily commutes still read apart.
          */
         val WORN_LEVELS = listOf(
             WornLevel(2, Color.rgb(0xFF, 0xE0, 0x8A), 70),

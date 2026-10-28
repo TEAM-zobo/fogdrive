@@ -57,6 +57,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
     val landings by viewModel.landings.collectAsState()
     val guidance by viewModel.navi.guidance.collectAsState()
     val destination by viewModel.navi.destination.collectAsState()
+    val plannedRoute by viewModel.navi.plannedRoute.collectAsState()
     val here by viewModel.here.collectAsState()
     val tripNewDongs by viewModel.tripNewDongs.collectAsState()
     val location = live.location
@@ -78,6 +79,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
             // Roads driven show as the gold trail; the worn-road tint would band around it.
             showWornRoads = false,
             destination = destination?.let { it.lat to it.lng },
+            plannedRoute = plannedRoute,
         )
         // Stamps, missions, drop-offs: a moment on screen below the header, then gone.
         EventToast(live.lastEvent, live.lastEventId, viewModel::eventShown, Modifier.padding(top = 128.dp).align(Alignment.TopCenter))
