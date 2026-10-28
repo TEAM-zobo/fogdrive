@@ -61,7 +61,6 @@ fun SettingsScreen(
     var confirmImport by remember { mutableStateOf(false) }
     val cloud by viewModel.cloud.collectAsState()
     val demoCourse by viewModel.demoCourse.collectAsState()
-    val showWornRoads by viewModel.showWornRoads.collectAsState()
     val demoSpeed by viewModel.demoSpeed.collectAsState()
     val backupMessage by viewModel.backupMessage.collectAsState()
     val syncTime = remember { SimpleDateFormat("M월 d일 HH:mm", Locale.KOREA) }
@@ -135,18 +134,6 @@ fun SettingsScreen(
 
         SectionHeader("지도 표시 · 안내", Modifier.padding(top = 16.dp))
         FogCard(Modifier.fillMaxWidth()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("자주 다닌 길 표시", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "여러 번 달린 길에 색을 칠해요. 2~4번은 파란색이 짙어지고, 5번부터 남색 → 10번 보라 → 20번 주황 → " +
-                            "50번 이상 빨강으로 바뀌어요. 지도와 주행 화면의 버튼으로도 켜고 끌 수 있어요.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = FogColors.TextSub,
-                    )
-                }
-                FogSwitch(checked = showWornRoads, onCheckedChange = { viewModel.setShowWornRoads(it) })
-            }
             CardToggle(
                 "탐험 우회 경로 제안",
                 "목적지가 있을 때, 출발 전에 안 가본 동네를 지나는 경유지를 제안해요.",

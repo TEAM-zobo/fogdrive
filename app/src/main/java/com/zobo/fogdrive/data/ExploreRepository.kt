@@ -102,6 +102,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         val revisited = scope.async(Dispatchers.IO) { db.dao().revisited() }
         val all = withContext(Dispatchers.IO) { db.dao().allCellIds() }
         synchronized(lock) { for (c in all) if (cells.add(c)) append(c) }
+        tracks.replaceAll(withContext(Dispatchers.IO) { db.dao().allTrack() })
         hasTrips = withContext(Dispatchers.IO) { db.dao().tripCount() } > 0
         beforeShown()
         bump()
@@ -273,12 +274,12 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         db.dao().insertStamp(StampEntity(code = code, at = at, tripId = tripId, lat = lat, lng = lng))
     }
 
-    /** The trip being driven, kept in memory for the trail on the map. */
-    val liveTrack = LiveTrack()
+    /** Every trip's route, kept in memory: the map opens the ground along it. */
+    val tracks = Tracks()
 
     /** Appends one route point to trip [tripId] (fire and forget, like cells). */
     fun addTrackPoint(tripId: Long, lat: Double, lng: Double, at: Long) {
-        liveTrack.add(tripId, lat, lng)
+        tracks.add(tripId, lat, lng)
         scope.launch(Dispatchers.IO) { db.dao().insertTrackPoint(TrackPointEntity(tripId = tripId, lat = lat, lng = lng, at = at)) }
     }
 
@@ -324,6 +325,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             tripCellsOf = 0L
             tripCellsLoaded = false
         }
+        tracks.clear()
         bump()
         _resets.update { it + 1 }
     }

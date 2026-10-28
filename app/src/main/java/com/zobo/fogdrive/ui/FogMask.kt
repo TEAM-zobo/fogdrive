@@ -11,9 +11,8 @@ import android.graphics.PorterDuffXfermode
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
-import com.zobo.fogdrive.data.LongHashSet
+import com.zobo.fogdrive.data.Tracks
 import com.zobo.fogdrive.data.LongIntMap
-import com.zobo.fogdrive.data.forEachValue
 import com.zobo.fogdrive.geo.Outline
 import com.zobo.fogdrive.geo.Tiles
 import java.util.concurrent.Executors
@@ -63,8 +62,8 @@ class FogMaskTile(
 }
 
 /**
- * Renders fog tiles on one background thread. Painting the mask (tens of thousands of explored
- * cells as soft circles) took 100–300 ms on the UI thread, and it ran on every frame of a pan or zoom
+ * Renders fog tiles on one background thread. Painting the mask (once tens of thousands of explored
+ * cells as soft circles, now the driven routes as one band) took 100–300 ms on the UI thread, and it ran on every frame of a pan or zoom
  * and on every driving re-render. Now it runs only when the fog's content changes or the view leaves
  * the rendered area, off the UI thread; meanwhile the previous tile keeps being shown.
  * Only the newest request is rendered: requests that pile up while one renders are replaced.
@@ -81,8 +80,8 @@ class FogMaskRenderer(
         val x1: Double,
         val y1: Double,
         val cellPx: Double,
-        /** Explored cells at [FogMaskKey.dz]: a concurrent or immutable set, safe to read here. */
-        val cells: () -> LongHashSet,
+        /** The driven routes the fog is opened along. */
+        val tracks: Tracks,
         /** Revisit counts (concurrent map), or null when worn roads are not drawn. */
         val revisits: LongIntMap?,
         /**
@@ -91,7 +90,7 @@ class FogMaskRenderer(
          */
         val dirty: DoubleArray? = null,
     ) {
-        fun withDirty(d: DoubleArray?) = if (d === dirty) this else Job(key, x0, y0, x1, y1, cellPx, cells, revisits, d)
+        fun withDirty(d: DoubleArray?) = if (d === dirty) this else Job(key, x0, y0, x1, y1, cellPx, tracks, revisits, d)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -106,19 +105,21 @@ class FogMaskRenderer(
     private val scratch = HashMap<Long, Bitmap>()
 
     private val canvas = Canvas()
-    private val clearPaint = Paint().apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-        isAntiAlias = true
-    }
     private val fogPaint = Paint()
     private val lightFogPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC)  // replaces the dark veil inside the outline
     }
-    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(110, 0xFF, 0xFF, 0xFF) }
     private val wornPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val outlineMatrix = Matrix()
     private val outlinePath = Path()
-    private var centres = FloatArray(4096)
+    private val trackPath = Path()
+    private fun bandPaint() = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val rimStroke = bandPaint().apply { color = Color.argb(110, 0xFF, 0xFF, 0xFF) }
+    private val bandClear = bandPaint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
     private val wornXy = Array(FogOverlayView.WORN_LEVELS.size) { FloatArray(256) }
     private val wornCount = IntArray(FogOverlayView.WORN_LEVELS.size)
 
@@ -229,43 +230,22 @@ class FogMaskRenderer(
             }
         }
 
-        val scale = (1 shl key.dz).toDouble()
-        val cellMaskPx = (px * scale).toFloat()
-        val lx0 = floor(sx0 / scale).toInt() - 1
-        val lx1 = floor(sx1 / scale).toInt() + 1
-        val ly0 = floor(sy0 / scale).toInt() - 1
-        val ly1 = floor(sy1 / scale).toInt() + 1
-        val radius = max(1.2f, cellMaskPx * 1.05f)
-        var n = 0
-        fun punch(cx: Int, cy: Int) {
-            if (n + 2 > centres.size) centres = centres.copyOf(centres.size * 2)
-            centres[n++] = (((cx + 0.5) * scale - x0) * px).toFloat()
-            centres[n++] = (((cy + 0.5) * scale - y0) * px).toFloat()
-        }
-        val explored = job.cells()
-        val tiles = (lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1)
-        if (tiles < explored.size) {
-            // A large explored set: probe only the tiles in the rectangle.
-            for (cx in lx0..lx1) for (cy in ly0..ly1) if (explored.has(Tiles.pack(cx, cy))) punch(cx, cy)
-        } else {
-            explored.forEachValue { cell ->
-                val cx = Tiles.x(cell)
-                val cy = Tiles.y(cell)
-                if (cx in lx0..lx1 && cy in ly0..ly1) punch(cx, cy)
+        // Open the ground along every driven route: one straight band, a soft white edge under it.
+        val band = max(MIN_BAND_PX, (REVEAL_WIDTH * px).toFloat())
+        rimStroke.strokeWidth = band + max(2f, band * 0.25f)
+        bandClear.strokeWidth = band
+        trackPath.rewind()
+        job.tracks.forEach { xs, ys, count ->
+            for (k in 0 until count) {
+                val x = ((xs[k] - x0) * px).toFloat()
+                val y = ((ys[k] - y0) * px).toFloat()
+                if (k == 0) trackPath.moveTo(x, y) else trackPath.lineTo(x, y)
             }
+            // A single point still opens a round spot (a zero-length segment draws nothing).
+            if (count == 1) trackPath.lineTo(((xs[0] - x0) * px).toFloat() + 0.01f, ((ys[0] - y0) * px).toFloat())
         }
-        // Rim first (larger circles over the fog), then punch the holes: only a soft edge remains.
-        val rim = radius + max(1f, radius * 0.3f)
-        var i = 0
-        while (i < n) {
-            c.drawCircle(centres[i], centres[i + 1], rim, rimPaint)
-            i += 2
-        }
-        i = 0
-        while (i < n) {
-            c.drawCircle(centres[i], centres[i + 1], radius, clearPaint)
-            i += 2
-        }
+        c.drawPath(trackPath, rimStroke)
+        c.drawPath(trackPath, bandClear)
         var worn: Bitmap? = null
         job.revisits?.takeIf { !it.isEmpty() }?.let { visits ->
             if (wornScale == 1) {
@@ -410,6 +390,10 @@ class FogMaskRenderer(
          */
         const val WORN_MIN_CELL_PX = 4.0
         const val WORN_MAX_SCALE = 2
+        /** Width of the ground opened along a driven route, in zoom-20 tiles (~80 m across). */
+        private const val REVEAL_WIDTH = 2.6
+        /** The band never gets narrower than this many mask pixels, so it shows beside the gold trail when zoomed out. */
+        private const val MIN_BAND_PX = 12f
         /** Cells around a changed area that are redrawn too (their soft rims reach this far). */
         private const val RIM_CELLS = 2.0
         /** Chunk edge in bitmap pixels. */

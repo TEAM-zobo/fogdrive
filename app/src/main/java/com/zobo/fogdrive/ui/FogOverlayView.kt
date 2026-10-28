@@ -13,8 +13,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
 import com.zobo.fogdrive.data.ExploreRepository
-import com.zobo.fogdrive.data.LongHashSet
-import com.zobo.fogdrive.data.LiveTrack
+import com.zobo.fogdrive.data.Tracks
 import com.zobo.fogdrive.data.LongIntMap
 import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.explore.RegionCounts
@@ -31,10 +30,9 @@ import kotlin.math.min
 /**
  * Draws a veil over the ground not driven yet, in two strengths: darker over 읍·면·동 the driver has
  * never entered, lighter inside the ones already entered; the map shows through both. The veil is
- * painted into a reduced-resolution mask, explored cells get a soft white rim, and each explored cell
- * is punched out as a slightly oversized circle (neighbours merge into smooth strips instead of a
- * staircase). The mask is then scaled up with filtering, which softens the edges.
- * The trip being driven is drawn as a gold trail, the navigation destination as a checkered flag. It is rendered off the UI thread for an area a bit larger
+ * painted into a reduced-resolution mask and opened along every driven route as one straight band
+ * with a soft white edge, then scaled up with filtering, which softens the edges.
+ * The driven routes are drawn over it as a gold trail, the navigation destination as a checkered flag. It is rendered off the UI thread for an area a bit larger
  * than the view ([FogMaskRenderer]) and only moved and scaled per frame.
  * Over the fog go the administrative boundaries (시·도 always, 시·군·구 and 읍·면·동 as the map zooms
  * in) and, for regions already entered, their name and achievement rate.
@@ -43,7 +41,6 @@ import kotlin.math.min
  */
 class FogOverlayView(context: Context) : View(context) {
     var map: MapLibreMap? = null
-    var cellsAtLevel: (Int) -> LongHashSet = { LongHashSet() }
     /** The explored-cell log, to tell the renderer which part changed (see [changedArea]). */
     var cellLog: CellLog? = null
     /** Cells whose revisit count changed since a reading (see [changedArea]). */
@@ -63,8 +60,8 @@ class FogOverlayView(context: Context) : View(context) {
     var detour: Pair<Double, Double>? = null
     /** A past trip picked on the record screen: its route as a line, or (older trips) its cells as dots. */
     var route: TripRoute? = null
-    /** The trip being driven, drawn as a gold trail (not while a past trip is shown). */
-    var trail: LiveTrack? = null
+    /** Every trip's route: the fog is opened along it and it is drawn as a gold trail. */
+    var tracks = Tracks()
     /** Navigation destination, drawn as a checkered flag. */
     var destination: Pair<Double, Double>? = null
     /** Draw the car dot here (parked). While driving a fixed centre marker is used instead. */
@@ -252,7 +249,7 @@ class FogOverlayView(context: Context) : View(context) {
                 for ((lat, lng) in r.points) canvas.drawCircle(sx(lng), sy(lat), radius, routeDot)
             }
         }
-        if (route == null) trail?.let { drawTrail(canvas, it, x0, y0, pxPerCell) }
+        if (route == null) drawTrail(canvas, tracks, x0, y0, pxPerCell)
         drawLandingPins(canvas, x0, y0, pxPerCell)
         destination?.let { (lat, lng) -> toScreen(lat, lng).let { drawFlag(canvas, it.x, it.y) } }
         detour?.let { (lat, lng) ->
@@ -265,17 +262,19 @@ class FogOverlayView(context: Context) : View(context) {
         }
     }
 
-    private fun drawTrail(c: Canvas, t: LiveTrack, x0: Double, y0: Double, px: Double) {
+    private fun drawTrail(c: Canvas, t: Tracks, x0: Double, y0: Double, px: Double) {
         trailPath.rewind()
-        val count = t.read { xs, ys, n ->
+        var drawn = false
+        t.forEach { xs, ys, n ->
+            if (n < 2) return@forEach
+            drawn = true
             for (i in 0 until n) {
                 val x = ((xs[i] - x0) * px).toFloat()
                 val y = ((ys[i] - y0) * px).toFloat()
                 if (i == 0) trailPath.moveTo(x, y) else trailPath.lineTo(x, y)
             }
-            n
         }
-        if (count < 2) return
+        if (!drawn) return
         c.drawPath(trailPath, trailCasing)
         c.drawPath(trailPath, trailGold)
         c.drawPath(trailPath, trailShine)
@@ -330,7 +329,8 @@ class FogOverlayView(context: Context) : View(context) {
         val worn = showWornRoads && px >= WORN_MIN_PX
         // Revisit counts only matter while worn roads are drawn: otherwise driving over known roads
         // would re-render an unchanged fog every few hundred ms.
-        val data = (cellsVersion().toLong() shl 32) or (if (worn) revisitVersion().toLong() and 0xFFFFFFFFL else 0L)
+        val routes = tracks.version.toLong() + (if (worn) revisitVersion().toLong() else 0L)
+        val data = (cellsVersion().toLong() shl 32) or (routes and 0xFFFFFFFFL)
         val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable, worn)
         val t = tile
         if (t == null || !t.covers(x0, y0, x1, y1)) {
@@ -397,10 +397,9 @@ class FogOverlayView(context: Context) : View(context) {
         val margin = if (freezeTransform) DRIVING_TILE_MARGIN else TILE_MARGIN
         val mx = (x1 - x0) * margin
         val my = (y1 - y0) * margin
-        val wantDz = dz
         val job = FogMaskRenderer.Job(
             key, x0 - mx, y0 - my, x1 + mx, y1 + my, cellPx,
-            { cellsAtLevel(wantDz) },
+            tracks,
             if (key.worn) revisits() else null,
             changedArea(key),
         )

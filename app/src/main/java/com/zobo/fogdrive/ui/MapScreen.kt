@@ -57,7 +57,6 @@ fun MapScreen(viewModel: MainViewModel) {
     // Opened from the dex: frame that region instead of chasing the car.
     var follow by remember { mutableStateOf(viewModel.mapFocus.value == null) }
     val shownTrip by viewModel.shownTrip.collectAsState()
-    val showWornRoads by viewModel.showWornRoads.collectAsState()
     // A region or trip picked elsewhere may arrive after the tab switch; stop following the car then.
     LaunchedEffect(focus) { if (focus != null) follow = false }
     var zoomIn by remember { mutableIntStateOf(0) }
@@ -92,7 +91,8 @@ fun MapScreen(viewModel: MainViewModel) {
             focus = focus,
             onFocusShown = { viewModel.mapFocus.value = null },
             route = shownTrip,
-            showWornRoads = showWornRoads,
+            // Roads driven show as the gold trail; the worn-road tint would band around it.
+            showWornRoads = false,
             destination = destination?.let { it.lat to it.lng },
         )
 
@@ -277,7 +277,6 @@ fun MapScreen(viewModel: MainViewModel) {
         }
 
         Column(Modifier.align(Alignment.BottomEnd).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            WornRoadsButton(showWornRoads) { viewModel.setShowWornRoads(!showWornRoads) }
             MapButton(Icons.Outlined.Add, "확대", onClick = { zoomIn++ })
             MapButton(Icons.Outlined.Remove, "축소", onClick = { zoomOut++ })
             MapButton(Icons.Outlined.MyLocation, "내 위치", tint = FogColors.Accent, onClick = {

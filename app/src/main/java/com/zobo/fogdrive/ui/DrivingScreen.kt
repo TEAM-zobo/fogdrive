@@ -59,7 +59,6 @@ fun DrivingScreen(viewModel: MainViewModel) {
     val destination by viewModel.navi.destination.collectAsState()
     val here by viewModel.here.collectAsState()
     val tripNewDongs by viewModel.tripNewDongs.collectAsState()
-    val showWornRoads by viewModel.showWornRoads.collectAsState()
     val location = live.location
     val current = location?.let { it.lat to it.lng }
     val pins = remember(landings) { landings.map { it.lat to it.lng } }
@@ -76,7 +75,8 @@ fun DrivingScreen(viewModel: MainViewModel) {
             recenterSignal = 0,
             onUserMoved = {},
             driving = true,
-            showWornRoads = showWornRoads,
+            // Roads driven show as the gold trail; the worn-road tint would band around it.
+            showWornRoads = false,
             destination = destination?.let { it.lat to it.lng },
         )
         // Stamps, missions, drop-offs: a moment on screen below the header, then gone.
@@ -145,7 +145,6 @@ fun DrivingScreen(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             DemoControls(viewModel, compact = true)
-            WornRoadsButton(showWornRoads) { viewModel.setShowWornRoads(!showWornRoads) }
         }
     }
 }

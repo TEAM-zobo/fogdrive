@@ -79,11 +79,10 @@ fun FogMap(
         holder.create { map ->
             holder.onMapReady(map)
             holder.overlay.map = map
-            holder.overlay.cellsAtLevel = { FogRuntime.repo.cellsAtLevel(it) }
             holder.overlay.cellLog = FogRuntime.repo
             holder.overlay.revisitLog = FogRuntime.repo::revisitsSince
             holder.overlay.revisits = { FogRuntime.repo.revisits }
-            holder.overlay.trail = FogRuntime.repo.liveTrack
+            holder.overlay.tracks = FogRuntime.repo.tracks
             holder.overlay.onReady = {
                 holder.fogShown.value = true
                 FogRuntime.fogReady.value = true
