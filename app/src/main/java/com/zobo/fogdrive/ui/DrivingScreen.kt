@@ -56,6 +56,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
     val summary by viewModel.summary.collectAsState()
     val landings by viewModel.landings.collectAsState()
     val guidance by viewModel.navi.guidance.collectAsState()
+    val destination by viewModel.navi.destination.collectAsState()
     val here by viewModel.here.collectAsState()
     val tripNewDongs by viewModel.tripNewDongs.collectAsState()
     val showWornRoads by viewModel.showWornRoads.collectAsState()
@@ -76,6 +77,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
             onUserMoved = {},
             driving = true,
             showWornRoads = showWornRoads,
+            destination = destination?.let { it.lat to it.lng },
         )
         // Stamps, missions, drop-offs: a moment on screen below the header, then gone.
         EventToast(live.lastEvent, live.lastEventId, viewModel::eventShown, Modifier.padding(top = 128.dp).align(Alignment.TopCenter))

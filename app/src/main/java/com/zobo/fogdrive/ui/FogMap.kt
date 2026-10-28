@@ -53,6 +53,8 @@ fun FogMap(
     route: TripRoute? = null,
     /** Tint roads driven on several trips. */
     showWornRoads: Boolean = true,
+    /** Navigation destination, marked with a flag. */
+    destination: Pair<Double, Double>? = null,
 ) {
     val context = LocalContext.current
     // One map for the whole activity when it provides one: switching tabs (or into the driving
@@ -81,6 +83,7 @@ fun FogMap(
             holder.overlay.cellLog = FogRuntime.repo
             holder.overlay.revisitLog = FogRuntime.repo::revisitsSince
             holder.overlay.revisits = { FogRuntime.repo.revisits }
+            holder.overlay.trail = FogRuntime.repo.liveTrack
             holder.overlay.onReady = {
                 holder.fogShown.value = true
                 FogRuntime.fogReady.value = true
@@ -157,6 +160,10 @@ fun FogMap(
     }
     LaunchedEffect(showWornRoads) {
         holder.overlay.showWornRoads = showWornRoads
+        holder.overlay.invalidate()
+    }
+    LaunchedEffect(destination) {
+        holder.overlay.destination = destination
         holder.overlay.invalidate()
     }
     LaunchedEffect(route) {

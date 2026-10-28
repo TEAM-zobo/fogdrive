@@ -273,8 +273,12 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         db.dao().insertStamp(StampEntity(code = code, at = at, tripId = tripId, lat = lat, lng = lng))
     }
 
+    /** The trip being driven, kept in memory for the trail on the map. */
+    val liveTrack = LiveTrack()
+
     /** Appends one route point to trip [tripId] (fire and forget, like cells). */
     fun addTrackPoint(tripId: Long, lat: Double, lng: Double, at: Long) {
+        liveTrack.add(tripId, lat, lng)
         scope.launch(Dispatchers.IO) { db.dao().insertTrackPoint(TrackPointEntity(tripId = tripId, lat = lat, lng = lng, at = at)) }
     }
 

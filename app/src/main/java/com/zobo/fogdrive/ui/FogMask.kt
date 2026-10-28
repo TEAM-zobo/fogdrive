@@ -1,7 +1,6 @@
 package com.zobo.fogdrive.ui
 
 import android.graphics.Bitmap
-import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -9,7 +8,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
-import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
@@ -112,14 +110,12 @@ class FogMaskRenderer(
         xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         isAntiAlias = true
     }
-    private val fogPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val lightFogPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC)  // replaces the dark fog inside the outline
+    private val fogPaint = Paint()
+    private val lightFogPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC)  // replaces the dark veil inside the outline
     }
-    private var shaderNight: Boolean? = null
-    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x00, 0x81, 0xF8) }
+    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(110, 0xFF, 0xFF, 0xFF) }
     private val wornPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val textureMatrix = Matrix()
     private val outlineMatrix = Matrix()
     private val outlinePath = Path()
     private var centres = FloatArray(4096)
@@ -217,21 +213,13 @@ class FogMaskRenderer(
         } else {
             bmp.eraseColor(Color.TRANSPARENT)
         }
-        if (shaderNight != key.night) {
-            shaderNight = key.night
-            fogPaint.shader = BitmapShader(FogOverlayView.cloudTexture(key.night, light = false), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-            lightFogPaint.shader = BitmapShader(FogOverlayView.cloudTexture(key.night, light = true), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-        }
-        // Anchor the clouds to the map (not the bitmap) so neighbouring tiles line up.
-        val texSize = FogOverlayView.TEXTURE_SIZE.toDouble()
-        textureMatrix.setTranslate((-(x0 * px)).mod(texSize).toFloat(), (-(y0 * px)).mod(texSize).toFloat())
-        fogPaint.shader.setLocalMatrix(textureMatrix)
-        lightFogPaint.shader.setLocalMatrix(textureMatrix)
+        fogPaint.color = FogOverlayView.fogColor(key.night, light = false)
+        lightFogPaint.color = FogOverlayView.fogColor(key.night, light = true)
 
         val regions = key.regions
         if (regions == null) {
-            // Still loading: dark everywhere, so nothing unvisited flashes into view. If the atlas is
-            // missing for good, fall back to one strength of fog (the light one).
+            // Still loading: the dark veil everywhere. If the atlas is missing for good, fall back to
+            // one strength (the light one).
             c.drawPaint(if (key.regionsUnavailable) lightFogPaint else fogPaint)
         } else {
             c.drawPaint(fogPaint)

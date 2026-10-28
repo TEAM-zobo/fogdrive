@@ -1,7 +1,6 @@
 package com.zobo.fogdrive.ui
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
@@ -15,6 +14,7 @@ import android.graphics.Typeface
 import android.view.View
 import com.zobo.fogdrive.data.ExploreRepository
 import com.zobo.fogdrive.data.LongHashSet
+import com.zobo.fogdrive.data.LiveTrack
 import com.zobo.fogdrive.data.LongIntMap
 import com.zobo.fogdrive.explore.CellLog
 import com.zobo.fogdrive.explore.RegionCounts
@@ -29,12 +29,12 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Draws the fog of war on top of the map in two strengths: opaque dark fog over 읍·면·동 the driver
- * has never entered, and a light grey fog (the map shows through) inside the ones already entered.
- * The fog is painted into a reduced-resolution mask with tileable cloud textures, explored cells get
- * a soft blue rim, and each explored cell is punched out as a slightly oversized circle (neighbours
- * merge into smooth strips instead of a staircase). The mask is then scaled up with filtering,
- * which softens edges and clouds alike. It is rendered off the UI thread for an area a bit larger
+ * Draws a veil over the ground not driven yet, in two strengths: darker over 읍·면·동 the driver has
+ * never entered, lighter inside the ones already entered; the map shows through both. The veil is
+ * painted into a reduced-resolution mask, explored cells get a soft white rim, and each explored cell
+ * is punched out as a slightly oversized circle (neighbours merge into smooth strips instead of a
+ * staircase). The mask is then scaled up with filtering, which softens the edges.
+ * The trip being driven is drawn as a gold trail, the navigation destination as a checkered flag. It is rendered off the UI thread for an area a bit larger
  * than the view ([FogMaskRenderer]) and only moved and scaled per frame.
  * Over the fog go the administrative boundaries (시·도 always, 시·군·구 and 읍·면·동 as the map zooms
  * in) and, for regions already entered, their name and achievement rate.
@@ -63,6 +63,10 @@ class FogOverlayView(context: Context) : View(context) {
     var detour: Pair<Double, Double>? = null
     /** A past trip picked on the record screen: its route as a line, or (older trips) its cells as dots. */
     var route: TripRoute? = null
+    /** The trip being driven, drawn as a gold trail (not while a past trip is shown). */
+    var trail: LiveTrack? = null
+    /** Navigation destination, drawn as a checkered flag. */
+    var destination: Pair<Double, Double>? = null
     /** Draw the car dot here (parked). While driving a fixed centre marker is used instead. */
     var showCurrent = true
     /** Keep drawing with the transform from [captureTransform] (driving: fog moves with the slid map). */
@@ -121,12 +125,6 @@ class FogOverlayView(context: Context) : View(context) {
     }
 
     private val maskPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0081F8") }
-    private val dotRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 5f
-    }
     private val density = resources.displayMetrics.density
     private val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
     private val pinRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -190,6 +188,16 @@ class FogOverlayView(context: Context) : View(context) {
     private val routeDot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(170, 0xFF, 0x99, 0x00) }
     private val routeStart = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#111111") }
     private val routeEnd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
+    // The road driven on this trip: gold over a brown edge, with a light dashed centre line.
+    private val trailPath = Path()
+    private val trailCasing = linePaint(Color.parseColor("#A5742F"), 15f).apply { strokeCap = Paint.Cap.ROUND }
+    private val trailGold = linePaint(Color.parseColor("#FFD25E"), 10f).apply { strokeCap = Paint.Cap.ROUND }
+    private val trailShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
+    private val flagShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0, 0, 0) }
+    private val flagPole = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5A3D26") }
+    private val flagWhite = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val flagInk = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#2F4A2C") }
+    private val flagEdge = linePaint(Color.parseColor("#2F4A2C"), 1.2f)
 
     override fun onDraw(canvas: Canvas) {
         if (map == null) return
@@ -244,16 +252,48 @@ class FogOverlayView(context: Context) : View(context) {
                 for ((lat, lng) in r.points) canvas.drawCircle(sx(lng), sy(lat), radius, routeDot)
             }
         }
+        if (route == null) trail?.let { drawTrail(canvas, it, x0, y0, pxPerCell) }
         drawLandingPins(canvas, x0, y0, pxPerCell)
+        destination?.let { (lat, lng) -> toScreen(lat, lng).let { drawFlag(canvas, it.x, it.y) } }
         detour?.let { (lat, lng) ->
             val p = toScreen(lat, lng)
             canvas.drawCircle(p.x, p.y, min(160f, max(48f, pxPerCell.toFloat() * 3)), detourPaint)
         }
         current?.takeIf { showCurrent }?.let { (lat, lng) ->
             val p = toScreen(lat, lng)
-            canvas.drawCircle(p.x, p.y, 16f, dotPaint)
-            canvas.drawCircle(p.x, p.y, 16f, dotRing)
+            CarIcon.draw(canvas, p.x, p.y, 0f, 0.8f)
         }
+    }
+
+    private fun drawTrail(c: Canvas, t: LiveTrack, x0: Double, y0: Double, px: Double) {
+        trailPath.rewind()
+        val count = t.read { xs, ys, n ->
+            for (i in 0 until n) {
+                val x = ((xs[i] - x0) * px).toFloat()
+                val y = ((ys[i] - y0) * px).toFloat()
+                if (i == 0) trailPath.moveTo(x, y) else trailPath.lineTo(x, y)
+            }
+            n
+        }
+        if (count < 2) return
+        c.drawPath(trailPath, trailCasing)
+        c.drawPath(trailPath, trailGold)
+        c.drawPath(trailPath, trailShine)
+    }
+
+    /** Checkered flag on a pole whose foot is at ([x], [y]). */
+    private fun drawFlag(c: Canvas, x: Float, y: Float) {
+        val d = density
+        c.drawOval(x - 9 * d, y - 3 * d, x + 9 * d, y + 3 * d, flagShadow)
+        c.drawRect(x - 1.6f * d, y - 40 * d, x + 1.6f * d, y, flagPole)
+        val left = x + 1.6f * d
+        val top = y - 40 * d
+        val cell = 7 * d
+        c.drawRect(left, top, left + 4 * cell, top + 2 * cell, flagWhite)
+        for (row in 0 until 2) for (col in 0 until 4) {
+            if ((row + col) % 2 == 0) c.drawRect(left + col * cell, top + row * cell, left + (col + 1) * cell, top + (row + 1) * cell, flagInk)
+        }
+        c.drawRect(left, top, left + 4 * cell, top + 2 * cell, flagEdge)
     }
 
     private val renderer = FogMaskRenderer(onTile = { onTile(it) }, onFailed = { onRenderFailed(it) })
@@ -294,10 +334,10 @@ class FogOverlayView(context: Context) : View(context) {
         val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable, worn)
         val t = tile
         if (t == null || !t.covers(x0, y0, x1, y1)) {
-            // Before the first tile, or past the rendered area until the new tile lands: plain dark
-            // fog, never the bare map. Only outside the tile: the tile is see-through where explored,
-            // and dark fog under it blacked out the explored roads for a frame (a black flash).
-            fogFallback.color = if (night) Color.rgb(6, 6, 8) else Color.rgb(18, 19, 22)
+            // Before the first tile, or past the rendered area until the new tile lands: the dark veil,
+            // never the bare map. Only outside the tile: the tile is see-through where explored, and
+            // the veil under it darkened the explored roads for a frame (a flash).
+            fogFallback.color = fogColor(night, light = false)
             val save = canvas.save()
             if (t != null) {
                 // Inset a little: the filtered bitmap's outermost pixels are partly transparent.
@@ -675,16 +715,16 @@ class FogOverlayView(context: Context) : View(context) {
         /** Screen px per cell from which worn roads are drawn (single cells visible, zoom ~13). */
         const val WORN_MIN_PX = 3.0
         /**
-         * Worn-road levels: the blue deepens over the first few repeats, then the hue walks on
-         * (indigo → purple → orange → red), so daily commutes still read apart from weekly routes.
+         * Worn-road levels: pale gold over the first few repeats, deepening through amber to a
+         * red-orange, so they sit with the gold trail and daily commutes still read apart.
          */
         val WORN_LEVELS = listOf(
-            WornLevel(2, Color.rgb(0x00, 0x81, 0xF8), 60),
-            WornLevel(3, Color.rgb(0x00, 0x71, 0xE0), 110),
-            WornLevel(5, Color.rgb(0x3D, 0x3A, 0xE8), 130),
-            WornLevel(10, Color.rgb(0x8E, 0x2D, 0xC8), 140),
-            WornLevel(20, Color.rgb(0xF0, 0x7A, 0x00), 150),
-            WornLevel(50, Color.rgb(0xE0, 0x30, 0x30), 165),
+            WornLevel(2, Color.rgb(0xFF, 0xE0, 0x8A), 70),
+            WornLevel(3, Color.rgb(0xFF, 0xD2, 0x5E), 95),
+            WornLevel(5, Color.rgb(0xFF, 0xB8, 0x4D), 115),
+            WornLevel(10, Color.rgb(0xFF, 0x9F, 0x43), 130),
+            WornLevel(20, Color.rgb(0xF0, 0x7A, 0x00), 145),
+            WornLevel(50, Color.rgb(0xE0, 0x50, 0x2A), 160),
         )
         /** Drop-off pins closer than this on screen are shown as one numbered pin. */
         const val CLUSTER_DP = 44f
@@ -700,50 +740,16 @@ class FogOverlayView(context: Context) : View(context) {
         private const val DATA_REDRAW_MS = 300L
         /** How long a replaced tile's bitmaps stay untouched before the renderer may reuse them. */
         const val MAX_DZ = 10
-        const val TEXTURE_SIZE = 128
-        private val textures = HashMap<Pair<Boolean, Boolean>, Bitmap>()
 
         /**
-         * Tileable cloud texture (two octaves of smoothed value noise), built once per kind.
-         * Dark fog is fully opaque, so nothing of a never-entered 동 shows. Light fog is a grey
-         * at ~62-70 % so the map of an entered 동 shows faintly through it.
+         * Veil over ground not driven yet. Darker over 읍·면·동 never entered, lighter inside the ones
+         * already entered; the map shows through both (it is never recoloured, only covered).
          */
-        @Synchronized
-        fun cloudTexture(night: Boolean, light: Boolean): Bitmap = textures.getOrPut(night to light) {
-            val size = TEXTURE_SIZE
-            val base = when {
-                // Neutral greys/near-black, like the built-in apps' monochrome UI.
-                light && night -> intArrayOf(66, 68, 72)
-                light -> intArrayOf(124, 128, 134)
-                night -> intArrayOf(6, 6, 8)
-                else -> intArrayOf(18, 19, 22)
-            }
-            val rnd = java.util.Random(19)
-            fun grid(n: Int) = Array(n) { FloatArray(n) { rnd.nextFloat() } }
-            val coarse = grid(8)
-            val fine = grid(32)
-            fun sample(g: Array<FloatArray>, x: Float, y: Float): Float {
-                val n = g.size
-                val gx = x * n / size
-                val gy = y * n / size
-                val ix = gx.toInt()
-                val iy = gy.toInt()
-                val fx = (gx - ix).let { it * it * (3 - 2 * it) }
-                val fy = (gy - iy).let { it * it * (3 - 2 * it) }
-                val a = g[iy % n][ix % n]
-                val b = g[iy % n][(ix + 1) % n]
-                val c = g[(iy + 1) % n][ix % n]
-                val d = g[(iy + 1) % n][(ix + 1) % n]
-                return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy
-            }
-            val pixels = IntArray(size * size)
-            for (y in 0 until size) for (x in 0 until size) {
-                val v = 0.7f * sample(coarse, x.toFloat(), y.toFloat()) + 0.3f * sample(fine, x.toFloat(), y.toFloat())
-                val lift = (v * 26).toInt()            // lighter wisps
-                val alpha = if (light) (158 + v * 20).toInt() else 255
-                pixels[y * size + x] = Color.argb(alpha, base[0] + lift, base[1] + lift, base[2] + lift)
-            }
-            Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
+        fun fogColor(night: Boolean, light: Boolean): Int = when {
+            light && night -> Color.argb(84, 8, 12, 20)
+            light -> Color.argb(56, 24, 32, 44)
+            night -> Color.argb(150, 8, 12, 20)
+            else -> Color.argb(118, 24, 32, 44)
         }
     }
 }

@@ -93,6 +93,7 @@ fun MapScreen(viewModel: MainViewModel) {
             onFocusShown = { viewModel.mapFocus.value = null },
             route = shownTrip,
             showWornRoads = showWornRoads,
+            destination = destination?.let { it.lat to it.lng },
         )
 
         // Header: level and where the car is in the region dex. The nationwide count is in the dex

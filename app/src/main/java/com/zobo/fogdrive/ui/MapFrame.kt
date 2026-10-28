@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.view.View
 import android.widget.FrameLayout
 import org.maplibre.android.maps.Style
@@ -82,7 +82,7 @@ internal class MapFrame(context: Context, val pan: FrameLayout, val car: View, v
     }
 }
 
-/** Car marker at the exact centre of the viewport while driving: an arrow pointing the way we drive. */
+/** Car marker at the exact centre of the viewport while driving, turned the way we drive. */
 internal class CarMarkerView(context: Context) : View(context) {
     /** Degrees clockwise from north. */
     var bearing = 0f
@@ -92,31 +92,48 @@ internal class CarMarkerView(context: Context) : View(context) {
                 invalidate()
             }
         }
-    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(70, 0x00, 0x81, 0xF8) }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0081F8") }
-    private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 5f
-        strokeJoin = Paint.Join.ROUND
-    }
-    private val arrow = Path().apply {
-        moveTo(0f, -30f)
-        lineTo(22f, 24f)
-        lineTo(0f, 12f)
-        lineTo(-22f, 24f)
-        close()
-    }
 
     override fun onDraw(canvas: Canvas) {
-        val cx = width / 2f
-        val cy = height / 2f
-        canvas.drawCircle(cx, cy, 46f, halo)
-        canvas.save()
-        canvas.translate(cx, cy)
-        canvas.rotate(bearing)
-        canvas.drawPath(arrow, fill)
-        canvas.drawPath(arrow, edge)
-        canvas.restore()
+        CarIcon.draw(canvas, width / 2f, height / 2f, bearing, 1.1f)
+    }
+}
+
+/** The car seen from above: a small mint car with a white outline and a halo, nose up at bearing 0. */
+internal object CarIcon {
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(46, 0x5C, 0xC8, 0xB0) }
+    private val haloInner = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(72, 0x5C, 0xC8, 0xB0) }
+    private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(60, 0, 0, 0) }
+    private val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val body = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5CC8B0") }
+    private val glass = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#E9FBFF") }
+    private val lamp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFF6B0") }
+    private fun ink(width: Float) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#2F4A2C")
+        style = Paint.Style.STROKE
+        strokeWidth = width
+    }
+    private val bodyInk = ink(4f)
+    private val glassInk = ink(3f)
+    private val r = RectF()
+
+    fun draw(c: Canvas, cx: Float, cy: Float, bearing: Float, scale: Float) {
+        c.save()
+        c.translate(cx, cy)
+        c.scale(scale, scale)
+        c.drawCircle(0f, 0f, 58f, halo)
+        c.drawCircle(0f, 0f, 42f, haloInner)
+        c.drawOval(-22f, -24f, 30f, 44f, shadow)
+        c.rotate(bearing)
+        r.set(-25f, -37f, 25f, 37f)
+        c.drawRoundRect(r, 19f, 19f, outline)
+        r.set(-20f, -32f, 20f, 32f)
+        c.drawRoundRect(r, 15f, 15f, body)
+        c.drawRoundRect(r, 15f, 15f, bodyInk)
+        r.set(-13f, -16f, 13f, 6f)
+        c.drawRoundRect(r, 6f, 6f, glass)
+        c.drawRoundRect(r, 6f, 6f, glassInk)
+        c.drawCircle(-11f, -26f, 4f, lamp)
+        c.drawCircle(11f, -26f, 4f, lamp)
+        c.restore()
     }
 }
