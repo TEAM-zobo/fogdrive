@@ -41,6 +41,13 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Back from the navigation app: its 집 or destination may have changed meanwhile, and its
+        // bookmark-changed callback did not reach us on the emulator.
+        FogRuntime.navi.refresh()
+    }
+
     override fun onStop() {
         super.onStop()
         // Region counts for the next start's loading screen (see FogRuntime.saveRegionCounts).
