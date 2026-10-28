@@ -32,7 +32,7 @@ import kotlin.math.min
  * never entered, lighter inside the ones already entered; the map shows through both. The veil is
  * painted into a reduced-resolution mask and opened along every driven route as one straight band
  * with a soft white edge, then scaled up with filtering, which softens the edges.
- * The driven routes are drawn over it as a gold trail, the navigation destination as a pennant and
+ * The trip being driven is drawn over it as a gold trail, the navigation destination as a pennant and
  * its 집 bookmark as a base camp tent. It is rendered off the UI thread for an area a bit larger
  * than the view ([FogMaskRenderer]) and only moved and scaled per frame.
  * Over the fog go the administrative boundaries (시·도 always, 시·군·구 and 읍·면·동 as the map zooms
@@ -61,7 +61,7 @@ class FogOverlayView(context: Context) : View(context) {
     var detour: Pair<Double, Double>? = null
     /** A past trip picked on the record screen: its route as a line, or (older trips) its cells as dots. */
     var route: TripRoute? = null
-    /** Every trip's route: the fog is opened along it and it is drawn as a gold trail. */
+    /** Every trip's route: the fog is opened along it; the newest trip's is drawn as a gold trail. */
     var tracks = Tracks()
     /** Navigation destination, drawn as a pennant. */
     var destination: Pair<Double, Double>? = null
@@ -272,8 +272,10 @@ class FogOverlayView(context: Context) : View(context) {
     private fun drawTrail(c: Canvas, t: Tracks, x0: Double, y0: Double, px: Double) {
         trailPath.rewind()
         var drawn = false
-        t.forEach { xs, ys, n ->
-            if (n < 2) return@forEach
+        // Only this trip's road is gold: earlier trips stay as opened ground, so a course driven before
+        // does not show the road ahead in gold.
+        t.forLatest { xs, ys, n ->
+            if (n < 2) return@forLatest
             drawn = true
             for (i in 0 until n) {
                 val x = ((xs[i] - x0) * px).toFloat()

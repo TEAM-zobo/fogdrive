@@ -14,6 +14,8 @@ class Tracks {
     }
 
     private val lines = LinkedHashMap<Long, Line>()
+    /** The trip a point was last added to (the one being driven, or the last one driven). */
+    private var latest = -1L
 
     /** Changes whenever a point is added or the routes are replaced. */
     @Volatile
@@ -23,6 +25,7 @@ class Tracks {
     @Synchronized
     fun add(tripId: Long, lat: Double, lng: Double) {
         put(tripId, lat, lng)
+        latest = tripId
         version++
     }
 
@@ -30,6 +33,7 @@ class Tracks {
     @Synchronized
     fun replaceAll(points: List<TrackPointEntity>) {
         lines.clear()
+        latest = -1L
         for (p in points.sortedWith(compareBy({ it.tripId }, { it.at }, { it.id }))) put(p.tripId, p.lat, p.lng)
         version++
     }
@@ -37,7 +41,14 @@ class Tracks {
     @Synchronized
     fun clear() {
         lines.clear()
+        latest = -1L
         version++
+    }
+
+    /** Runs [block] on the newest trip's route only, if it has points. */
+    @Synchronized
+    fun forLatest(block: (xs: DoubleArray, ys: DoubleArray, count: Int) -> Unit) {
+        lines[latest]?.takeIf { it.n > 0 }?.let { block(it.xs, it.ys, it.n) }
     }
 
     /** Runs [block] on each route (x, y arrays and their count) while no point is being added. */
