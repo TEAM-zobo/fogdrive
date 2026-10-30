@@ -1,5 +1,6 @@
 package com.zobo.burung.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,9 +36,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.zobo.burung.car.Place
+import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Area
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -67,7 +72,6 @@ fun MapScreen(viewModel: MainViewModel) {
     var dismissedFor by remember { mutableStateOf<Place?>(null) }
     var detourMessage by remember { mutableStateOf<String?>(null) }
     val suggestion by viewModel.suggestion.collectAsState()
-    val hereStory by viewModel.hereStory.collectAsState()
     var suggestionHidden by remember { mutableStateOf(false) }
     // Keyed on the place, so "안내를 시작했어요" doesn't stay on a different 동 after the card moves on.
     var suggestionMessage by remember(suggestion?.district, suggestion?.name) { mutableStateOf<String?>(null) }
@@ -96,43 +100,29 @@ fun MapScreen(viewModel: MainViewModel) {
             home = home?.let { it.lat to it.lng },
         )
 
-        // Header: level and where the car is in the region dex. The nationwide count is in the dex
-        // and this trip's progress on the driving view, so the map keeps to the essentials.
+        // Header: the level (a ring filling toward the next one) and the 시·군·구 / 읍·면·동 the car is
+        // in. Rates are in the dex and this trip's progress on the driving view; the map keeps to these.
         Column(Modifier.padding(24.dp).align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         FogCard(
-            modifier = Modifier.width(560.dp),
+            modifier = Modifier.widthIn(max = 560.dp),
             color = FogColors.Surface.copy(alpha = 0.95f),
-            padding = 24.dp,
+            padding = 20.dp,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Lv.${summary.level}", style = MaterialTheme.typography.headlineMedium, color = FogColors.Accent)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("밝힌 면적 ${Area.format(summary.areaKm2 * 1_000_000)}", style = MaterialTheme.typography.titleMedium)
-                    ProgressBar(summary.levelProgress, height = 10.dp)
-                }
-            }
-            here?.let { h ->
-                Row(
-                    Modifier.padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(Icons.Outlined.Place, contentDescription = null, tint = FogColors.TextSub, modifier = Modifier.size(28.dp))
-                    Text("${h.province.name} ${h.district.name} ${h.dong.name}", style = MaterialTheme.typography.titleMedium)
-                }
-                hereStory?.let { st ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                LevelRing(summary.level, summary.levelProgress)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    here?.let { h ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Outlined.Place, contentDescription = null, tint = FogColors.TextSub, modifier = Modifier.size(28.dp))
+                            Text("${h.district.name} / ${h.dong.name}", style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
                     Text(
-                        "동네 이야기 · ${st.title}: ${st.line}",
+                        if (summary.level >= Progress.MAX_LEVEL) "최고 레벨이에요"
+                        else "다음 레벨까지 ${formatPercent(1.0 - summary.levelProgress)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FogColors.TextSub,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill("동 ${formatRate(h.dong.rate)}", FogColors.Accent)
-                    Pill("${h.district.name} ${formatRate(h.district.rate)}", FogColors.Blue)
-                    Pill("${h.province.name} ${formatRate(h.province.rate)}", FogColors.TextSub)
                 }
             }
         }
@@ -283,6 +273,26 @@ fun MapScreen(viewModel: MainViewModel) {
                 follow = true
                 recenter++
             })
+        }
+    }
+}
+
+/** The level in a ring that fills toward the next level (full at the top level). */
+@Composable
+private fun LevelRing(level: Int, progress: Float) {
+    val track = FogColors.SurfaceHigh
+    val fill = FogColors.Amber
+    Box(Modifier.size(84.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 9.dp.toPx()
+            val inset = stroke / 2
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(track, 0f, 360f, false, Offset(inset, inset), arcSize, style = Stroke(stroke))
+            drawArc(fill, -90f, 360f * progress.coerceIn(0f, 1f), false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Lv", style = MaterialTheme.typography.labelMedium, color = FogColors.TextSub)
+            Text("$level", style = MaterialTheme.typography.titleLarge, color = FogColors.TextMain)
         }
     }
 }
