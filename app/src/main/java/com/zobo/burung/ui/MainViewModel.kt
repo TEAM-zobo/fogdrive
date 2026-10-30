@@ -355,7 +355,37 @@ class MainViewModel : ViewModel() {
 
     private var showTripJob: Job? = null
 
-    fun showTrip(trip: TripEntity) {
+    /**
+     * "집 → 구산동" per trip: where its route starts and ends, as 집 within [HOME_NEAR_M] of the
+     * navigation's home, else the 읍·면·동 there. Trips without a route have no name.
+     */
+    val tripNames: StateFlow<Map<Long, String>> = combine(trips, navi.home, FogRuntime.regionsLoaded, version) { t, home, _, _ ->
+        val atlas = FogRuntime.regions?.atlas
+        fun place(x: Double, y: Double): String? {
+            val lat = Tiles.yToLat(y)
+            val lng = Tiles.xToLng(x)
+            if (home != null && Tiles.distanceMeters(lat, lng, home.lat, home.lng) < HOME_NEAR_M) return "집"
+            return atlas?.dongOf(Tiles.cellOf(lat, lng))?.takeIf { it >= 0 }?.let { atlas.dongs[it].name }
+        }
+        t.mapNotNull { trip ->
+            val e = repo.tracks.ends(trip.id) ?: return@mapNotNull null
+            val from = place(e[0], e[1]) ?: return@mapNotNull null
+            val to = place(e[2], e[3]) ?: return@mapNotNull null
+            trip.id to if (from == to) "$from 주변" else "$from → $to"
+        }.toMap()
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Stamps earned on each trip, by trip id, in the order earned. */
+    val tripStamps: StateFlow<Map<Long, List<StampCode>>> = stamps.map { s ->
+        s.sortedBy { it.at }.groupBy({ it.tripId }, { st -> StampCode.entries.firstOrNull { it.name == st.code } })
+            .mapValues { (_, v) -> v.filterNotNull().distinct() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Shows [trip]'s route on the map. [leftInset]: share of the map's width covered on the left
+     * (the trips panel), so the route is framed in the part still visible.
+     */
+    fun showTrip(trip: TripEntity, leftInset: Double = 0.0) {
         // A later pick wins even if an earlier one's query finishes after it.
         showTripJob?.cancel()
         showTripJob = viewModelScope.launch {
@@ -370,7 +400,11 @@ class MainViewModel : ViewModel() {
             if (route.points.isNotEmpty()) {
                 val xs = route.points.map { Tiles.lngToX(it.second) }
                 val ys = route.points.map { Tiles.latToY(it.first) }
-                mapFocus.value = TileBox(xs.min().toInt(), ys.min().toInt(), xs.max().toInt() + 1, ys.max().toInt() + 1)
+                val x0 = xs.min()
+                val x1 = xs.max() + 1
+                // Widen to the left by what the panel hides, so the route lands right of it.
+                val grow = if (leftInset in 0.0..0.8) (x1 - x0) * leftInset / (1 - leftInset) else 0.0
+                mapFocus.value = TileBox((x0 - grow).toInt(), ys.min().toInt(), x1.toInt(), ys.max().toInt() + 1)
             }
         }
     }
@@ -559,6 +593,8 @@ class MainViewModel : ViewModel() {
         const val SUGGEST_CHOICES = 8
         /** Newest cleared cells read for the dex's "최근 개척": enough to reach back past the last few trips. */
         private const val RECENT_CELLS = 4_000
+        /** A trip starting or ending this close to the navigation's home is named "집". */
+        private const val HOME_NEAR_M = 400.0
         /** 읍·면·동 exploration steps shown as a notice with a sparkle / also spoken. */
         const val MILESTONE_NOTICE = 25
         const val MILESTONE_VOICE = 50

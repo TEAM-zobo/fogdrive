@@ -1,10 +1,12 @@
 package com.zobo.burung.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +76,10 @@ fun MapScreen(viewModel: MainViewModel) {
     var detourMessage by remember { mutableStateOf<String?>(null) }
     val suggestion by viewModel.suggestion.collectAsState()
     var suggestionHidden by remember { mutableStateOf(false) }
+    // The recent-trips panel over the left of the map; closing it takes its trip off the map too.
+    var tripsOpen by rememberSaveable { mutableStateOf(false) }
+    val closeTrips = { tripsOpen = false; viewModel.shownTrip.value = null }
+    BackHandler(enabled = tripsOpen) { closeTrips() }
     // Keyed on the place, so "안내를 시작했어요" doesn't stay on a different 동 after the card moves on.
     var suggestionMessage by remember(suggestion?.district, suggestion?.name) { mutableStateOf<String?>(null) }
 
@@ -103,7 +110,7 @@ fun MapScreen(viewModel: MainViewModel) {
         // Header: the level (a ring filling toward the next one) and the 시·군·구 / 읍·면·동 the car is
         // in. Rates are in the dex and this trip's progress on the driving view; the map keeps to these.
         Column(Modifier.padding(24.dp).align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        FogCard(
+        if (!tripsOpen) FogCard(
             modifier = Modifier.widthIn(max = 560.dp),
             color = FogColors.Surface.copy(alpha = 0.95f),
             padding = 20.dp,
@@ -126,13 +133,14 @@ fun MapScreen(viewModel: MainViewModel) {
                 }
             }
         }
+        if (!tripsOpen) TripsButton(viewModel, onOpen = { tripsOpen = true; viewModel.shownTrip.value = null })
         // Notices (a stamp, a drop-off, a reset) briefly, right under the header: never over it.
         EventToast(live.lastEvent, live.lastEventId, viewModel::eventShown, Modifier.widthIn(max = 560.dp))
         }
 
         DemoControls(viewModel, Modifier.padding(24.dp).align(Alignment.TopEnd))
 
-        shownTrip?.let { t ->
+        shownTrip?.takeIf { !tripsOpen }?.let { t ->
             FogCard(
                 modifier = Modifier.padding(24.dp).width(620.dp).align(Alignment.BottomStart),
                 color = FogColors.Surface.copy(alpha = 0.97f),
@@ -166,7 +174,7 @@ fun MapScreen(viewModel: MainViewModel) {
         }
 
         // Just-finished trip: its summary takes the corner until closed (or the next trip starts).
-        val lastTrip = live.lastTrip?.takeIf { vehicle.parked && shownTrip == null }
+        val lastTrip = live.lastTrip?.takeIf { vehicle.parked && shownTrip == null && !tripsOpen }
         lastTrip?.let {
             TripSummaryCard(it, onClose = { viewModel.dismissTripSummary() }, Modifier.padding(24.dp).width(640.dp).align(Alignment.BottomStart))
         }
@@ -179,11 +187,11 @@ fun MapScreen(viewModel: MainViewModel) {
         val suggestionOn by viewModel.suggestionCard.enabled.collectAsState()
         val suggestionHiddenOn by viewModel.suggestionCard.hiddenOn.collectAsState()
         val detourAllowed = detourOn && detourHiddenOn != today
-        val showDetour = detourAllowed && visibleDetour != null && destination != null && vehicle.parked && shownTrip == null && lastTrip == null
+        val showDetour = detourAllowed && visibleDetour != null && destination != null && vehicle.parked && shownTrip == null && lastTrip == null && !tripsOpen
 
         // "Go explore": nearest unexplored 동, while parked with nothing else in that corner.
         val showSuggestion = suggestion != null && !suggestionHidden && suggestionOn && suggestionHiddenOn != today &&
-            vehicle.parked && shownTrip == null && !showDetour && lastTrip == null
+            vehicle.parked && shownTrip == null && !showDetour && lastTrip == null && !tripsOpen
         if (showSuggestion) suggestion?.let { sg ->
             FogCard(
                 modifier = Modifier.padding(24.dp).width(640.dp).align(Alignment.BottomStart),
@@ -265,6 +273,8 @@ fun MapScreen(viewModel: MainViewModel) {
                 }
             }
         }
+
+        if (tripsOpen) TripsPanel(viewModel, onClose = closeTrips, Modifier.width(PANEL_WIDTH).fillMaxHeight().align(Alignment.TopStart))
 
         Column(Modifier.align(Alignment.BottomEnd).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             MapButton(Icons.Outlined.Add, "확대", onClick = { zoomIn++ })

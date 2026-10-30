@@ -93,6 +93,15 @@ class Tracks {
         return Snapshot(out, latest, spots, spotCount)
     }
 
+    /** Where trip [tripId]'s route starts and ends (x0, y0, x1, y1 in tiles), or null without a route. */
+    @Synchronized
+    fun ends(tripId: Long): DoubleArray? {
+        val b = lines[tripId] ?: return null
+        val first = (0 until b.n).firstOrNull { !b.xs[it].isNaN() } ?: return null
+        val last = (b.n - 1 downTo 0).first { !b.xs[it].isNaN() }
+        return doubleArrayOf(b.xs[first], b.ys[first], b.xs[last], b.ys[last])
+    }
+
     /**
      * Bumped when everything changes at once ([replaceAll], [clear]): a reader that saw another epoch
      * has to redraw everything, not just what was added.

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -46,7 +45,6 @@ import com.zobo.burung.voice.Sound
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     MAP("지도", Icons.Outlined.Map),
-    RECORD("기록", Icons.Outlined.Insights),
     DEX("도감", Icons.Outlined.Explore),
     STAMP("스탬프", Icons.Outlined.EmojiEvents),
     SETTINGS("설정", Icons.Outlined.Settings),
@@ -105,10 +103,6 @@ fun FogApp(
             Box(Modifier.fillMaxSize()) {
                 when (Tab.entries[tab]) {
                     Tab.MAP -> MapScreen(viewModel)
-                    Tab.RECORD -> RecordScreen(viewModel, onShowTrip = { trip ->
-                        viewModel.showTrip(trip)
-                        goTo(Tab.MAP.ordinal)
-                    })
                     Tab.DEX -> DexScreen(viewModel, onShowOnMap = { region ->
                         viewModel.mapFocus.value = region.bounds
                         goTo(Tab.MAP.ordinal)

@@ -15,6 +15,8 @@ START = ROUTE[0]
 FAR = [(37.5219, 126.9245), (37.5245, 126.9270), (37.5270, 126.9300)]
 # Center-display region occupied by the app (device pixels, 2560x1440), excluding status/dock bars.
 APP_AREA = (1000, 200, 2500, 1250)
+# Middle of the map tab's "최근 주행" panel (580 dp from the rail), for scrolling its list.
+PANEL_X = 1250
 
 
 class CaseFailed(AssertionError):
@@ -81,15 +83,31 @@ def number(s):
 
 
 def read_record(ctx):
-    ctx.dev.tap_text("기록")
+    """Totals and trip count from the map tab's "최근 주행" panel. The totals sit at the end of its
+    list, so the list is scrolled until they show; the panel is closed again afterwards."""
+    ctx.dev.tap_text("지도")
+    time.sleep(1.0)
+    ctx.dev.tap_text("최근 주행")
     time.sleep(1.2)
+    trips = set()
     t = ctx.dev.texts()
-    return {
+    for _ in range(8):
+        # A trip row is its start time ("18:42") then its name; the time plus name keeps rows apart.
+        trips.update((x, t[i + 1]) for i, x in enumerate(t[:-1]) if re.fullmatch(r"\d\d:\d\d", x))
+        if "전체 기록" in t:
+            break
+        ctx.dev.swipe(PANEL_X, APP_AREA[3] - 100, PANEL_X, APP_AREA[1] + 200, 400)
+        time.sleep(0.8)
+        t = ctx.dev.texts()
+    out = {
         "area": area_m2(value_after(t, "밝힌 면적")),
         "landings": number(value_after(t, "하차 지점")),
         "new_ratio": number(value_after(t, "새 길 비율")),
-        "trips": sum(1 for x in t if re.match(r"\d+월 \d+일 \d\d:\d\d", x)),
+        "trips": len(trips),
     }
+    ctx.dev.shell("input", "keyevent", "KEYCODE_BACK")
+    time.sleep(0.6)
+    return out
 
 
 def tap_scrolling(ctx, text, swipes=8):
