@@ -124,6 +124,15 @@ interface FogDao {
     @Query("SELECT * FROM landings ORDER BY at DESC")
     fun landings(): Flow<List<LandingEntity>>
 
+    @Query("SELECT COUNT(*) FROM landings")
+    suspend fun landingCount(): Int
+
+    @Query("SELECT COUNT(*) FROM stamps")
+    suspend fun stampCount(): Int
+
+    @Query("SELECT COUNT(DISTINCT code) FROM stamps")
+    suspend fun stampKindCount(): Int
+
     @Insert
     suspend fun insertStamp(stamp: StampEntity): Long
 

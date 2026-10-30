@@ -63,8 +63,12 @@ data class TripSummary(
     val stamps: List<StampCode>,
     val mission: CrewMission?,
     val missionDone: Boolean,
+    /** Level when the trip started and when it ended; 0 when the start wasn't seen (app restarted mid-trip). */
+    val levelBefore: Int = 0,
+    val levelAfter: Int = 0,
 ) {
     val newRoadRatio: Double get() = if (distanceMeters > 0) newDistanceMeters / distanceMeters else 0.0
+    val leveledUp: Boolean get() = levelBefore in 1 until levelAfter
 }
 
 /** Process-wide singletons shared by the recording service and the UI. */

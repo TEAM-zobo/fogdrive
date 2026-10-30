@@ -1,6 +1,7 @@
 package com.zobo.burung.data
 
 import com.zobo.burung.explore.CellLog
+import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Tiles
 import com.zobo.burung.record.ExploreSink
 import kotlinx.coroutines.CoroutineScope
@@ -262,6 +263,15 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     suspend fun clearedSince(since: Long): List<ClearedCell> = withContext(Dispatchers.IO) { db.dao().clearedSince(since) }
 
     suspend fun tripTotalsSince(since: Long): TripTotals = withContext(Dispatchers.IO) { db.dao().tripTotalsSince(since) }
+
+    /** Total experience (see [Progress.xp]): every cell, every trip's distance, drop-off and stamp. */
+    suspend fun xp(): Int {
+        val cells = count()
+        return withContext(Dispatchers.IO) {
+            val dao = db.dao()
+            Progress.xp(cells, dao.landingCount(), dao.stampCount(), dao.stampKindCount(), dao.tripTotalsSince(0).distanceMeters)
+        }
+    }
 
     /** Stored cells of a past trip, without touching the current-trip cache behind [cellsOfTrip]. */
     suspend fun storedCellsOfTrip(tripId: Long): List<Long> = withContext(Dispatchers.IO) { db.dao().cellsOfTrip(tripId) }

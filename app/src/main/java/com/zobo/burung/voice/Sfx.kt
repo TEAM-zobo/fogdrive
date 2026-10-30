@@ -35,6 +35,8 @@ enum class Sound {
     STOP,
     /** A 읍·면·동 reached an exploration step: a soft rising sparkle. */
     ACHIEVE,
+    /** A level gained on the trip just ended: a short fanfare, the longest sound. */
+    LEVEL_UP,
 }
 
 object Sfx {
@@ -187,6 +189,15 @@ object Sfx {
             Note(0.09, 659.3, attack = 0.030, decay = 0.18, gain = 0.75, partials = WARM),
             Note(0.18, 784.0, attack = 0.030, decay = 0.22, gain = 0.7, partials = WARM),
             Note(0.27, 1_046.5, attack = 0.034, decay = 0.30, gain = 0.55, partials = WARM),
+        )
+        // A little fanfare in C, as soft as the sparkle: G4 – C5 – E5, then C5 + G5 together, left to ring.
+        Sound.LEVEL_UP -> render(
+            0.18,
+            Note(0.00, 392.0, attack = 0.030, decay = 0.14, gain = 0.8, partials = WARM),
+            Note(0.10, 523.3, attack = 0.030, decay = 0.14, gain = 0.8, partials = WARM),
+            Note(0.20, 659.3, attack = 0.030, decay = 0.16, gain = 0.75, partials = WARM),
+            Note(0.34, 523.3, attack = 0.034, decay = 0.40, gain = 0.6, partials = WARM),
+            Note(0.34, 784.0, attack = 0.034, decay = 0.45, gain = 0.6, partials = WARM),
         )
         // Settling down: D4 – G3.
         Sound.STOP -> render(

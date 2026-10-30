@@ -94,7 +94,8 @@ class MainViewModel : ViewModel() {
     ) { _, l, s, t, lat ->
         val cells = repo.count()
         val cellKm = Tiles.cellSizeMeters(lat) / 1000.0
-        val xp = Progress.xp(cells, l.size, s.size, s.map { it.code }.distinct().size)
+        // Read from the database, as the arrival card's level-up is: [t] stops at the last 100 trips.
+        val xp = repo.xp()
         val dist = t.sumOf { it.distanceMeters }
         val newDist = t.sumOf { it.newDistanceMeters }
         Summary(

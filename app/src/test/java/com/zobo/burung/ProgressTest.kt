@@ -22,8 +22,24 @@ class ProgressTest {
     }
 
     @Test
+    fun dailyDrivingLevelsUpWithoutNewRoads() {
+        // 20 km a weekday on the same roads: no new cells, only distance.
+        fun commute(days: Int) = Progress.level(Progress.xp(0, 0, 0, 0, distanceMeters = days * 20_000.0))
+        assertTrue("week Lv.${commute(5)}", commute(5) in 3..5)
+        assertTrue("month Lv.${commute(22)}", commute(22) in 6..8)
+        assertTrue("year Lv.${commute(250)}", commute(250) in 16..20)
+    }
+
+    @Test
+    fun levelStopsAtMax() {
+        assertEquals(Progress.MAX_LEVEL, Progress.level(Progress.xpForLevel(Progress.MAX_LEVEL)))
+        assertEquals(Progress.MAX_LEVEL, Progress.level(Int.MAX_VALUE / 2))
+        assertEquals(1f, Progress.levelProgress(Int.MAX_VALUE / 2), 1e-6f)
+    }
+
+    @Test
     fun thresholdsAreConsistent() {
-        for (lv in 1..40) {
+        for (lv in 1 until Progress.MAX_LEVEL) {
             assertEquals(lv, Progress.level(Progress.xpForLevel(lv)))
             assertEquals(lv, Progress.level(Progress.xpForLevel(lv + 1) - 1))
         }

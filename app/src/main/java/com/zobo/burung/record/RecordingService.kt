@@ -26,9 +26,12 @@ import com.zobo.burung.data.TripEntity
 import com.zobo.burung.demo.DemoCourses
 import com.zobo.burung.demo.DemoDrive
 import com.zobo.burung.explore.CrewMission
+import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Area
 import com.zobo.burung.geo.Tiles
 import com.zobo.burung.ui.MainActivity
+import com.zobo.burung.voice.Sfx
+import com.zobo.burung.voice.Sound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -201,6 +204,8 @@ class RecordingService : Service() {
     private var mission: CrewMission? = null
     private var missionProgress = 0
     private var missionDone = false
+    /** Level when this trip started, for the arrival card's level-up; null when the start wasn't seen. */
+    private var levelAtStart: Int? = null
 
     /** A 동 entered for the first time: say so, and look up its landmark line in the background. */
     private fun onNewDong(d: com.zobo.burung.geo.Dong, district: String) {
@@ -291,6 +296,7 @@ class RecordingService : Service() {
                 awardedRegionStamps.clear()
                 tripNewDongs.clear()
                 tripStamps.clear()
+                levelAtStart = Progress.level(repo.xp())
                 missionProgress = 0
                 missionDone = false
                 // A mission only when someone rides along (front passenger or rear).
@@ -332,12 +338,16 @@ class RecordingService : Service() {
     }
 
     /** Summary card + a spoken wrap-up for a trip that went somewhere. */
-    private fun showSummary(endedAt: Long) {
+    private suspend fun showSummary(endedAt: Long) {
         val s = recorder.stats
         val m = mission
         mission = null
         FogRuntime.live.update { it.copy(mission = null) }
+        val before = levelAtStart ?: 0
+        levelAtStart = null
         if (s.distanceMeters < MIN_SUMMARY_M && s.newCells == 0) return
+        // After persistTripStats, so this trip's distance is in the total.
+        val after = Progress.level(repo.xp())
         val summary = TripSummary(
             endedAt = endedAt,
             distanceMeters = s.distanceMeters,
@@ -347,14 +357,18 @@ class RecordingService : Service() {
             stamps = tripStamps.distinct(),
             mission = m,
             missionDone = missionDone,
+            levelBefore = before,
+            levelAfter = after,
         )
         FogRuntime.live.update { it.copy(lastTrip = summary) }
+        if (summary.leveledUp) Sfx.play(Sound.LEVEL_UP, byControl = false)
         val parts = buildList {
             if (s.newCells > 0) add("안개 ${spokenArea(Area.ofCells(s.newCells))}를 걷었어요")
             else add("${"%.1f".format(s.distanceMeters / 1000)}킬로미터를 달렸어요")
             if (summary.newDongs.isNotEmpty()) add("처음 가 본 동네는 ${summary.newDongs.size}곳")
         }
-        FogRuntime.announcer.say("주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + ".", important = true)
+        val levelUp = if (summary.leveledUp) " 레벨 업! ${after}레벨이 되었어요." else ""
+        FogRuntime.announcer.say("주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + "." + levelUp, important = true)
     }
 
     private suspend fun persistTripStats(endedAt: Long? = null) {
