@@ -78,6 +78,16 @@ class MapPrefs(context: Context) {
         prefs.edit().putBoolean(KEY_STORIES, on).apply()
     }
 
+    private val _dexHome = MutableStateFlow(prefs.getString(KEY_DEX_HOME, "") ?: "")
+    /** The dex slide shown first: a 시·도 code, or "" for the whole country (the default). */
+    val dexHome: StateFlow<String> = _dexHome.asStateFlow()
+
+    /** Shows [code] first from now on, in place of whichever was first before. */
+    fun setDexHome(code: String) {
+        _dexHome.value = code
+        prefs.edit().putString(KEY_DEX_HOME, code).apply()
+    }
+
     /** One suggestion card on the map ("탐험 우회 경로", "안 가본 동네 가보기"): off in Settings, or hidden for today. */
     inner class CardPref(private val key: String) {
         private val _enabled = MutableStateFlow(prefs.getBoolean("${key}_on", true))
@@ -109,6 +119,7 @@ class MapPrefs(context: Context) {
         /** Exploration steps celebrated per 읍·면·동, in percent of its cells. */
         val MILESTONES = listOf(10, 25, 50, 75, 100)
         private const val KEY_SOUND_VOLUME = "sound_volume"
+        private const val KEY_DEX_HOME = "dex_home"
 
         fun today(): String = SimpleDateFormat("yyyyMMdd", Locale.KOREA).format(Date())
     }

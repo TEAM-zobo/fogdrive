@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Map
@@ -47,6 +48,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     MAP("지도", Icons.Outlined.Map),
     RECORD("기록", Icons.Outlined.Insights),
     DEX("도감", Icons.Outlined.Explore),
+    STAMP("스탬프", Icons.Outlined.EmojiEvents),
     SETTINGS("설정", Icons.Outlined.Settings),
 }
 
@@ -61,6 +63,8 @@ fun FogApp(
     // Changing screen sounds a glide; played right away so the tap that caused it isn't ticked too.
     fun goTo(t: Int) {
         if (t != tab) Sfx.play(Sound.SCREEN)
+        // The dex opens on its default slide, unless a 동 list was left open there.
+        if (t != tab && t == Tab.DEX.ordinal && viewModel.dexDistrict.value == null) viewModel.dexProvince.value = null
         tab = t
     }
     val vehicle by viewModel.vehicle.collectAsState()
@@ -109,6 +113,7 @@ fun FogApp(
                         viewModel.mapFocus.value = region.bounds
                         goTo(Tab.MAP.ordinal)
                     })
+                    Tab.STAMP -> StampScreen(viewModel)
                     Tab.SETTINGS -> SettingsScreen(viewModel, onStartDemo, onStopDemo, onRequestBackground)
                 }
             }

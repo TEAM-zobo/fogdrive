@@ -102,6 +102,10 @@ interface FogDao {
     @Query("SELECT cell, firstSeenAt FROM cells WHERE firstSeenAt >= :since AND source != 2")
     suspend fun clearedSince(since: Long): List<ClearedCell>
 
+    /** The [n] cells cleared last by driving or drop-offs, newest first (the dex's "최근 개척"). */
+    @Query("SELECT cell, firstSeenAt FROM cells WHERE source != 2 ORDER BY firstSeenAt DESC LIMIT :n")
+    suspend fun newestCleared(n: Int): List<ClearedCell>
+
     @Insert
     suspend fun insertTrip(trip: TripEntity): Long
 

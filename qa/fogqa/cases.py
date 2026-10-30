@@ -108,9 +108,9 @@ STAMP_NAMES = ("빗속 개척", "야간 개척", "가족 탐험", "충전소 깃
 
 
 def read_stamps(ctx):
-    """Stamp counts from the dex. The stamps sit below the region grid and the challenges, and
-    off-screen nodes are not in the UI dump, so the dex is scrolled down until all were read."""
-    ctx.dev.tap_text("도감")
+    """Stamp counts from the stamp tab. The stamps sit below the challenges, and off-screen nodes
+    are not in the UI dump, so the tab is scrolled down until all were read."""
+    ctx.dev.tap_text("스탬프")
     time.sleep(1.2)
     out = {}
     for _ in range(8):
@@ -271,7 +271,7 @@ def _stamp_case(ctx, setup, name):
 
 @case("TC-07", "상황 스탬프", "와이퍼를 켜고 새 길을 달리면 '빗속 개척'을 얻는다",
       "앱 초기화",
-      ["앞 와이퍼 Low", "기어 D로 12개 지점 주행", "도감 탭 확인"],
+      ["앞 와이퍼 Low", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
       ["빗속 개척 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_rain(ctx):
     _stamp_case(ctx, lambda: ctx.vc.wiper("Low"), "빗속 개척")
@@ -279,7 +279,7 @@ def tc_stamp_rain(ctx):
 
 @case("TC-08", "상황 스탬프", "전조등(로우빔)을 켜고 새 길을 달리면 '야간 개척'을 얻는다",
       "앱 초기화",
-      ["헤드램프 LowBeam", "기어 D로 12개 지점 주행", "도감 탭 확인"],
+      ["헤드램프 LowBeam", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
       ["야간 개척 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_night(ctx):
     _stamp_case(ctx, lambda: ctx.vc.headlamp("LowBeam"), "야간 개척")
@@ -287,7 +287,7 @@ def tc_stamp_night(ctx):
 
 @case("TC-09", "상황 스탬프", "뒷좌석 동승자와 새 길을 달리면 '가족 탐험'을 얻는다",
       "앱 초기화",
-      ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "도감 탭 확인"],
+      ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
       ["가족 탐험 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_family(ctx):
     _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험")
@@ -295,7 +295,7 @@ def tc_stamp_family(ctx):
 
 @case("TC-10", "상황 스탬프", "정차 중 배터리가 2%p 이상 오르면 '충전소 깃발'을 얻는다",
       "앱 초기화, P단",
-      ["배터리 40%로 설정", "배터리 43%로 설정", "도감 탭 확인"],
+      ["배터리 40%로 설정", "배터리 43%로 설정", "스탬프 탭 확인"],
       ["충전소 깃발 1회 획득 (정차 직후 값보다 낮아졌다 오른 경우도 인정)"])
 def tc_stamp_charge(ctx):
     fresh(ctx)
@@ -321,7 +321,7 @@ def tc_driving_mode(ctx):
         ctx.check(ctx.dev.wait_text("주행 모드", timeout=10, exact=True), "주행 모드 표시")
         drive(ctx, ROUTE[:10])
         texts = ctx.dev.texts()
-        hidden = [t for t in ("기록", "도감", "설정") if t in texts]
+        hidden = [t for t in ("기록", "도감", "스탬프", "설정") if t in texts]
         ctx.shot("driving_mode")
         ctx.check(not hidden, f"주행 중 탭 숨김 {hidden}")
         # The system block screen is flat light gray; the app's dark map means we are not blocked.
@@ -450,7 +450,7 @@ def tc_tutorial(ctx):
 
 @case("TC-17", "상황 스탬프", "창문을 열고 새 길을 달리면 '바람길 개척'을 얻는다",
       "앱 초기화",
-      ["운전석 창문 50% 열기", "기어 D로 12개 지점 주행", "도감 탭 확인"],
+      ["운전석 창문 50% 열기", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
       ["바람길 개척 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_window(ctx):
     _stamp_case(ctx, lambda: ctx.vc.window("front_left", 50), "바람길 개척")

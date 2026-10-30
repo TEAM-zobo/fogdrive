@@ -262,6 +262,8 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     suspend fun clearedSince(since: Long): List<ClearedCell> = withContext(Dispatchers.IO) { db.dao().clearedSince(since) }
 
+    suspend fun newestCleared(n: Int): List<ClearedCell> = withContext(Dispatchers.IO) { db.dao().newestCleared(n) }
+
     suspend fun tripTotalsSince(since: Long): TripTotals = withContext(Dispatchers.IO) { db.dao().tripTotalsSince(since) }
 
     /** Total experience (see [Progress.xp]): every cell, every trip's distance, drop-off and stamp. */

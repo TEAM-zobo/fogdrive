@@ -13,6 +13,7 @@ import com.zobo.burung.explore.DetourPlanner
 import com.zobo.burung.explore.Progress
 import com.zobo.burung.explore.ProvinceProgress
 import com.zobo.burung.explore.RegionCounts
+import com.zobo.burung.explore.RegionStat
 import com.zobo.burung.explore.ChallengeGroup
 import com.zobo.burung.explore.ChallengePeriod
 import com.zobo.burung.explore.Challenges
@@ -47,6 +48,15 @@ data class Summary(
     val stampKinds: Int = 0,
     val newRoadRatio: Double = 0.0,
 )
+
+/** A dex slide's story cards: where it was explored last, and where to go next. */
+data class DexStory(val recent: DexRecent?, val next: DexNext?)
+
+/** The 동 explored most recently in a slide's area, when, and (on a 시·도 slide) its 시·군·구. */
+data class DexRecent(val name: String, val at: Long, val district: String? = null)
+
+/** The nearest region not entered yet, [km] from home (or the car). */
+data class DexNext(val region: RegionStat, val km: Double)
 
 /** A past trip shown on the map: the recorded route, or for trips before routes were kept, its cells. */
 data class TripRoute(val trip: TripEntity, val points: List<Pair<Double, Double>>, val isTrack: Boolean)
@@ -180,6 +190,45 @@ class MainViewModel : ViewModel() {
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * The dex slides' two story cards, per slide ("" = the whole country, else a 시·도 code): the 동
+     * explored most recently there, and the nearest 시·도 / 시·군·구 not entered yet, measured from the
+     * navigation's home (else the car).
+     */
+    val dexStories: StateFlow<Map<String, DexStory>> = combine(
+        regions,
+        navi.home,
+        live.map { it.location?.let { f -> Math.round(f.lat * 100) / 100.0 to Math.round(f.lng * 100) / 100.0 } }.distinctUntilChanged(),
+    ) { r, home, here ->
+        val atlas = FogRuntime.regions?.atlas
+        if (r.isNullOrEmpty() || atlas == null) return@combine emptyMap()
+        val recent = HashMap<String, DexRecent>()
+        for (c in repo.newestCleared(RECENT_CELLS)) {
+            val d = atlas.dongOf(c.cell).takeIf { it >= 0 } ?: continue
+            val dong = atlas.dongs[d]
+            val district = atlas.districts[dong.district]
+            val province = atlas.provinces[district.province]
+            recent.putIfAbsent("", DexRecent("${district.name} ${dong.name}", c.firstSeenAt))
+            recent.putIfAbsent(province.code, DexRecent(dong.name, c.firstSeenAt, district.name))
+        }
+        val origin = home?.let { it.lat to it.lng } ?: here
+        fun nearest(candidates: List<Pair<RegionStat, com.zobo.burung.geo.Outline?>>): DexNext? {
+            if (origin == null) return null
+            return candidates.mapNotNull { (stat, o) ->
+                o ?: return@mapNotNull null
+                val km = Tiles.distanceMeters(origin.first, origin.second, Tiles.yToLat(o.labelY + 0.5), Tiles.xToLng(o.labelX + 0.5)) / 1000
+                DexNext(stat, km)
+            }.minByOrNull { it.km }
+        }
+        buildMap {
+            put("", DexStory(recent[""], nearest(r.filter { !it.visited }.map { p -> p to atlas.provinces.firstOrNull { it.code == p.code }?.outline })))
+            val outlines = atlas.districts.associateBy({ it.code }, { it.outline })
+            r.filter { it.visited }.forEach { p ->
+                put(p.code, DexStory(recent[p.code], nearest(p.districts.filter { !it.visited }.map { it to outlines[it.code] })))
+            }
+        }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /**
      * Explored cells per region level as int arrays: cheap enough for the map and driving headers to
@@ -508,6 +557,8 @@ class MainViewModel : ViewModel() {
         /** Unexplored 동 farther than this are not suggested; the nearest few are offered in turn. */
         const val SUGGEST_MAX_M = 30_000.0
         const val SUGGEST_CHOICES = 8
+        /** Newest cleared cells read for the dex's "최근 개척": enough to reach back past the last few trips. */
+        private const val RECENT_CELLS = 4_000
         /** 읍·면·동 exploration steps shown as a notice with a sparkle / also spoken. */
         const val MILESTONE_NOTICE = 25
         const val MILESTONE_VOICE = 50
