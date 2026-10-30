@@ -153,7 +153,7 @@ class TripRecorder(private val sink: ExploreSink) {
         prevStepNew = centerWasNew
         val swath = LinkedHashSet<Long>()
         for (c in path) swath.addAll(Tiles.neighborhood(c, DRIVE_RADIUS))
-        // Cells explored before this trip count one more drive, once per trip ("worn" roads on the map).
+        // Cells explored before this trip count one more drive, once per trip (stored as visits).
         val again = swath.filter { it !in revealedThisTrip && it !in revisitedThisTrip && sink.isExplored(it) }
         if (again.isNotEmpty()) {
             revisitedThisTrip.addAll(again)

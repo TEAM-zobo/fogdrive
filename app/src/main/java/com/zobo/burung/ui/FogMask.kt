@@ -12,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import com.zobo.burung.data.Tracks
-import com.zobo.burung.data.LongIntMap
 import com.zobo.burung.geo.Outline
 import com.zobo.burung.geo.Tiles
 import java.util.concurrent.Executors
@@ -22,7 +21,7 @@ import kotlin.math.max
 
 /** What a fog bitmap shows; a tile is redrawn when any of it changes. */
 data class FogMaskKey(
-    /** Explored cells and revisit counts (see ExploreRepository.version / revisitVersion). */
+    /** Explored cells and the routes and spots (see ExploreRepository.version / Tracks.version). */
     val data: Long,
     /** Cell aggregation level: one drawn tile is 2^dz zoom-20 cells. */
     val dz: Int,
@@ -30,7 +29,6 @@ data class FogMaskKey(
     /** Compared by identity: a new layer comes with new region counts. */
     val regions: RegionLayer?,
     val regionsUnavailable: Boolean,
-    val worn: Boolean,
 )
 
 /**
@@ -54,9 +52,6 @@ class FogMaskTile(
     val y1: Double,
     val cellPx: Double,
     val key: FogMaskKey,
-    /** Worn roads at [wornScale]× the fog's resolution (they are thin; the fog is soft anyway). */
-    val worn: Bitmap?,
-    val wornScale: Int,
 ) {
     fun covers(ax0: Double, ay0: Double, ax1: Double, ay1: Double) = ax0 >= x0 && ay0 >= y0 && ax1 <= x1 && ay1 <= y1
 }
@@ -80,17 +75,15 @@ class FogMaskRenderer(
         val x1: Double,
         val y1: Double,
         val cellPx: Double,
-        /** The driven routes the fog is opened along. */
-        val tracks: Tracks,
-        /** Revisit counts (concurrent map), or null when worn roads are not drawn. */
-        val revisits: LongIntMap?,
+        /** The routes and spots the veil is opened along, as they were when the job was made. */
+        val tracks: Tracks.Snapshot,
         /**
          * Where the content changed since the last request (x0, y0, x1, y1 in zoom-20 tile units),
          * or null for "anywhere": only that part is redrawn when the tile is otherwise the same.
          */
         val dirty: DoubleArray? = null,
     ) {
-        fun withDirty(d: DoubleArray?) = if (d === dirty) this else Job(key, x0, y0, x1, y1, cellPx, tracks, revisits, d)
+        fun withDirty(d: DoubleArray?) = if (d === dirty) this else Job(key, x0, y0, x1, y1, cellPx, tracks, d)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -109,7 +102,6 @@ class FogMaskRenderer(
     private val lightFogPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC)  // replaces the dark veil inside the outline
     }
-    private val wornPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val outlineMatrix = Matrix()
     private val outlinePath = Path()
     private val trackPath = Path()
@@ -120,8 +112,8 @@ class FogMaskRenderer(
     }
     private val rimStroke = bandPaint().apply { color = Color.argb(110, 0xFF, 0xFF, 0xFF) }
     private val bandClear = bandPaint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
-    private val wornXy = Array(FogOverlayView.WORN_LEVELS.size) { FloatArray(256) }
-    private val wornCount = IntArray(FogOverlayView.WORN_LEVELS.size)
+    private val spotRim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = rimStroke.color }
+    private val spotClear = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
 
     fun submit(job: Job) {
         synchronized(lock) {
@@ -174,16 +166,21 @@ class FogMaskRenderer(
         val h = rows * CHUNK
         val bmp = full?.takeIf { it.width == w && it.height == h }
             ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { full = it }
-        val wornScale = ceil(WORN_MIN_CELL_PX / px).toInt().coerceIn(1, WORN_MAX_SCALE)
         // Same tile as last time apart from the data (driving: new cells near the car): redraw only
         // the changed area of the bitmap, which keeps the rest. Thousands of cells were punched again
         // every few hundred ms for a handful of new ones.
-        val geometry = listOf(gx0, gy0, cols, rows, px, key.dz, key.night, key.regions, key.regionsUnavailable, key.worn, wornScale)
-        val dirty = job.dirty?.takeIf { fullGeometry == geometry && wornScale == 1 }
+        val geometry = listOf(gx0, gy0, cols, rows, px, key.dz, key.night, key.regions, key.regionsUnavailable)
+        val dirty = job.dirty?.takeIf { fullGeometry == geometry }
         fullGeometry = null  // until this render completes
         val c = canvas
         c.setBitmap(bmp)
-        // Area to scan for cells: the whole tile, or the changed part (plus a cell for the soft rims).
+        // The band opened along a route, and its soft rim: how far a route or spot reaches (in tiles).
+        val band = max(MIN_BAND_PX, (REVEAL_WIDTH * px).toFloat())
+        val rimWidth = band + max(2f, band * 0.25f)
+        rimStroke.strokeWidth = rimWidth
+        bandClear.strokeWidth = band
+        val reach = rimWidth / 2.0 / px + 1.0
+        // Area to scan for routes and spots: the whole tile, or the changed part (plus their reach).
         var sx0 = x0
         var sy0 = y0
         var sx1 = x1
@@ -191,7 +188,7 @@ class FogMaskRenderer(
         // The pixels redrawn this time (a partial render), so chunks outside are handed on as they were.
         var changed: android.graphics.Rect? = null
         if (dirty != null) {
-            val rimWorld = RIM_CELLS * (1 shl key.dz)
+            val rimWorld = maxOf(RIM_CELLS * (1 shl key.dz), reach)
             val margin = 2.0 * (1 shl key.dz) + rimWorld
             sx0 = maxOf(x0, dirty[0] - margin)
             sy0 = maxOf(y0, dirty[1] - margin)
@@ -206,7 +203,7 @@ class FogMaskRenderer(
             c.clipRect(clip)
             changed = clip
             c.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-            // Cells just outside still reach in with their rims: scan a little wider than the clip.
+            // Routes just outside still reach in with their band: scan a little wider than the clip.
             sx0 -= rimWorld
             sy0 -= rimWorld
             sx1 += rimWorld
@@ -231,33 +228,32 @@ class FogMaskRenderer(
         }
 
         // Open the ground along every driven route: one straight band, a soft white edge under it.
-        val band = max(MIN_BAND_PX, (REVEAL_WIDTH * px).toFloat())
-        rimStroke.strokeWidth = band + max(2f, band * 0.25f)
-        bandClear.strokeWidth = band
+        // Only what reaches the scanned area is built: a long history is mostly elsewhere.
         trackPath.rewind()
-        job.tracks.forEach { xs, ys, count ->
-            for (k in 0 until count) {
-                val x = ((xs[k] - x0) * px).toFloat()
-                val y = ((ys[k] - y0) * px).toFloat()
-                if (k == 0) trackPath.moveTo(x, y) else trackPath.lineTo(x, y)
-            }
-            // A single point still opens a round spot (a zero-length segment draws nothing).
-            if (count == 1) trackPath.lineTo(((xs[0] - x0) * px).toFloat() + 0.01f, ((ys[0] - y0) * px).toFloat())
+        val ax0 = sx0 - reach
+        val ay0 = sy0 - reach
+        val ax1 = sx1 + reach
+        val ay1 = sy1 + reach
+        for (line in job.tracks.lines) {
+            val b = line.bbox
+            if (b[2] < ax0 || b[0] > ax1 || b[3] < ay0 || b[1] > ay1) continue
+            addRoute(line, x0, y0, px, ax0, ay0, ax1, ay1)
         }
-        c.drawPath(trackPath, rimStroke)
-        c.drawPath(trackPath, bandClear)
-        var worn: Bitmap? = null
-        job.revisits?.takeIf { !it.isEmpty() }?.let { visits ->
-            if (wornScale == 1) {
-                // Same resolution as the fog (driving zoom): drawn into the fog itself, so it is
-                // uploaded with the chunks it touches.
-                drawWornRoads(c, visits, x0, y0, x1, y1, px, sx0, sy0, sx1, sy1)
-            } else {
-                // Zoomed out (parked): sharper than the fog, one bitmap of its own.
-                val wb = Bitmap.createBitmap(w * wornScale, h * wornScale, Bitmap.Config.ARGB_8888)
-                c.setBitmap(wb)
-                drawWornRoads(c, visits, x0, y0, x1, y1, px * wornScale)
-                worn = wb
+        // Ground cleared without a route through it (a drop-off, an arrival, the first-run seeding,
+        // trips from before routes were stored): each cell as a slightly oversized soft circle.
+        val spots = job.tracks.spots
+        val spotR = max(1.2f, (px * 1.05).toFloat())
+        val spotRimR = spotR + max(1f, spotR * 0.3f)
+        // Rims first (routes and spots), then the openings: an opening is never covered by a rim.
+        for (pass in 0..1) {
+            c.drawPath(trackPath, if (pass == 0) rimStroke else bandClear)
+            val paint = if (pass == 0) spotRim else spotClear
+            val r = if (pass == 0) spotRimR else spotR
+            for (k in 0 until job.tracks.spotCount) {
+                val cx = Tiles.x(spots[k]) + 0.5
+                val cy = Tiles.y(spots[k]) + 0.5
+                if (cx < ax0 || cx > ax1 || cy < ay0 || cy > ay1) continue
+                c.drawCircle(((cx - x0) * px).toFloat(), ((cy - y0) * px).toFloat(), r, paint)
             }
         }
         if (dirty != null) c.restore()
@@ -266,7 +262,7 @@ class FogMaskRenderer(
         // Only now: a partial render hands on [last]'s chunks outside its clip, so the bitmap may be
         // reused only when this render also became [last] (chunking can still run out of memory).
         fullGeometry = geometry
-        return FogMaskTile(chunks, cols, x0, y0, x1, y1, px, key, worn, wornScale)
+        return FogMaskTile(chunks, cols, x0, y0, x1, y1, px, key)
     }
 
     /**
@@ -326,70 +322,48 @@ class FogMaskRenderer(
     private fun chunkKey(gx: Long, gy: Long) = (gx shl 32) xor (gy and 0xffffffffL)
 
     /**
-     * Roads driven on several trips get a tint that deepens with the count (see WORN_LEVELS), so
-     * the daily routes stand out at a glance. Drawn into the fog bitmap, above the holes.
+     * Adds [line]'s strokes to [trackPath], skipping segments outside the area (ax0..ay1, tiles) and
+     * breaking at gaps (NaN points). A lone point still opens a round spot.
      */
-    private fun drawWornRoads(
-        c: Canvas, visits: LongIntMap, x0: Double, y0: Double, x1: Double, y1: Double, px: Double,
-        // The part to scan for cells (default: all of it); positions stay relative to x0, y0.
-        sx0: Double = x0, sy0: Double = y0, sx1: Double = x1, sy1: Double = y1,
-    ) {
-        if (visits.isEmpty()) return
-        val levels = FogOverlayView.WORN_LEVELS
-        val r = (px * 0.75).toFloat()
-        val lx0 = floor(sx0).toInt()
-        val lx1 = floor(sx1).toInt()
-        val ly0 = floor(sy0).toInt()
-        val ly1 = floor(sy1).toInt()
-        // One scan buckets the cells by tint; each tint is then drawn in one layer.
-        for (level in levels.indices) wornCount[level] = 0
-        fun collect(cx: Int, cy: Int, n: Int) {
-            var level = levels.size - 1
-            while (level >= 0 && n < levels[level].minTrips) level--
-            if (level < 0) return
-            val i = wornCount[level]
-            if (i + 2 > wornXy[level].size) wornXy[level] = wornXy[level].copyOf(wornXy[level].size * 2)
-            wornXy[level][i] = ((cx + 0.5 - x0) * px).toFloat()
-            wornXy[level][i + 1] = ((cy + 0.5 - y0) * px).toFloat()
-            wornCount[level] = i + 2
-        }
-        if ((lx1 - lx0 + 1).toLong() * (ly1 - ly0 + 1) < visits.size) {
-            for (cx in lx0..lx1) for (cy in ly0..ly1) {
-                val n = visits[Tiles.pack(cx, cy)]
-                if (n > 0) collect(cx, cy, n)
+    private fun addRoute(line: Tracks.Line, x0: Double, y0: Double, px: Double, ax0: Double, ay0: Double, ax1: Double, ay1: Double) {
+        val xs = line.xs
+        val ys = line.ys
+        var pen = false
+        var prevX = Double.NaN
+        var prevY = Double.NaN
+        for (k in 0 until line.count) {
+            val x = xs[k]
+            val y = ys[k]
+            if (x.isNaN()) {
+                pen = false
+                prevX = Double.NaN
+                continue
             }
-        } else {
-            visits.forEach { cell, n ->
-                val cx = Tiles.x(cell)
-                val cy = Tiles.y(cell)
-                if (cx in lx0..lx1 && cy in ly0..ly1) collect(cx, cy, n)
+            val sx = ((x - x0) * px).toFloat()
+            val sy = ((y - y0) * px).toFloat()
+            if (prevX.isNaN()) {
+                val inside = x in ax0..ax1 && y in ay0..ay1
+                val lone = k + 1 >= line.count || xs[k + 1].isNaN()
+                if (inside && lone) {
+                    trackPath.moveTo(sx, sy)
+                    trackPath.lineTo(sx + 0.01f, sy)
+                }
+            } else {
+                val outside = maxOf(prevX, x) < ax0 || minOf(prevX, x) > ax1 || maxOf(prevY, y) < ay0 || minOf(prevY, y) > ay1
+                if (outside) {
+                    pen = false
+                } else {
+                    if (!pen) trackPath.moveTo(((prevX - x0) * px).toFloat(), ((prevY - y0) * px).toFloat())
+                    trackPath.lineTo(sx, sy)
+                    pen = true
+                }
             }
-        }
-        // One layer per tint: opaque circles inside merge into an even band, and the layer's alpha
-        // is applied once (overlapping translucent circles used to show as a dotted pattern).
-        for (level in levels.indices) {
-            val count = wornCount[level]
-            if (count == 0) continue
-            val xy = wornXy[level]
-            wornPaint.color = levels[level].color
-            val layer = c.saveLayerAlpha(null, levels[level].alpha)
-            var i = 0
-            while (i < count) {
-                c.drawCircle(xy[i], xy[i + 1], r, wornPaint)
-                i += 2
-            }
-            c.restoreToCount(layer)
+            prevX = x
+            prevY = y
         }
     }
 
     companion object {
-        /**
-         * Worn roads get at least this many bitmap pixels per cell: sharper than the fog when zoomed
-         * out (a cell is ~1 px there and the band looked jagged), the fog's own resolution when driving
-         * (cells are large; a 2× bitmap was ~20 MB to upload per redraw).
-         */
-        const val WORN_MIN_CELL_PX = 4.0
-        const val WORN_MAX_SCALE = 2
         /** Width of the ground opened along a driven route, in zoom-20 tiles (~80 m across). */
         private const val REVEAL_WIDTH = 2.6
         /** The band never gets narrower than this many mask pixels, so it shows beside the gold trail when zoomed out. */

@@ -51,8 +51,6 @@ fun FogMap(
     onFocusShown: () -> Unit = {},
     /** Past trip to draw (record screen). */
     route: TripRoute? = null,
-    /** Tint roads driven on several trips. */
-    showWornRoads: Boolean = true,
     /** Navigation destination, marked with a flag. */
     destination: Pair<Double, Double>? = null,
     /** The navigation's 집, marked as the base camp. */
@@ -82,15 +80,12 @@ fun FogMap(
             holder.onMapReady(map)
             holder.overlay.map = map
             holder.overlay.cellLog = FogRuntime.repo
-            holder.overlay.revisitLog = FogRuntime.repo::revisitsSince
-            holder.overlay.revisits = { FogRuntime.repo.revisits }
             holder.overlay.tracks = FogRuntime.repo.tracks
             holder.overlay.onReady = {
                 holder.fogShown.value = true
                 FogRuntime.fogReady.value = true
             }
             holder.overlay.cellsVersion = { FogRuntime.repo.version.value }
-            holder.overlay.revisitVersion = { FogRuntime.repo.revisitVersion }
             map.uiSettings.isRotateGesturesEnabled = false
             map.uiSettings.isTiltGesturesEnabled = false
             map.uiSettings.isCompassEnabled = false
@@ -158,10 +153,6 @@ fun FogMap(
         } else if (follow) {
             map.animateCamera(CameraUpdateFactory.newLatLng(LatLng(current.first, current.second)), 600)
         }
-    }
-    LaunchedEffect(showWornRoads) {
-        holder.overlay.showWornRoads = showWornRoads
-        holder.overlay.invalidate()
     }
     LaunchedEffect(destination, home) {
         holder.overlay.destination = destination

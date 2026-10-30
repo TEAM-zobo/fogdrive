@@ -152,6 +152,14 @@ interface FogDao {
     @Query("SELECT * FROM track")
     suspend fun allTrack(): List<TrackPointEntity>
 
+    /** Every route point for the map, in drawing order. */
+    @Query("SELECT tripId, lat, lng FROM track ORDER BY tripId, at, id")
+    suspend fun trackPoints(): List<TrackPoint>
+
+    /** Cells cleared without a stored route through them: not by driving, or by a trip without a route. */
+    @Query("SELECT cell FROM cells WHERE source != 0 OR tripId NOT IN (SELECT DISTINCT tripId FROM track)")
+    suspend fun spotCells(): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putTrips(rows: List<TripEntity>)
 

@@ -362,8 +362,6 @@ class MainViewModel : ViewModel() {
     val demoPlaying: StateFlow<Boolean> = live.map { it.demoPlaying }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    val showWornRoads = FogRuntime.mapPrefs.showWornRoads
-
     val onboardingDone = FogRuntime.mapPrefs.onboardingDone
 
     fun setOnboardingDone(done: Boolean) = FogRuntime.mapPrefs.setOnboardingDone(done)
@@ -440,8 +438,6 @@ class MainViewModel : ViewModel() {
                 .onFailure { shareCardMessage.value = "카드를 만들지 못했어요: ${it.message}" }
         }
     }
-
-    fun setShowWornRoads(on: Boolean) = FogRuntime.mapPrefs.setShowWornRoads(on)
 
     val detourCard = FogRuntime.mapPrefs.detourCard
     val suggestionCard = FogRuntime.mapPrefs.suggestionCard

@@ -76,8 +76,6 @@ fun DrivingScreen(viewModel: MainViewModel) {
             recenterSignal = 0,
             onUserMoved = {},
             driving = true,
-            // Roads driven show as the gold trail; the worn-road tint would band around it.
-            showWornRoads = false,
             destination = destination?.let { it.lat to it.lng },
             home = home?.let { it.lat to it.lng },
         )

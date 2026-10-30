@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Explored cells live in memory (fast lookups for the fog overlay and detour planner)
@@ -96,17 +95,24 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     /** [beforeShown] runs once the cells are in, before the UI is told (start-up work that needs them). */
     suspend fun load(beforeShown: () -> Unit = {}) {
-        // Revisit counts only tint worn roads: read them alongside the cells, and let the map draw the
-        // fog as soon as the cells are in (start-up showed the loading screen for all of it).
+        // Revisit counts are read alongside the cells; the map draws the veil as soon as the cells are
+        // in (start-up showed the loading screen for all of it).
         val generation = synchronized(lock) { resetGeneration }
         val revisited = scope.async(Dispatchers.IO) { db.dao().revisited() }
         val all = withContext(Dispatchers.IO) { db.dao().allCellIds() }
         synchronized(lock) { for (c in all) if (cells.add(c)) append(c) }
-        tracks.replaceAll(withContext(Dispatchers.IO) { db.dao().allTrack() })
         hasTrips = withContext(Dispatchers.IO) { db.dao().tripCount() } > 0
         beforeShown()
         bump()
         _loaded.value = true
+        // Routes after the UI is told (the map opens the veil along them as they come in): with a long
+        // history they are the bulk of the stored rows.
+        val points = withContext(Dispatchers.IO) { db.dao().trackPoints() }
+        val spotCells = withContext(Dispatchers.IO) { db.dao().spotCells() }
+        synchronized(lock) {
+            // Wiped meanwhile (기록 전체 삭제 right after launch): the rows read belong to deleted data.
+            if (resetGeneration == generation) tracks.replaceAll(points, spotCells)
+        }
         val stored = revisited.await()
         synchronized(visitLock) {
             // Wiped meanwhile (기록 전체 삭제 right after launch): the visits read belong to deleted data.
@@ -120,10 +126,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             }
             pendingVisits.clear()
             visitsLoaded = true
-            revisitLogSize = 0
-            revisitEpoch++
         }
-        revisitCounter.incrementAndGet()
     }
 
     fun count(): Int = synchronized(lock) { cells.size }
@@ -134,50 +137,20 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     override fun noTripsYet(): Boolean = !hasTrips
 
-    /** Cells driven by more than one trip, with their trip count (read live by the map). */
+    /** Cells driven by more than one trip, with their trip count. */
     private val visitCounts = LongIntMap(INITIAL_CELLS / 4)
     /** Guards the switch from [pendingVisits] to [visitCounts] once the stored counts are loaded. */
     private val visitLock = Any()
     @Volatile private var visitsLoaded = false
     /** Repeats recorded before the stored counts were read (see [revisit] and [load]). */
     private val pendingVisits = HashMap<Long, Int>()
-    // Cells whose count changed, in order, so the map redraws only around them (see [revisitsSince]).
-    // A change everywhere (the stored counts merged in, a reset) starts a new epoch instead.
-    private var revisitLog = LongArray(1024)
-    private var revisitLogSize = 0
-    private var revisitEpoch = 0
-
-    /** What changed in [revisits] since a reading of it. */
-    class RevisitSlice(val epoch: Int, val size: Int, val cells: LongArray)
-
-    /** Cells whose revisit count changed since position [from] of [epoch]; a new epoch: all may have. */
-    fun revisitsSince(epoch: Int, from: Int): RevisitSlice = synchronized(visitLock) {
-        if (epoch != revisitEpoch || from > revisitLogSize) return RevisitSlice(revisitEpoch, revisitLogSize, LongArray(0))
-        RevisitSlice(revisitEpoch, revisitLogSize, revisitLog.copyOfRange(from, revisitLogSize))
-    }
-
-    private fun logRevisits(cells: Collection<Long>) {
-        if (revisitLogSize + cells.size > MAX_REVISIT_LOG) {
-            // Long session: start over (readers redraw everything once).
-            revisitLogSize = 0
-            revisitEpoch++
-        }
-        if (revisitLogSize + cells.size > revisitLog.size) revisitLog = revisitLog.copyOf(maxOf(revisitLog.size * 2, revisitLogSize + cells.size))
-        for (c in cells) revisitLog[revisitLogSize++] = c
-    }
-    val revisits: LongIntMap get() = visitCounts
-    /** Bumped when [revisits] changes (no [version] bump for that, see [revisit]): the fog redraws on it. */
-    private val revisitCounter = AtomicInteger()
-    val revisitVersion: Int get() = revisitCounter.get()
 
     override fun revisit(cells: Collection<Long>) {
         // No version bump: that would rebuild the coarse fog levels on every fix over a known road.
-        // [revisitVersion] tells the map to redraw the worn roads instead.
         val loaded = synchronized(visitLock) {
             if (visitsLoaded) {
                 // A cell missing from the map was driven once before (only repeats are stored).
                 for (c in cells) visitCounts.add(c, by = 1, initial = 2)
-                logRevisits(cells)
             } else {
                 // The stored counts aren't in yet: count the repeats, added on top once they are.
                 // Stored only then too, or the read in [load] could already include them (counted twice).
@@ -185,7 +158,6 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             }
             visitsLoaded
         }
-        revisitCounter.incrementAndGet()
         if (loaded) storeVisits(cells.toList())
     }
 
@@ -211,6 +183,8 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             }
         }
         if (added.isNotEmpty()) {
+            // Driven cells show through the route's band; the others (drop-off, arrival, seeding) as spots.
+            if (source != CellSource.DRIVE) tracks.addSpots(added)
             bump()
             val now = System.currentTimeMillis()
             scope.launch(Dispatchers.IO) {
@@ -315,10 +289,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
             synchronized(visitLock) {
                 visitCounts.clear()
                 pendingVisits.clear()
-                revisitLogSize = 0
-                revisitEpoch++
             }
-            revisitCounter.incrementAndGet()
             orderSize = 0
             levelCache.clear()
             tripCells.clear()
@@ -340,7 +311,5 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         /** Room for a long history up front: growing a concurrent set step by step while loading
          *  tens of thousands of cells took over a second at start-up. */
         const val INITIAL_CELLS = 1 shl 17
-        /** Revisited cells kept for the map's partial redraws before starting a new epoch. */
-        const val MAX_REVISIT_LOG = 1 shl 16
     }
 }

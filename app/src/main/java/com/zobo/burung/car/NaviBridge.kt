@@ -155,8 +155,15 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
         }
     }
 
+    /**
+     * The demo's destination while a demo drives: the real navigation's answers (to a refresh when the
+     * app comes back to the front, or its own callbacks) would replace it with the car's real one.
+     */
+    @Volatile private var demoDestination: Place? = null
+
     /** Demo mode stand-in when no navigation destination exists in the emulator. */
     fun setDemoDestination(place: Place?) {
+        demoDestination = place
         _destination.value = place
         if (place == null) refreshDestination()
     }
@@ -200,6 +207,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     override fun onDestinationInfo(destinationInfo: DestinationInfo) {
+        if (demoDestination != null) return
         _destination.value = Place(destinationInfo.name ?: "목적지", destinationInfo.latitude, destinationInfo.longitude, destinationInfo.address)
     }
 
@@ -208,7 +216,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     override fun onRoutingCompleted() = refreshDestination()
 
     override fun onRouteCancelled() {
-        _destination.value = null
+        if (demoDestination == null) _destination.value = null
         endGuidance()
     }
 

@@ -12,9 +12,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
-import com.zobo.burung.data.ExploreRepository
 import com.zobo.burung.data.Tracks
-import com.zobo.burung.data.LongIntMap
 import com.zobo.burung.explore.CellLog
 import com.zobo.burung.explore.RegionCounts
 import com.zobo.burung.geo.Outline
@@ -44,18 +42,10 @@ class FogOverlayView(context: Context) : View(context) {
     var map: MapLibreMap? = null
     /** The explored-cell log, to tell the renderer which part changed (see [changedArea]). */
     var cellLog: CellLog? = null
-    /** Cells whose revisit count changed since a reading (see [changedArea]). */
-    var revisitLog: ((epoch: Int, from: Int) -> ExploreRepository.RevisitSlice)? = null
-    /** Draw [revisits] at all (map / driving view / Settings toggle). */
-    var showWornRoads = true
-    /** Cells driven by more than one trip and how many (read live, drawn as "worn" roads). */
     /** Called once, the first time the fog is drawn with the region data (or without it for good). */
     var onReady: (() -> Unit)? = null
-    var revisits: () -> LongIntMap = { LongIntMap.NONE }
     /** Changes whenever explored cells change (the fog is redrawn then). */
     var cellsVersion: () -> Int = { 0 }
-    /** Changes whenever revisit counts change (the worn roads are redrawn then, if shown). */
-    var revisitVersion: () -> Int = { 0 }
     var current: Pair<Double, Double>? = null
     var landings: List<Pair<Double, Double>> = emptyList()
     var detour: Pair<Double, Double>? = null
@@ -189,7 +179,7 @@ class FogOverlayView(context: Context) : View(context) {
     private val routeStart = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#111111") }
     private val routeEnd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
     // The road driven on this trip: gold over a brown edge, with a light dashed centre line.
-    private val trailPath = Path()
+    private val planPath = Path()
     private val trailCasing = linePaint(Color.parseColor("#A5742F"), 15f).apply { strokeCap = Paint.Cap.ROUND }
     private val trailGold = linePaint(Color.parseColor("#FFD25E"), 10f).apply { strokeCap = Paint.Cap.ROUND }
     private val trailShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
@@ -285,23 +275,32 @@ class FogOverlayView(context: Context) : View(context) {
     }
 
     private fun drawTrail(c: Canvas, t: Tracks, x0: Double, y0: Double, px: Double) {
-        trailPath.rewind()
+        planPath.rewind()
         var drawn = false
-        // Only this trip's road is gold: earlier trips stay as opened ground, so a course driven before
-        // does not show the road ahead in gold.
-        t.forLatest { xs, ys, n ->
-            if (n < 2) return@forLatest
-            drawn = true
-            for (i in 0 until n) {
-                val x = ((xs[i] - x0) * px).toFloat()
-                val y = ((ys[i] - y0) * px).toFloat()
-                if (i == 0) trailPath.moveTo(x, y) else trailPath.lineTo(x, y)
+        // Only the newest trip's road is gold (the one being driven, or the one just ended): earlier
+        // trips stay as opened ground, so a course driven before does not show the road ahead in gold.
+        val line = t.snapshot().latest ?: return
+        var pen = false
+        for (i in 0 until line.count) {
+            val xv = line.xs[i]
+            if (xv.isNaN()) {
+                pen = false
+                continue
+            }
+            val x = ((xv - x0) * px).toFloat()
+            val y = ((line.ys[i] - y0) * px).toFloat()
+            if (pen) {
+                planPath.lineTo(x, y)
+                drawn = true
+            } else {
+                planPath.moveTo(x, y)
+                pen = true
             }
         }
         if (!drawn) return
-        c.drawPath(trailPath, trailCasing)
-        c.drawPath(trailPath, trailGold)
-        c.drawPath(trailPath, trailShine)
+        c.drawPath(planPath, trailCasing)
+        c.drawPath(planPath, trailGold)
+        c.drawPath(planPath, trailShine)
     }
 
     /**
@@ -401,12 +400,8 @@ class FogOverlayView(context: Context) : View(context) {
         val cellPx = px / MASK_DIV
         var dz = 0
         while (dz < MAX_DZ && cellPx * (1 shl dz) < 1.5) dz++
-        val worn = showWornRoads && px >= WORN_MIN_PX
-        // Revisit counts only matter while worn roads are drawn: otherwise driving over known roads
-        // would re-render an unchanged fog every few hundred ms.
-        val routes = tracks.version.toLong() + (if (worn) revisitVersion().toLong() else 0L)
-        val data = (cellsVersion().toLong() shl 32) or (routes and 0xFFFFFFFFL)
-        val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable, worn)
+        val data = (cellsVersion().toLong() shl 32) or (tracks.version.toLong() and 0xFFFFFFFFL)
+        val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable)
         val t = tile
         if (t == null || !t.covers(x0, y0, x1, y1)) {
             // Before the first tile, or past the rendered area until the new tile lands: the dark veil,
@@ -440,12 +435,6 @@ class FogOverlayView(context: Context) : View(context) {
                 canvas.drawBitmap(c.bitmap, chunkSrc, chunkDst, maskPaint)
             }
             if (t.key.regions != null || t.key.regionsUnavailable) onReady?.let { onReady = null; it() }
-            t.worn?.let { worn ->
-                val ws = s / t.wornScale
-                tileMatrix.setScale(ws.toFloat(), ws.toFloat())
-                tileMatrix.postTranslate(((t.x0 - x0) * px).toFloat(), ((t.y0 - y0) * px).toFloat())
-                canvas.drawBitmap(worn, tileMatrix, maskPaint)
-            }
         }
         // Until the region data is in, a tile would be redrawn whole as soon as it lands (light fog over
         // entered 동): skip it; the plain dark fog above covers the wait (behind the loading screen).
@@ -474,8 +463,7 @@ class FogOverlayView(context: Context) : View(context) {
         val my = (y1 - y0) * margin
         val job = FogMaskRenderer.Job(
             key, x0 - mx, y0 - my, x1 + mx, y1 + my, cellPx,
-            tracks,
-            if (key.worn) revisits() else null,
+            tracks.snapshot(),
             changedArea(key),
         )
         requested = job
@@ -485,44 +473,51 @@ class FogOverlayView(context: Context) : View(context) {
     // What the last request covered, to work out what changed since (see [changedArea]).
     private var logGeneration = Int.MIN_VALUE
     private var logPosition = 0
-    private var revisitEpoch = Int.MIN_VALUE
-    private var revisitPosition = 0
+    private var tracksEpoch = Int.MIN_VALUE
+    private var trackTrip = -1L
+    private var trackCount = 0
     private var lastRequestKey: FogMaskKey? = null
 
     /**
-     * The area whose fog changed since the last request: the cells explored since then and the cells
-     * whose revisit count changed (worn roads). Null means "could be anywhere" (first request, a
-     * reset, the stored counts merged in, too many changes): the renderer redraws the whole tile.
+     * The area whose fog changed since the last request: the cells explored since then and the route
+     * points added since (a new stroke can run over cells already explored). Null means "could be
+     * anywhere" (first request, a reset or reload, a new trip, too many changes): the renderer redraws
+     * the whole tile.
      */
     private fun changedArea(key: FogMaskKey): DoubleArray? {
         val log = cellLog ?: return null
-        val visits = revisitLog ?: return null
         val slice = log.readSince(logGeneration, logPosition)
         val sameLog = slice.generation == logGeneration
         logGeneration = slice.generation
         logPosition = slice.size
-        val revisited = visits(revisitEpoch, revisitPosition)
-        val sameEpoch = revisited.epoch == revisitEpoch
-        revisitEpoch = revisited.epoch
-        revisitPosition = revisited.size
+        val epoch = tracks.epoch
+        val sameTracks = epoch == tracksEpoch
+        tracksEpoch = epoch
+        val growth = tracks.growthSince(trackTrip, trackCount)
+        val otherTrip = growth.tripId != trackTrip && growth.count > 0
+        val routeGrew = growth.count != trackCount
+        trackTrip = growth.tripId
+        trackCount = growth.count
         val previous = lastRequestKey
         lastRequestKey = key
-        if (previous == null || !sameLog || !sameEpoch) return null
-        if (slice.cells.size + revisited.cells.size > MAX_CHANGED_CELLS) return null
+        if (previous == null || !sameLog || !sameTracks) return null
+        if (otherTrip || (routeGrew && growth.box == null)) return null
+        if (slice.cells.size > MAX_CHANGED_CELLS) return null
         var minX = Double.MAX_VALUE
         var minY = Double.MAX_VALUE
         var maxX = -Double.MAX_VALUE
         var maxY = -Double.MAX_VALUE
-        fun add(c: Long) {
-            val x = Tiles.x(c).toDouble()
-            val y = Tiles.y(c).toDouble()
+        fun add(x: Double, y: Double, w: Double) {
             if (x < minX) minX = x
             if (y < minY) minY = y
-            if (x + 1 > maxX) maxX = x + 1
-            if (y + 1 > maxY) maxY = y + 1
+            if (x + w > maxX) maxX = x + w
+            if (y + w > maxY) maxY = y + w
         }
-        for (c in slice.cells) add(c)
-        for (c in revisited.cells) add(c)
+        for (c in slice.cells) add(Tiles.x(c).toDouble(), Tiles.y(c).toDouble(), 1.0)
+        growth.box?.let {
+            add(it[0], it[1], 0.0)
+            add(it[2], it[3], 0.0)
+        }
         return if (minX == Double.MAX_VALUE) null else doubleArrayOf(minX, minY, maxX, maxY)
     }
 
@@ -788,20 +783,6 @@ class FogOverlayView(context: Context) : View(context) {
         /** Screen px per grid cell from which 읍·면·동 (zoom ~13) / 시·군·구 (zoom ~9) are drawn. */
         const val DONG_LINES_PX = 4.0
         const val DISTRICT_LINES_PX = 0.25
-        /** Screen px per cell from which worn roads are drawn (single cells visible, zoom ~13). */
-        const val WORN_MIN_PX = 3.0
-        /**
-         * Worn-road levels: pale gold over the first few repeats, deepening through amber to a
-         * red-orange, so they sit with the gold trail and daily commutes still read apart.
-         */
-        val WORN_LEVELS = listOf(
-            WornLevel(2, Color.rgb(0xFF, 0xE0, 0x8A), 70),
-            WornLevel(3, Color.rgb(0xFF, 0xD2, 0x5E), 95),
-            WornLevel(5, Color.rgb(0xFF, 0xB8, 0x4D), 115),
-            WornLevel(10, Color.rgb(0xFF, 0x9F, 0x43), 130),
-            WornLevel(20, Color.rgb(0xF0, 0x7A, 0x00), 145),
-            WornLevel(50, Color.rgb(0xE0, 0x50, 0x2A), 160),
-        )
         /** Drop-off pins closer than this on screen are shown as one numbered pin. */
         const val CLUSTER_DP = 44f
         /** Boundary points closer than this (screen px, Manhattan) are merged when stroking. */
@@ -851,5 +832,3 @@ object OutlinePaths {
     }
 }
 
-/** One worn-road tint: roads driven on at least [minTrips] trips, drawn in [color] at layer [alpha]. */
-class WornLevel(val minTrips: Int, val color: Int, val alpha: Int)

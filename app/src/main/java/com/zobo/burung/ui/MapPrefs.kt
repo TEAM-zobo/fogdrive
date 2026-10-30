@@ -12,15 +12,6 @@ import java.util.Locale
 class MapPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("fogdrive_map", Context.MODE_PRIVATE)
 
-    private val _showWornRoads = MutableStateFlow(prefs.getBoolean(KEY_WORN, true))
-    /** Tint roads driven on several trips ("자주 다닌 길"). */
-    val showWornRoads: StateFlow<Boolean> = _showWornRoads.asStateFlow()
-
-    fun setShowWornRoads(on: Boolean) {
-        _showWornRoads.value = on
-        prefs.edit().putBoolean(KEY_WORN, on).apply()
-    }
-
     private val _onboardingDone = MutableStateFlow(prefs.getBoolean(KEY_ONBOARDING, false))
     /** The first-run tutorial was finished or skipped; Settings can show it again. */
     val onboardingDone: StateFlow<Boolean> = _onboardingDone.asStateFlow()
@@ -110,7 +101,6 @@ class MapPrefs(context: Context) {
     val suggestionCard = CardPref("suggestion_card")
 
     companion object {
-        private const val KEY_WORN = "show_worn_roads"
         private const val KEY_ONBOARDING = "onboarding_done"
         private const val KEY_VOICE = "voice_on"
         private const val KEY_STORIES = "stories_on"

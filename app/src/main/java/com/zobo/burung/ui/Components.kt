@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -201,20 +200,6 @@ fun formatRate(ratio: Double): String {
         pct < 10 -> "%.1f%%".format(pct)
         else -> "%.0f%%".format(pct)
     }
-}
-
-/** Map / driving-view toggle for the "자주 다닌 길" tint. */
-@Composable
-fun WornRoadsButton(on: Boolean, onToggle: () -> Unit) {
-    MapButton(
-        Icons.Outlined.Timeline,
-        if (on) "자주 다닌 길 끄기" else "자주 다닌 길 켜기",
-        tint = if (on) FogColors.Accent else FogColors.TextSub,
-        onClick = {
-            Sfx.play(if (on) Sound.TOGGLE_OFF else Sound.TOGGLE_ON)
-            onToggle()
-        },
-    )
 }
 
 /**
