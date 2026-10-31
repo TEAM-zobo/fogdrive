@@ -422,8 +422,9 @@ def tc_demo(ctx):
     ctx.log(f"기록 {r} / 스탬프 {s}")
     ctx.check(r["landings"] == 1 and r["trips"] == 1, "하차 1곳, 주행 1건")
     ctx.check(s.get("가족 탐험", 0) >= 1 and not s.get("빗속 개척"), "가족 탐험, 빗속 개척 없음")
-    ctx.dev.tap_text("설정")
-    tap_scrolling(ctx, "시연 중지")
+    # Stopped from the map's demo panel, which keeps "시연 중지" on screen after the drive ends.
+    ctx.dev.tap_text("지도")
+    ctx.dev.tap_text("시연 중지")
 
 
 @case("TC-14", "기록 관리", "기록 전체 삭제 후 모든 기록이 0으로 돌아간다",
