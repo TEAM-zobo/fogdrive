@@ -744,7 +744,11 @@ class FogOverlayView(context: Context) : View(context) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = argb
             style = Paint.Style.STROKE
-            strokeWidth = widthDp * density
+            // Lines that come out at most 1.5 px are drawn as hairlines: the GPU draws those in one
+            // batch, while each wider segment became a path of its own (a rounded rect per dash of the
+            // 읍·면·동 lines), most of each frame's GPU work while the parked map was dragged.
+            val px = widthDp * density
+            strokeWidth = if (px <= HAIRLINE_PX) 0f else px
             // Round caps also fill the corners between consecutive segments.
             strokeCap = Paint.Cap.ROUND
         }
@@ -834,6 +838,8 @@ class FogOverlayView(context: Context) : View(context) {
         const val CLUSTER_DP = 44f
         /** Boundary points closer than this (screen px, Manhattan) are merged when stroking. */
         private const val MIN_SEGMENT_PX = 1.5f
+        /** Boundary strokes this thin or thinner (screen px) are drawn as hairlines (see [Stroke]). */
+        private const val HAIRLINE_PX = 1.5f
         const val MASK_DIV = 3
         /** Extra fog rendered on each side of the view, as a share of its size. */
         private const val TILE_MARGIN = 0.3
