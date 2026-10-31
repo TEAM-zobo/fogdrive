@@ -235,7 +235,7 @@ tools/setup/setup.sh boot --record  # 녹화용 QA 에뮬레이터(소리 켬, �
 
 ## QA
 
-Pleos 에뮬레이터에서 실제 SDK 경로로 기능별 TC 21개를 자동 실행하는 도구와 웹 대시보드가 `qa/`에 있습니다. 사용법은 [`qa/README.md`](qa/README.md), TC 목록은 [`docs/test-cases.html`](docs/test-cases.html)을 보세요.
+Pleos 에뮬레이터에서 실제 SDK 경로로 기능별 TC 20개를 자동 실행하는 도구와 웹 대시보드가 `qa/`에 있습니다. 사용법은 [`qa/README.md`](qa/README.md), TC 목록은 [`docs/test-cases.html`](docs/test-cases.html)을 보세요.
 
 ## 구조
 
@@ -270,4 +270,4 @@ docs/
 - [테스트 환경 셋팅](docs/SETUP.md): macOS·Windows별 SDK·에뮬레이터 설치, 빌드·실행, 문제 해결
 - [시연·홍보 영상](docs/VIDEO.md): 영상 도구 설치, 구간별 녹화, HyperFrames 편집·렌더링, 라이선스
 - [공모전 준비 가이드](docs/index.html): 일정, 제출물, 접수양식 작성법, 일자별 계획, 개발 현황, 근거 링크
-- [테스트 케이스](docs/test-cases.html): 기능별 TC 21개 (`qa/fogqa/cases.py`에서 생성)
+- [테스트 케이스](docs/test-cases.html): 기능별 TC 20개 (`qa/fogqa/cases.py`에서 생성)

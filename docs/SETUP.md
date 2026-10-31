@@ -174,7 +174,7 @@ curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 2. **Virtual Console**: 브라우저에서 `http://127.0.0.1:8088/`을 열고 기어·도어·창문·와이퍼·좌석을 바꿔 봅니다.
 3. **위치 옮기기**: `adb emu geo fix <경도> <위도>` (예: `adb emu geo fix 127.0559 37.5446`). 집 위치로 되돌리기는 macOS `tools/emulator/set_home.sh`, Windows `adb emu geo fix 126.89592 37.60852`.
 4. **단위 테스트**: `setup.sh test` / `setup.ps1 test`.
-5. **QA 자동 테스트(TC 21개, 약 20분)**:
+5. **QA 자동 테스트(TC 20개, 약 20분)**:
    ```bash
    cd qa
    python3 -m fogqa list                         # Windows: python -m fogqa list

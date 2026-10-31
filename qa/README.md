@@ -24,7 +24,7 @@ TC 정의는 [`fogqa/cases.py`](fogqa/cases.py) 한 곳에 있고, 문서 [`docs
 ```bash
 cd qa
 python3 -m fogqa list            # TC 목록
-python3 -m fogqa run             # 전체 실행 (TC 21개, 약 20분)
+python3 -m fogqa run             # 전체 실행 (TC 20개, 약 20분)
 python3 -m fogqa run TC-03 TC-05 # 일부 실행
 python3 -m fogqa tc-doc          # docs/test-cases.html 갱신
 ```
