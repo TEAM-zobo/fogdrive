@@ -125,16 +125,22 @@ class MapPrefs(context: Context) {
     }
 
     /**
-     * 주말 탐험가 picked for a week that ended without it: after two such weeks in a row it is not
-     * suggested for [WEEKEND_REST_WEEKS] weeks (some drivers just don't drive at weekends).
+     * The picks of [pickedWeek] are replaced in [week]: 주말 탐험가 picked that week and not earned is a
+     * miss; after two misses in consecutive weeks it is not suggested for [WEEKEND_REST_WEEKS] weeks
+     * (some drivers just don't drive at weekends). A week without it, or with it earned, resets the run.
      */
-    fun noteWeekendPick(earned: Boolean, week: Long) {
-        val misses = if (earned) 0 else prefs.getInt(KEY_WEEKEND_MISSES, 0) + 1
+    fun noteWeekendPick(pickedWeek: Long, picked: Boolean, earned: Boolean, week: Long) {
         val e = prefs.edit()
-        if (misses >= 2) {
-            e.putLong(KEY_WEEKEND_REST_UNTIL, week + WEEKEND_REST_WEEKS).putInt(KEY_WEEKEND_MISSES, 0)
+        if (!picked || earned) {
+            e.putInt(KEY_WEEKEND_MISSES, 0)
         } else {
-            e.putInt(KEY_WEEKEND_MISSES, misses)
+            val run = prefs.getInt(KEY_WEEKEND_MISSES, 0)
+            val misses = if (run > 0 && prefs.getLong(KEY_WEEKEND_MISS_WEEK, 0) == pickedWeek - 1) run + 1 else 1
+            if (misses >= 2) {
+                e.putLong(KEY_WEEKEND_REST_UNTIL, week + WEEKEND_REST_WEEKS).putInt(KEY_WEEKEND_MISSES, 0)
+            } else {
+                e.putInt(KEY_WEEKEND_MISSES, misses).putLong(KEY_WEEKEND_MISS_WEEK, pickedWeek)
+            }
         }
         e.apply()
     }
@@ -179,6 +185,7 @@ class MapPrefs(context: Context) {
         /** Monday-based week number (the earlier int key held a different week code). */
         private const val KEY_PICKS_WEEK2 = "weekly_picks_week3"
         private const val KEY_WEEKEND_MISSES = "weekend_misses"
+        private const val KEY_WEEKEND_MISS_WEEK = "weekend_miss_week"
         private const val KEY_WEEKEND_REST_UNTIL = "weekend_rest_until"
         private const val WEEKEND_REST_WEEKS = 4
         private const val KEY_PICKS = "weekly_picks"

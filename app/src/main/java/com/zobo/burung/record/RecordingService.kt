@@ -145,6 +145,10 @@ class RecordingService : Service() {
         val events = recorder.onFix(fix, vehicle)
         events.forEach { apply(it) }
         lastFix = fix
+        // The origin for 멀리 떠난 날 when no home is set: the trip's first usable fix, atlas or not.
+        if (recorder.tripActive && tripOrigin == null && (fix.accuracyM ?: 0f) <= TripRecorder.MAX_ACCURACY_M) {
+            tripOrigin = fix.lat to fix.lng
+        }
         recordTrack(fix)
         stampRegions(fix)
         updateMission(fix)
@@ -182,22 +186,21 @@ class RecordingService : Service() {
         val province = atlas.districts[district].province
         val earned = ArrayList<Pair<StampCode, String>>(0)
         fun stamp(code: StampCode, message: String) {
-            if (awardedRegionStamps.add(code)) earned += code to message
+            // Codes outside the stamp book are dropped by apply(): no notice for a stamp never given.
+            if (code in StampBook.ACTIVE && awardedRegionStamps.add(code)) earned += code to message
         }
-        // Where the trip starts is not a "new" 시·군·구 or 시·도 (on a first drive nothing is known yet),
-        // and it is the origin for 멀리 떠난 날 when no home is set.
+        // Where the trip starts is not a "new" 시·군·구 or 시·도 (on a first drive nothing is known yet).
         if (t.startProvince < 0) {
             t.startProvince = province
             t.knownDistricts.add(district)
             t.knownProvinces.add(province)
-            tripOrigin = fix.lat to fix.lng
         }
         if (t.knownDongs.add(dong)) {
             t.newDongs++
             onNewDong(atlas.dongs[dong], atlas.districts[district].name)
             if (t.newDongs >= DONG_HOPPER_COUNT) stamp(StampCode.DONG_HOPPER, "동네 순례: 이번 주행에서 새 동 ${t.newDongs}곳")
         }
-        if (t.knownDistricts.add(district)) stamp(StampCode.NEW_DISTRICT, "새 동네 첫발: ${atlas.districts[district].name}")
+        if (t.knownDistricts.add(district)) stamp(StampCode.NEW_DISTRICT, "${StampCode.NEW_DISTRICT.title}: ${atlas.districts[district].name}")
         if (t.knownProvinces.add(province)) stamp(StampCode.NEW_PROVINCE, "새 땅 밟기: ${atlas.provinces[province].name}")
         if (province != t.startProvince) stamp(StampCode.PROVINCE_CROSS, "경계 넘어: ${atlas.provinces[province].name}")
         for ((code, message) in earned) {

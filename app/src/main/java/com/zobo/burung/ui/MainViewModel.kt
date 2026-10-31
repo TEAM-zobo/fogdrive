@@ -323,7 +323,13 @@ class MainViewModel : ViewModel() {
     private var showTripJob: Job? = null
 
     /** Progress on the milestone stamps (days this week, weeks in a row, km, 동, 시·도); null until read. */
-    val stampProgress: StateFlow<StampProgress?> = combine(trips, repo.stamps, FogRuntime.regionsLoaded) { _, _, loaded ->
+    val stampProgress: StateFlow<StampProgress?> = combine(
+        // Only when a trip starts or ends: the trip row is rewritten on every fix while driving, and each
+        // read scans every driven cell.
+        trips.map { list -> list.map { it.id to it.endedAt } }.distinctUntilChanged(),
+        repo.stamps,
+        FogRuntime.regionsLoaded,
+    ) { _, _, loaded ->
         // Without the atlas 동 and 시·도 would read 0: wait for it rather than show (and pick on) zeros.
         if (loaded) repo.stampProgress(FogRuntime.regions?.atlas) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -349,8 +355,8 @@ class MainViewModel : ViewModel() {
         val (savedWeek, saved) = prefs.weeklyPicks()
         val codes = saved.mapNotNull { byName[it] }.takeIf { savedWeek == week && it.isNotEmpty() } ?: run {
             // A new week: count a weekend pick that went unearned, and rest it after two such weeks.
-            if (savedWeek > 0 && StampCode.WEEKEND.name in saved) {
-                prefs.noteWeekendPick(earned = StampCode.WEEKEND in collected, week)
+            if (savedWeek > 0) {
+                prefs.noteWeekendPick(savedWeek, picked = StampCode.WEEKEND.name in saved, earned = StampCode.WEEKEND in collected, week)
             }
             WeeklyPicks.pick(collected, progress, week, placeNear = district != null, weekendPaused = prefs.weekendPaused(week))
                 .also { prefs.setWeeklyPicks(week, it.map { c -> c.name }) }

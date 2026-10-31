@@ -325,7 +325,7 @@ def tc_stamp_night(ctx):
 @case("TC-09", "상황 스탬프", "뒷좌석 동승자와 새 길을 달리면 '가족 탐험'을 얻는다",
       "앱 초기화",
       ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
-      ["가족 탐험 1회 획득", "다른 스탬프 없음"])
+      ["가족 탐험 획득", "다른 스탬프 없음"])
 def tc_stamp_family(ctx):
     _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험")
 

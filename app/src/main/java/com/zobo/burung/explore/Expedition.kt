@@ -66,7 +66,6 @@ object StampBook {
             StampCode.WEEK_THREE -> "일"
             StampCode.STREAK_4W -> "주"
             StampCode.KM_1000 -> " km"
-            StampCode.PROVINCE_3 -> "곳"
             else -> "곳"
         }
         "%,d / %,d%s".format(n, t, unit)
@@ -204,8 +203,8 @@ object WeeklyPicks {
             c == StampCode.DONG_100 && ratio(c) < 0.5 -> null
             c == StampCode.PROVINCE_3 && p.provinces < 2 -> null
             c == StampCode.WEEKEND && weekendPaused -> null
-            c == StampCode.NEW_DISTRICT && !placeNear -> 3
             StampBook.field(c) in closing -> 0
+            c == StampCode.NEW_DISTRICT && !placeNear -> 3
             ratio(c) >= 0.6 -> 1
             c == StampCode.NEW_DISTRICT || c == StampCode.PROVINCE_3 -> 2
             else -> 3

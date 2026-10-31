@@ -90,7 +90,8 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
     val prefs = FogRuntime.mapPrefs
     val stamps by viewModel.stamps.collectAsState()
     val picks by viewModel.weeklyPicks.collectAsState()
-    val progress = viewModel.stampProgress.collectAsState().value ?: StampProgress()
+    val progressRead by viewModel.stampProgress.collectAsState()
+    val progress = progressRead ?: StampProgress()
     val picked by prefs.title.collectAsState()
     val kids by prefs.kids.collectAsState()
     val team by prefs.teamName.collectAsState()
@@ -154,7 +155,12 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
         // This week's three suggestions: stamps still to collect, with how and (for a place) where.
         Heading(Icons.Outlined.Explore, MINT, k("이번 주 탐험 추천", "이번 주 모험 추천"), k("월요일마다 새로 골라요", "월요일마다 바뀌어요"))
         Section {
-            if (picks.isEmpty() && viewModel.stampProgress.collectAsState().value != null) Text(k("스탬프를 모두 모았어요!", "스탬프를 다 모았어요! 최고예요!"), fontSize = 24.sp, color = FogColors.TextSub, modifier = Modifier.padding(vertical = 20.dp))
+            if (picks.isEmpty() && progressRead != null) Text(
+                // Picks can also run out while stamps are left (e.g. 100 동 still under half way).
+                if (collected.size == StampBook.ACTIVE.size) k("스탬프를 모두 모았어요!", "스탬프를 다 모았어요! 최고예요!")
+                else k("이번 주는 추천할 스탬프가 없어요. 계속 달리면 열려요", "이번 주는 쉬어 가요. 계속 달리면 새 모험이 열려요!"),
+                fontSize = 24.sp, color = FogColors.TextSub, modifier = Modifier.padding(vertical = 20.dp),
+            )
             picks.forEachIndexed { i, p ->
                 if (i > 0) Box(Modifier.fillMaxWidth().height(2.dp).background(LINE))
                 Row(
@@ -349,7 +355,7 @@ private fun Tag(text: String, color: Color) {
 }
 
 private fun pickTag(code: StampCode, kids: Boolean): String = when (code) {
-    StampCode.NEW_DISTRICT, StampCode.NEW_PROVINCE -> if (kids) "가까운 모험지" else "다음 탐험 후보"
+    StampCode.NEW_DISTRICT, StampCode.PROVINCE_3 -> if (kids) "가까운 모험지" else "다음 탐험 후보"
     StampCode.WEEKEND -> "이번 주말"
     else -> if (kids) "도전!" else "추천"
 }
