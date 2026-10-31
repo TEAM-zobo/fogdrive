@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FamilyRestroom
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Hiking
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Landscape
@@ -108,7 +107,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(32.dp),
         ) {
-            Shield(150.dp, if (shown != null) ShieldState.SHOWN else ShieldState.LOCKED, shown?.let(::titleIcon) ?: Icons.Outlined.Hiking)
+            Shield(150.dp, if (shown != null) ShieldState.SHOWN else ShieldState.LOCKED, shown?.let(::titleIcon) ?: Icons.Outlined.DirectionsCar)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
                     Modifier.clip(RoundedCornerShape(24.dp)).background(Color.White).padding(horizontal = 20.dp, vertical = 8.dp),
