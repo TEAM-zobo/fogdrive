@@ -19,22 +19,27 @@ import androidx.lifecycle.LifecycleOwner
 import com.zobo.burung.geo.TileBox
 import com.zobo.burung.geo.Tiles
 import kotlinx.coroutines.flow.MutableStateFlow
-import org.maplibre.android.camera.CameraUpdateFactory
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapLibreMapOptions
-import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.Style
-import org.maplibre.android.style.layers.Property
-import org.maplibre.android.style.layers.PropertyFactory
-import org.maplibre.android.style.layers.TransitionOptions
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
+import com.mapbox.mapboxsdk.geometry.LatLng
+import com.mapbox.mapboxsdk.geometry.LatLngBounds
+import com.mapbox.mapboxsdk.maps.MapboxMap
+import com.mapbox.mapboxsdk.maps.MapboxMapOptions
+import com.mapbox.mapboxsdk.maps.MapView
+import com.mapbox.mapboxsdk.maps.Style
+import com.mapbox.mapboxsdk.style.layers.Property
+import com.mapbox.mapboxsdk.style.layers.PropertyFactory
+import com.mapbox.mapboxsdk.style.layers.TransitionOptions
 import kotlin.math.abs
 
 private const val TAG = "FogMap"
 private const val DRIVING_ZOOM = 16.0
 internal const val PARKED_ZOOM = 14.0
-private const val DRIVING_MAX_FPS = 20
+/**
+ * Map frames while driving. The motion is the pan layer sliding (drawn by the UI at the display rate),
+ * so the map only redraws after a re-render around the car, as its edge tiles come in; at 20 fps those
+ * redraws of the oversized surface took the GPU from the UI's frames (late frames on the emulator).
+ */
+private const val DRIVING_MAX_FPS = 10
 /** Re-base anyway if the re-rendered map hasn't reached the screen by then (no frame, lost surface). */
 private const val ADOPT_TIMEOUT_MS = 400L
 /** Extra map rendered around the viewport so the pre-rendered map can slide under the car. */
@@ -79,7 +84,7 @@ internal fun isNight(context: Context): Boolean =
  * and the slide and fog are swapped to the new centre on the frame that render finishes.
  */
 class FogMapHolder(context: Context) : Choreographer.FrameCallback {
-    val mapView = MapView(context, MapLibreMapOptions.createFromAttributes(context).textureMode(true))
+    val mapView = MapView(context, MapboxMapOptions.createFromAttributes(context).textureMode(true))
     val overlay = FogOverlayView(context)
     private val pan = FrameLayout(context).apply {
         // The slid map has nothing for accessibility, and each sub-pixel slide would otherwise emit
@@ -101,7 +106,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     private val mapFrame = MapFrame(context, pan, car, credit).also { it.onPanResized = { onPanResized() } }
     val frame: FrameLayout get() = mapFrame
 
-    var map: MapLibreMap? = null
+    var map: MapboxMap? = null
     var driving = false
         private set
 
@@ -135,7 +140,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
     }
 
     /** Creates the map once; [setup] runs when it is ready. Later calls do nothing. */
-    fun create(setup: (MapLibreMap) -> Unit) {
+    fun create(setup: (MapboxMap) -> Unit) {
         // Destroyed is final: a destroyed map view cannot be created again.
         if (created || destroyed) return
         created = true
@@ -265,7 +270,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         return true
     }
 
-    fun onMapReady(map: MapLibreMap) {
+    fun onMapReady(map: MapboxMap) {
         this.map = map
         // The fog covers the engine's logo/attribution; our own credit label is drawn above the fog.
         map.uiSettings.isLogoEnabled = false

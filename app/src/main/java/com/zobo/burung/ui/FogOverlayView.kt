@@ -18,7 +18,7 @@ import com.zobo.burung.explore.RegionCounts
 import com.zobo.burung.geo.Outline
 import com.zobo.burung.geo.RegionAtlas
 import com.zobo.burung.geo.Tiles
-import org.maplibre.android.maps.MapLibreMap
+import com.mapbox.mapboxsdk.maps.MapboxMap
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.hypot
@@ -39,7 +39,7 @@ import kotlin.math.min
  * Map rotation/tilt are disabled, so tile coordinates map linearly to the screen.
  */
 class FogOverlayView(context: Context) : View(context) {
-    var map: MapLibreMap? = null
+    var map: MapboxMap? = null
     /** The explored-cell log, to tell the renderer which part changed (see [changedArea]). */
     var cellLog: CellLog? = null
     /** Called once, the first time the fog is drawn with the region data (or without it for good). */
@@ -78,8 +78,11 @@ class FogOverlayView(context: Context) : View(context) {
             val fog = fogRegions
             if (value == null || fog == null || fog.atlas !== value.atlas || fog.counts.visitedDongs != value.counts.visitedDongs) {
                 fogRegions = value
+                invalidate()
+            } else if (showLabels) {
+                // Only the rates in the labels changed: nothing to redraw while driving (no labels).
+                invalidate()
             }
-            invalidate()
         }
     /** [regions] as the fog tile's key sees it (see the setter). */
     private var fogRegions: RegionLayer? = null
@@ -178,11 +181,14 @@ class FogOverlayView(context: Context) : View(context) {
     private val routeDot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(170, 0xFF, 0x99, 0x00) }
     private val routeStart = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#111111") }
     private val routeEnd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
-    // The road driven on this trip: gold over a brown edge, with a light dashed centre line.
-    private val planPath = Path()
-    private val trailCasing = linePaint(Color.parseColor("#A5742F"), 15f).apply { strokeCap = Paint.Cap.ROUND }
-    private val trailGold = linePaint(Color.parseColor("#FFD25E"), 10f).apply { strokeCap = Paint.Cap.ROUND }
-    private val trailShine = linePaint(Color.parseColor("#FFF6C9"), 2.6f, dash = 7f).apply { strokeCap = Paint.Cap.ROUND }
+    // The road driven on this trip: gold over a brown edge, with a light dashed centre line. Segments
+    // like the boundaries (see [drawTrail]); all opaque, so the round caps overlapping at the joints
+    // look like one line.
+    private val trailStrokes = listOf(
+        Stroke(Color.parseColor("#A5742F"), 15f),
+        Stroke(Color.parseColor("#FFD25E"), 10f),
+        Stroke(Color.parseColor("#FFF6C9"), 2.6f, dashDp = 7f),
+    )
     private val markShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(64, 0, 0, 0) }
     private val flagPole = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#8A5A3A") }
     private val flagRed = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF6B6B") }
@@ -274,14 +280,26 @@ class FogOverlayView(context: Context) : View(context) {
         }
     }
 
+    /**
+     * The trip's road as line segments, only those on screen, with points closer than
+     * [MIN_SEGMENT_PX] merged. Stroked paths (with a dash effect) were stroked on the CPU and
+     * stencilled again on every redraw of the fog layer, the whole trip each time, so they cost more
+     * the longer the drive; during the demo that was the largest part of each fog layer redraw.
+     */
     private fun drawTrail(c: Canvas, t: Tracks, x0: Double, y0: Double, px: Double) {
-        planPath.rewind()
-        var drawn = false
+        for (st in trailStrokes) st.clear()
         // Only the newest trip's road is gold (the one being driven, or the one just ended): earlier
         // trips stay as opened ground, so a course driven before does not show the road ahead in gold.
         val line = t.snapshot().latest ?: return
+        val pad = 16f * density
+        val right = width + pad
+        val bottom = height + pad
         var pen = false
-        for (i in 0 until line.count) {
+        var ax = 0f
+        var ay = 0f
+        var along = 0.0
+        val last = line.count - 1
+        for (i in 0..last) {
             val xv = line.xs[i]
             if (xv.isNaN()) {
                 pen = false
@@ -289,18 +307,24 @@ class FogOverlayView(context: Context) : View(context) {
             }
             val x = ((xv - x0) * px).toFloat()
             val y = ((line.ys[i] - y0) * px).toFloat()
-            if (pen) {
-                planPath.lineTo(x, y)
-                drawn = true
-            } else {
-                planPath.moveTo(x, y)
+            if (!pen) {
+                ax = x
+                ay = y
                 pen = true
+                continue
             }
+            // Keep the last point before the end or a gap, or the merged run before it is lost.
+            val endOfRun = i == last || line.xs[i + 1].isNaN()
+            if (abs(x - ax) + abs(y - ay) < MIN_SEGMENT_PX && !endOfRun) continue
+            val seg = hypot((x - ax).toDouble(), (y - ay).toDouble())
+            if (max(ax, x) >= -pad && min(ax, x) <= right && max(ay, y) >= -pad && min(ay, y) <= bottom) {
+                for (st in trailStrokes) st.add(ax, ay, x, y, along)
+            }
+            along += seg
+            ax = x
+            ay = y
         }
-        if (!drawn) return
-        c.drawPath(planPath, trailCasing)
-        c.drawPath(planPath, trailGold)
-        c.drawPath(planPath, trailShine)
+        for (st in trailStrokes) st.draw(c)
     }
 
     /**
@@ -397,11 +421,6 @@ class FogOverlayView(context: Context) : View(context) {
      * changes are throttled to [DATA_REDRAW_MS]: while driving new cells arrive with every fix.
      */
     private fun drawFog(canvas: Canvas, x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
-        val cellPx = px / MASK_DIV
-        var dz = 0
-        while (dz < MAX_DZ && cellPx * (1 shl dz) < 1.5) dz++
-        val data = (cellsVersion().toLong() shl 32) or (tracks.version.toLong() and 0xFFFFFFFFL)
-        val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable)
         val t = tile
         if (t == null || !t.covers(x0, y0, x1, y1)) {
             // Before the first tile, or past the rendered area until the new tile lands: the dark veil,
@@ -436,8 +455,35 @@ class FogOverlayView(context: Context) : View(context) {
             }
             if (t.key.regions != null || t.key.regionsUnavailable) onReady?.let { onReady = null; it() }
         }
+        requestTile(x0, y0, x1, y1, px)
+    }
+
+    private val requestAgain = Runnable { dataChanged() }
+
+    /**
+     * Explored cells changed. While driving the fog is a hardware layer drawn with a frozen transform:
+     * the new tile is asked for right away, without redrawing the layer with the old tile first just
+     * to get to [requestTile] (at demo speed new cells come with nearly every fix, and those redraws
+     * of the whole oversized layer were most of its redraws and the late frames). Parked, it redraws.
+     */
+    fun dataChanged() {
+        if (freezeTransform && hasTransform && map != null && tx1 > tx0 && ty1 > ty0) {
+            requestTile(tx0, ty0, tx1, ty1, width / (tx1 - tx0))
+        } else {
+            invalidate()
+        }
+    }
+
+    /** Asks the renderer for a new tile if the current one (or the one on its way) does not fit. */
+    private fun requestTile(x0: Double, y0: Double, x1: Double, y1: Double, px: Double) {
+        val cellPx = px / MASK_DIV
+        var dz = 0
+        while (dz < MAX_DZ && cellPx * (1 shl dz) < 1.5) dz++
+        val data = (cellsVersion().toLong() shl 32) or (tracks.version.toLong() and 0xFFFFFFFFL)
+        val key = FogMaskKey(data, dz, night, fogRegions, regionsUnavailable)
+        val t = tile
         // Until the region data is in, a tile would be redrawn whole as soon as it lands (light fog over
-        // entered 동): skip it; the plain dark fog above covers the wait (behind the loading screen).
+        // entered 동): skip it; the plain dark fog covers the wait (behind the loading screen).
         if (t == null && fogRegions == null && !regionsUnavailable) return
         fun fits(k: FogMaskKey, jx0: Double, jy0: Double, jx1: Double, jy1: Double, jCellPx: Double) = k.dz == dz &&
             x0 >= jx0 && y0 >= jy0 && x1 <= jx1 && y1 <= jy1 && (cellPx / jCellPx) in 0.6..1.6
@@ -450,7 +496,8 @@ class FogOverlayView(context: Context) : View(context) {
         val regionsArrived = t != null && t.key.regions == null && key.regions != null
         if (tileFits && !regionsArrived && now - lastDataRequest < DATA_REDRAW_MS) {
             // Only the content changed: keep showing the current tile a little longer.
-            postInvalidateDelayed(DATA_REDRAW_MS - (now - lastDataRequest))
+            removeCallbacks(requestAgain)
+            postDelayed(requestAgain, DATA_REDRAW_MS - (now - lastDataRequest))
             return
         }
         lastDataRequest = now

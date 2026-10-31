@@ -19,7 +19,7 @@ import com.zobo.burung.demo.DemoCourses
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.maplibre.android.MapLibre
+import com.mapbox.mapboxsdk.Mapbox
 import com.zobo.burung.record.RecordingService
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
     /** The one map every screen shows (see FogMap): made on first use, destroyed with the activity. */
     private var mapHolder: FogMapHolder? = null
     private fun mapHolder(): FogMapHolder = mapHolder ?: run {
-        MapLibre.getInstance(this)
+        Mapbox.getInstance(this)
         FogMapHolder(this).also { mapHolder = it }
     }
 

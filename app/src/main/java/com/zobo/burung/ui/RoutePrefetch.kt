@@ -5,17 +5,17 @@ import android.util.Log
 import com.zobo.burung.car.Place
 import com.zobo.burung.geo.Tiles
 import org.json.JSONObject
-import org.maplibre.android.MapLibre
-import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.offline.OfflineGeometryRegionDefinition
-import org.maplibre.android.offline.OfflineManager
-import org.maplibre.android.offline.OfflineRegion
-import org.maplibre.android.offline.OfflineRegionDefinition
-import org.maplibre.android.offline.OfflineRegionError
-import org.maplibre.android.offline.OfflineRegionStatus
-import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
-import org.maplibre.geojson.LineString
-import org.maplibre.geojson.Point
+import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.geometry.LatLngBounds
+import com.mapbox.mapboxsdk.offline.OfflineGeometryRegionDefinition
+import com.mapbox.mapboxsdk.offline.OfflineManager
+import com.mapbox.mapboxsdk.offline.OfflineRegion
+import com.mapbox.mapboxsdk.offline.OfflineRegionDefinition
+import com.mapbox.mapboxsdk.offline.OfflineRegionError
+import com.mapbox.mapboxsdk.offline.OfflineRegionStatus
+import com.mapbox.mapboxsdk.offline.OfflineTilePyramidRegionDefinition
+import com.mapbox.geojson.LineString
+import com.mapbox.geojson.Point
 
 /**
  * Downloads the map along a route before it is driven: the demo course picked in settings and the
@@ -58,7 +58,7 @@ object RoutePrefetch {
     }
 
     private fun fetch(context: Context, key: String, definition: (String, Float) -> OfflineRegionDefinition) {
-        MapLibre.getInstance(context)
+        Mapbox.getInstance(context)
         val manager = OfflineManager.getInstance(context)
         val style = DOWNLOAD_STYLE
         val ratio = context.resources.displayMetrics.density

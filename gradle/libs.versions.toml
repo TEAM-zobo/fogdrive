@@ -7,7 +7,10 @@ lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
 room = "2.6.1"
-maplibre = "11.13.5"
+# 10.x on purpose: 11.x's renderer makes blocking GL calls every frame (new vertex arrays, buffer
+# maps), each a round trip on the emulator, so dragging the map ran at ~14 fps there (10.x: ~60).
+# 10.x keeps the com.mapbox.mapboxsdk package names.
+maplibre = "10.3.7"
 coroutines = "1.9.0"
 junit = "4.13.2"
 pleosVehicle = "2.3.2"

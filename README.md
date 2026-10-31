@@ -110,7 +110,7 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 | 에뮬레이터 | Pleos Connect Emulator v2.1.0 (Android 14, API 34, arm64) |
 | Pleos SDK | Vehicle 2.3.2 · NaviHelper 3.0.5 · FusedLocation 1.1.3 |
 | 빌드 | JDK 17 · Gradle 8.10.2 · AGP 8.8.2 · Kotlin 2.0.21 · compileSdk 35 |
-| 지도 | MapLibre Android 11.13.5 + OpenFreeMap 타일 (© OpenStreetMap contributors) |
+| 지도 | MapLibre Android 10.3.7 + OpenFreeMap 타일 (© OpenStreetMap contributors) |
 | 행정구역 경계 | [admdongkor](https://github.com/vuski/admdongkor) ver20261001 (CC BY 4.0, 원자료 통계청). `python3 tools/regions/build_regions.py`로 `app/src/main/assets/regions/kr_regions.bin` 재생성 |
 
 ### 셋팅 (macOS / Windows)
