@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.Hiking
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Settings
@@ -46,7 +46,7 @@ import com.zobo.burung.voice.Sound
 private enum class Tab(val label: String, val icon: ImageVector) {
     MAP("지도", Icons.Outlined.Map),
     DEX("도감", Icons.Outlined.Explore),
-    STAMP("스탬프", Icons.Outlined.EmojiEvents),
+    EXPEDITION("내 탐험", Icons.Outlined.Hiking),
     SETTINGS("설정", Icons.Outlined.Settings),
 }
 
@@ -107,7 +107,10 @@ fun FogApp(
                         viewModel.mapFocus.value = region.bounds
                         goTo(Tab.MAP.ordinal)
                     })
-                    Tab.STAMP -> StampScreen(viewModel)
+                    Tab.EXPEDITION -> ExpeditionScreen(viewModel, onShowOnMap = { region ->
+                        viewModel.mapFocus.value = region.bounds
+                        goTo(Tab.MAP.ordinal)
+                    })
                     Tab.SETTINGS -> SettingsScreen(viewModel, onStartDemo, onStopDemo, onRequestBackground)
                 }
             }

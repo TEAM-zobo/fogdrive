@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,37 +22,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.EnergySavingsLeaf
-import androidx.compose.material.icons.outlined.SportsScore
-import androidx.compose.material.icons.outlined.WbCloudy
-import androidx.compose.material.icons.outlined.BatteryAlert
-import androidx.compose.material.icons.outlined.BatteryChargingFull
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.FamilyRestroom
 import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Moving
-import androidx.compose.material.icons.outlined.NewReleases
-import androidx.compose.material.icons.outlined.NightsStay
-import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Thunderstorm
 import androidx.compose.material.icons.outlined.TravelExplore
-import androidx.compose.material.icons.outlined.Umbrella
-import androidx.compose.material.icons.outlined.WbSunny
-import androidx.compose.material.icons.outlined.WbTwilight
-import androidx.compose.material.icons.outlined.Weekend
-import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -67,7 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,10 +73,8 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.zobo.burung.explore.ChallengePeriod
 import com.zobo.burung.explore.ProvinceProgress
 import com.zobo.burung.explore.RegionStat
-import com.zobo.burung.record.StampCode
 
 @Composable
 fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
@@ -500,124 +471,6 @@ private fun RegionRow(name: String, detail: String, bar: Float, rate: String, on
 
 private const val NOTICE_MS = 2_500L
 private const val SWIPE_THRESHOLD = 0.2f
-
-/** Challenges and situation stamps, on their own tab: achievements, apart from the places in the dex. */
-@Composable
-fun StampScreen(viewModel: MainViewModel) {
-    Column(
-        Modifier.fillMaxSize().padding(40.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        ScreenTitle("스탬프")
-        SeasonAndStamps(viewModel)
-    }
-}
-
-@Composable
-private fun SeasonAndStamps(viewModel: MainViewModel) {
-    val challenges by viewModel.challenges.collectAsState()
-    viewModel.stamps.collectAsState().value // recompose on new stamps
-    val counts = viewModel.stampCounts()
-    var period by rememberSaveable { mutableStateOf(ChallengePeriod.TODAY) }
-
-    SectionHeader("챌린지")
-    // Period tabs: each shows how many of its goals are done.
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ChallengePeriod.entries.forEach { p ->
-            val group = challenges.firstOrNull { it.period == p }
-            val picked = p == period
-            FogCard(
-                color = if (picked) FogColors.Accent else FogColors.SurfaceHigh,
-                padding = 14.dp,
-                onClick = { period = p },
-            ) {
-                Text(
-                    p.title + (group?.let { " ${it.done}/${it.goals.size}" } ?: ""),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (picked) FogColors.OnAccent else FogColors.TextMain,
-                )
-            }
-        }
-    }
-    challenges.firstOrNull { it.period == period }?.let { group ->
-        Text(group.label, style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
-        group.goals.chunked(3).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                row.forEach { goal ->
-                    FogCard(
-                        Modifier.weight(1f).fillMaxHeight(),
-                        borderColor = if (goal.done) FogColors.Accent else null,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(goal.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            if (goal.done) Icon(Icons.Outlined.CheckCircle, contentDescription = "달성", tint = FogColors.Accent)
-                        }
-                        Text(
-                            "${goal.label(goal.current.coerceAtMost(goal.target))} / ${goal.label(goal.target)}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = if (goal.done) FogColors.Accent else FogColors.TextMain,
-                        )
-                        ProgressBar(goal.current.toFloat() / goal.target)
-                    }
-                }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
-    }
-
-    SectionHeader("상황 스탬프", Modifier.padding(top = 24.dp))
-    Text(
-        "차량·내비 데이터와 주행 기록으로 얻는 스탬프예요. ${counts.count { it.value > 0 }} / ${StampCode.entries.size}종 모았어요.",
-        color = FogColors.TextSub,
-    )
-    StampCode.entries.chunked(4).forEach { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            row.forEach { code ->
-                val n = counts[code] ?: 0
-                FogCard(Modifier.weight(1f).fillMaxHeight(), outlined = n == 0) {
-                    IconBadge(stampIcon(code), if (n > 0) FogColors.Amber else FogColors.TextSub)
-                    // Title, description, count: QA reads the count two nodes after the title.
-                    Text(code.title, style = MaterialTheme.typography.titleLarge, color = if (n > 0) FogColors.Amber else FogColors.TextSub)
-                    Text(code.description, style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
-                    Text(if (n > 0) "${n}회 획득" else "아직 없음", style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-        }
-    }
-}
-
-private fun stampIcon(code: StampCode): ImageVector = when (code) {
-    StampCode.RAIN -> Icons.Outlined.Umbrella
-    StampCode.NIGHT -> Icons.Outlined.NightsStay
-    StampCode.FAMILY -> Icons.Outlined.FamilyRestroom
-    StampCode.CHARGE -> Icons.Outlined.BatteryChargingFull
-    StampCode.ARRIVAL -> Icons.Outlined.Flag
-    StampCode.EXPEDITION -> Icons.Outlined.TravelExplore
-    StampCode.DAWN -> Icons.Outlined.WbTwilight
-    StampCode.SUNSET -> Icons.Outlined.WbSunny
-    StampCode.WEEKEND -> Icons.Outlined.Weekend
-    StampCode.LONG_DRIVE -> Icons.Outlined.Speed
-    StampCode.PIONEER -> Icons.Outlined.Landscape
-    StampCode.NEW_DISTRICT -> Icons.Outlined.NewReleases
-    StampCode.MIDNIGHT -> Icons.Outlined.Bedtime
-    StampCode.COMMUTE -> Icons.Outlined.WorkOutline
-    StampCode.RAINY_NIGHT -> Icons.Outlined.Thunderstorm
-    StampCode.FULL_HOUSE -> Icons.Outlined.Groups
-    StampCode.LOW_BATTERY -> Icons.Outlined.BatteryAlert
-    StampCode.MARATHON -> Icons.Outlined.DirectionsCar
-    StampCode.ALL_NEW -> Icons.Outlined.AutoAwesome
-    StampCode.HOMECOMING -> Icons.Outlined.Home
-    StampCode.FIRST_DRIVE -> Icons.Outlined.Key
-    StampCode.DONG_HOPPER -> Icons.Outlined.Explore
-    StampCode.PROVINCE_CROSS -> Icons.Outlined.Moving
-    StampCode.NEW_PROVINCE -> Icons.Outlined.Public
-    StampCode.OPEN_AIR -> Icons.Outlined.Air
-    StampCode.SUNROOF -> Icons.Outlined.WbCloudy
-    StampCode.ECO -> Icons.Outlined.EnergySavingsLeaf
-    StampCode.SPORT -> Icons.Outlined.SportsScore
-    StampCode.CREW_MISSION -> Icons.Outlined.EmojiEvents
-}
 
 @Composable
 private fun LandedBadge(count: Int, modifier: Modifier = Modifier) {

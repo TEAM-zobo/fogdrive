@@ -212,7 +212,9 @@ class RecordingService : Service() {
         val lat = Tiles.yToLat(d.outline.labelY + 0.5)
         val lng = Tiles.xToLng(d.outline.labelX + 0.5)
         tripNewDongs += NewDong(d.code, d.name, district, lat, lng)
-        FogRuntime.announcer.say("처음 와 본 ${d.name}${copula(d.name)}")
+        FogRuntime.announcer.say(
+            if (FogRuntime.mapPrefs.kids.value) "짜잔! 처음 와 보는 ${d.name}${copula(d.name)}!" else "처음 와 본 ${d.name}${copula(d.name)}",
+        )
         // Only the first few 동 carry a story on the summary card; a long drive needn't look up dozens.
         if (!FogRuntime.mapPrefs.stories.value || tripNewDongs.size > MAX_TRIP_STORIES) return
         FogRuntime.scope.launch {
@@ -331,7 +333,7 @@ class RecordingService : Service() {
             }
             is RecorderEvent.Stamp -> {
                 repo.addStamp(event.code.name, event.lat, event.lng, event.at, repo.currentTripId)
-                note("스탬프 획득: ${event.code.title}")
+                note(if (FogRuntime.mapPrefs.kids.value) "${event.code.title} 스탬프를 받았어요!" else "스탬프 획득: ${event.code.title}")
                 tripStamps += event.code
             }
         }
@@ -367,8 +369,16 @@ class RecordingService : Service() {
             else add("${"%.1f".format(s.distanceMeters / 1000)}킬로미터를 달렸어요")
             if (summary.newDongs.isNotEmpty()) add("처음 가 본 동네는 ${summary.newDongs.size}곳")
         }
-        val levelUp = if (summary.leveledUp) " 레벨 업! ${after}레벨이 되었어요." else ""
-        FogRuntime.announcer.say("주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + "." + levelUp, important = true)
+        val kids = FogRuntime.mapPrefs.kids.value
+        val line = if (kids) {
+            // Kids mode: the same facts, in words a child follows (no km², no "개척률").
+            val found = summary.newDongs.size
+            (if (found > 0) "도착! 오늘은 새 동네를 ${found}곳이나 찾았어요. 최고예요!" else "도착! 오늘도 멋진 모험이었어요.") +
+                if (summary.leveledUp) " 우와, 탐험대 레벨이 ${after}로 올랐어요!" else ""
+        } else {
+            "주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + "." + if (summary.leveledUp) " 레벨 업! ${after}레벨이 되었어요." else ""
+        }
+        FogRuntime.announcer.say(line, important = true)
     }
 
     private suspend fun persistTripStats(endedAt: Long? = null) {

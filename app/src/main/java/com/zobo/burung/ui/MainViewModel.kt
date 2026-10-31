@@ -14,9 +14,8 @@ import com.zobo.burung.explore.Progress
 import com.zobo.burung.explore.ProvinceProgress
 import com.zobo.burung.explore.RegionCounts
 import com.zobo.burung.explore.RegionStat
-import com.zobo.burung.explore.ChallengeGroup
+import com.zobo.burung.explore.WeeklyPicks
 import com.zobo.burung.explore.ChallengePeriod
-import com.zobo.burung.explore.Challenges
 import com.zobo.burung.explore.PeriodStats
 import com.zobo.burung.geo.Area
 import com.zobo.burung.geo.TileBox
@@ -46,6 +45,9 @@ data class Summary(
     val stampKinds: Int = 0,
     val newRoadRatio: Double = 0.0,
 )
+
+/** A suggested stamp of the week, whether it was collected since, and where to go for it. */
+data class WeeklyPick(val code: StampCode, val done: Boolean, val place: DexNext?)
 
 /** A dex slide's story cards: where it was explored last, and where to go next. */
 data class DexStory(val recent: DexRecent?, val next: DexNext?)
@@ -119,37 +121,6 @@ class MainViewModel : ViewModel() {
             newRoadRatio = if (dist > 0) newDist / dist else 0.0,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, Summary())
-
-    /**
-     * Today / this week / this month / this season, each with its goals. Computed only while the dex
-     * shows them; the cells cleared since the earliest window start are read once and split per window.
-     */
-    val challenges: StateFlow<List<ChallengeGroup>> = combine(version, trips, landings, stamps) { _, _, l, s ->
-        val now = System.currentTimeMillis()
-        val tally = FogRuntime.regions
-        val counts = tally?.levels(repo)
-        val starts = ChallengePeriod.entries.associateWith { it.start(now) }
-        // A week can start before the month or season does, so read from the earliest start.
-        val allCleared = repo.clearedSince(starts.values.min())
-        ChallengePeriod.entries.map { period ->
-            val since = starts.getValue(period)
-            val cleared = allCleared.mapNotNull { c -> c.cell.takeIf { c.firstSeenAt >= since } }
-            val (newDongs, newDistricts, newProvinces) =
-                if (tally != null && counts != null) tally.firstEnteredLevels(cleared, counts) else Triple(0, 0, 0)
-            val tripTotals = repo.tripTotalsSince(since)
-            val stats = PeriodStats(
-                areaM2 = Area.ofCells(cleared.size).toInt(),
-                newDongs = newDongs,
-                newDistricts = newDistricts,
-                newProvinces = newProvinces,
-                trips = tripTotals.count,
-                distanceM = tripTotals.distanceMeters.toInt(),
-                landings = l.count { it.at >= since },
-                stampKinds = s.filter { it.at >= since }.map { it.code }.distinct().size,
-            )
-            ChallengeGroup(period, period.label(now), Challenges.goals(period, stats))
-        }
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
      * This week and this month next to the one before (record screen): area cleared, 읍·면·동 first
@@ -287,7 +258,9 @@ class MainViewModel : ViewModel() {
                     val top = fresh.maxOrNull()?.takeIf { it >= MILESTONE_NOTICE } ?: return@collect
                     FogRuntime.live.update { it.copy(lastEvent = "${h.dong.name} ${top}% 개척!", lastEventId = System.nanoTime()) }
                     Sfx.play(Sound.ACHIEVE, byControl = false)
-                    if (top >= MILESTONE_VOICE) FogRuntime.announcer.say("${h.dong.name} ${top}퍼센트 개척")
+                    if (top >= MILESTONE_VOICE) {
+                        FogRuntime.announcer.say(if (FogRuntime.mapPrefs.kids.value) "${h.dong.name} 탐험 ${top}퍼센트 성공!" else "${h.dong.name} ${top}퍼센트 개척")
+                    }
                 }
         }
     }
@@ -346,6 +319,31 @@ class MainViewModel : ViewModel() {
     val shownTrip = MutableStateFlow<TripRoute?>(null)
 
     private var showTripJob: Job? = null
+
+    /**
+     * This week's three suggested stamps (see WeeklyPicks): picked on the first look of the week and
+     * kept until Monday, each marked once collected. A place to go is attached where one fits: the
+     * nearest 시·도 not entered yet for 새 땅 밟기, the nearest 시·군·구 for 새 동네 첫발.
+     */
+    val weeklyPicks: StateFlow<List<WeeklyPick>> = combine(stamps, dexStories) { s, stories ->
+        val collected = s.mapNotNullTo(HashSet()) { st -> StampCode.entries.firstOrNull { it.name == st.code } }
+        val week = WeeklyPicks.weekKey(System.currentTimeMillis())
+        val prefs = FogRuntime.mapPrefs
+        val (savedWeek, saved) = prefs.weeklyPicks()
+        val codes = saved.mapNotNull { n -> StampCode.entries.firstOrNull { it.name == n } }
+            .takeIf { savedWeek == week && it.isNotEmpty() }
+            ?: WeeklyPicks.pick(collected, week, listOf(StampCode.NEW_DISTRICT, StampCode.WEEKEND))
+                .also { prefs.setWeeklyPicks(week, it.map { c -> c.name }) }
+        val province = stories[""]?.next
+        val district = stories.filterKeys { it.isNotEmpty() }.values.mapNotNull { it.next }.minByOrNull { it.km }
+        codes.map { c ->
+            WeeklyPick(c, c in collected, when (c) {
+                StampCode.NEW_PROVINCE -> province
+                StampCode.NEW_DISTRICT -> district
+                else -> null
+            })
+        }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
      * "집 → 구산동" per trip: where its route starts and ends, as 집 within [HOME_NEAR_M] of the
@@ -423,9 +421,6 @@ class MainViewModel : ViewModel() {
         val direct = Tiles.distanceMeters(origin.first, origin.second, dest.lat, dest.lng)
         s.takeIf { rangeKm == null || DetourPlanner.fitsRange(rangeKm.toDouble(), direct, s.extraMeters) }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    fun stampCounts(): Map<StampCode, Int> =
-        StampCode.entries.associateWith { code -> stamps.value.count { it.code == code.name } }
 
     fun acceptDetour(s: DetourPlanner.Suggestion): Boolean =
         navi.addDetourWaypoint(s.lat, s.lng)

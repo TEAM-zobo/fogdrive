@@ -167,26 +167,18 @@ class TripRecorder(private val sink: ExploreSink) {
             newDistanceMeters = stats.newDistanceMeters + if (centerWasNew) step else 0.0,
         )
         if (added > 0) {
-            if (vehicle.wiperOn) award(StampCode.RAIN, fix, events)
-            if (vehicle.lowBeamOn) award(StampCode.NIGHT, fix, events)
+            // Nothing for rain, night, a low battery or sport mode (StampBook.RETIRED): no reward for riskier driving.
             if (vehicle.rearOccupied) award(StampCode.FAMILY, fix, events)
-            if (vehicle.wiperOn && vehicle.lowBeamOn) award(StampCode.RAINY_NIGHT, fix, events)
             // Two or more besides the driver, at least one of them in the back.
             if (vehicle.occupiedSeats.count { it != DRIVER_SEAT } >= 2 && vehicle.rearOccupied) award(StampCode.FULL_HOUSE, fix, events)
-            if ((vehicle.evSocPercent ?: 100) <= LOW_BATTERY_PERCENT) award(StampCode.LOW_BATTERY, fix, events)
             if (vehicle.windowsOpen.isNotEmpty()) award(StampCode.OPEN_AIR, fix, events)
             if (vehicle.sunroofOpen) award(StampCode.SUNROOF, fix, events)
-            when (vehicle.drivingMode) {
-                DriveMode.ECO -> award(StampCode.ECO, fix, events)
-                DriveMode.SPORT -> award(StampCode.SPORT, fix, events)
-                else -> Unit
-            }
+            if (vehicle.drivingMode == DriveMode.ECO) award(StampCode.ECO, fix, events)
             // Time-of-day / day-of-week stamps, from the fix's local time.
             val time = Calendar.getInstance().apply { timeInMillis = fix.timeMs }
             val day = time.get(Calendar.DAY_OF_WEEK)
             val weekend = day == Calendar.SATURDAY || day == Calendar.SUNDAY
             when (time.get(Calendar.HOUR_OF_DAY)) {
-                in 0..3 -> award(StampCode.MIDNIGHT, fix, events)
                 in 5..6 -> award(StampCode.DAWN, fix, events)
                 in 7..8 -> if (!weekend) award(StampCode.COMMUTE, fix, events)
                 in 17..18 -> award(StampCode.SUNSET, fix, events)
@@ -194,7 +186,6 @@ class TripRecorder(private val sink: ExploreSink) {
             if (weekend) award(StampCode.WEEKEND, fix, events)
         }
         if (stats.distanceMeters >= LONG_DRIVE_M) award(StampCode.LONG_DRIVE, fix, events)
-        if (stats.distanceMeters >= MARATHON_M) award(StampCode.MARATHON, fix, events)
         if (stats.newCells >= PIONEER_CELLS) award(StampCode.PIONEER, fix, events)
         return events
     }
@@ -301,8 +292,6 @@ class TripRecorder(private val sink: ExploreSink) {
         const val LONG_DRIVE_M = 30_000.0
         /** ~0.1 km² of ~30 m cells. */
         const val PIONEER_CELLS = 110
-        const val MARATHON_M = 100_000.0
-        const val LOW_BATTERY_PERCENT = 20
         const val DRIVER_SEAT = "ROW_1_LEFT"
         const val ALL_NEW_MIN_M = 5_000.0
         const val ALL_NEW_RATIO = 0.9

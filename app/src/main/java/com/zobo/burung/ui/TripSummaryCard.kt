@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.zobo.burung.FogRuntime
 import com.zobo.burung.TripSummary
 import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Area
@@ -52,12 +54,13 @@ import kotlin.math.sin
 /** Shown on the parked map after a trip: what it cleared, the 동 it opened (with their stories), its stamps. */
 @Composable
 fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val kids by FogRuntime.mapPrefs.kids.collectAsState()
     FogCard(modifier, color = FogColors.Surface.copy(alpha = 0.97f)) {
-        if (summary.leveledUp) LevelUpBanner(summary.levelBefore, summary.levelAfter)
+        if (summary.leveledUp) LevelUpBanner(summary.levelBefore, summary.levelAfter, kids)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconBadge(Icons.Outlined.EmojiEvents, FogColors.Amber, size = 44.dp)
             Column(Modifier.weight(1f)) {
-                Text("이번 주행 요약", style = MaterialTheme.typography.titleSmall, color = FogColors.Amber)
+                Text(if (kids) "오늘의 모험" else "이번 주행 요약", style = MaterialTheme.typography.titleSmall, color = FogColors.Amber)
                 Text(
                     "+${Area.formatCells(summary.newCells)} · ${formatKm(summary.distanceMeters)} · 새 길 ${formatPercent(summary.newRoadRatio)}",
                     style = MaterialTheme.typography.titleLarge,
@@ -68,7 +71,7 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
             }
         }
         if (summary.newDongs.isNotEmpty()) {
-            Text("처음 가 본 동네 ${summary.newDongs.size}곳", style = MaterialTheme.typography.titleMedium, color = FogColors.Blue)
+            Text(if (kids) "처음 가 본 동네 ${summary.newDongs.size}곳 발견!" else "처음 가 본 동네 ${summary.newDongs.size}곳", style = MaterialTheme.typography.titleMedium, color = FogColors.Blue)
             // A long drive opens dozens of 동; the first few carry the story, the rest are named.
             summary.newDongs.take(MAX_STORIES).forEach { d ->
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -110,7 +113,7 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
  * falls away, and the level number rolls up from [from] to [to]. Plays once per card.
  */
 @Composable
-private fun LevelUpBanner(from: Int, to: Int) {
+private fun LevelUpBanner(from: Int, to: Int, kids: Boolean) {
     val pop = remember { Animatable(0f) }
     val burst = remember { Animatable(0f) }
     var shown by remember { mutableIntStateOf(from) }
@@ -166,7 +169,7 @@ private fun LevelUpBanner(from: Int, to: Int) {
                 Icon(Icons.Filled.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(44.dp))
             }
             Column {
-                Text("레벨 업!", style = MaterialTheme.typography.titleLarge, color = amber)
+                Text(if (kids) "우와, 레벨이 올랐어요!" else "레벨 업!", style = MaterialTheme.typography.titleLarge, color = amber)
                 Text(
                     "Lv.$from → Lv.$shown",
                     style = MaterialTheme.typography.headlineMedium,
@@ -177,7 +180,7 @@ private fun LevelUpBanner(from: Int, to: Int) {
                     },
                 )
                 if (to >= Progress.MAX_LEVEL) {
-                    Text("최고 레벨에 도착했어요!", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+                    Text(if (kids) "최고 레벨이에요! 대단해요!" else "최고 레벨에 도착했어요!", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
                 }
             }
         }

@@ -88,6 +88,42 @@ class MapPrefs(context: Context) {
         prefs.edit().putString(KEY_DEX_HOME, code).apply()
     }
 
+    private val _teamName = MutableStateFlow(prefs.getString(KEY_TEAM, "") ?: "")
+    /** The 탐험대 name, set in Settings only; blank shows [DEFAULT_TEAM]. */
+    val teamName: StateFlow<String> = _teamName.asStateFlow()
+
+    fun setTeamName(name: String) {
+        val v = name.take(TEAM_MAX)
+        _teamName.value = v
+        prefs.edit().putString(KEY_TEAM, v).apply()
+    }
+
+    private val _kids = MutableStateFlow(prefs.getBoolean(KEY_KIDS, false))
+    /** 키즈모드: screen wording and spoken lines for a child on board; nothing else changes. */
+    val kids: StateFlow<Boolean> = _kids.asStateFlow()
+
+    fun setKids(on: Boolean) {
+        _kids.value = on
+        prefs.edit().putBoolean(KEY_KIDS, on).apply()
+    }
+
+    private val _title = MutableStateFlow(prefs.getString(KEY_TITLE, "") ?: "")
+    /** Id of the title picked to show (see Titles); "" shows the hardest one earned. */
+    val title: StateFlow<String> = _title.asStateFlow()
+
+    fun setTitle(id: String) {
+        _title.value = id
+        prefs.edit().putString(KEY_TITLE, id).apply()
+    }
+
+    /** This week's suggested stamps as (week key, stamp names), kept so they stay put until Monday. */
+    fun weeklyPicks(): Pair<Int, List<String>> =
+        prefs.getInt(KEY_PICKS_WEEK, 0) to (prefs.getString(KEY_PICKS, "") ?: "").split(',').filter { it.isNotEmpty() }
+
+    fun setWeeklyPicks(week: Int, names: List<String>) {
+        prefs.edit().putInt(KEY_PICKS_WEEK, week).putString(KEY_PICKS, names.joinToString(",")).apply()
+    }
+
     /** One suggestion card on the map ("탐험 우회 경로", "안 가본 동네 가보기"): off in Settings, or hidden for today. */
     inner class CardPref(private val key: String) {
         private val _enabled = MutableStateFlow(prefs.getBoolean("${key}_on", true))
@@ -120,6 +156,13 @@ class MapPrefs(context: Context) {
         val MILESTONES = listOf(10, 25, 50, 75, 100)
         private const val KEY_SOUND_VOLUME = "sound_volume"
         private const val KEY_DEX_HOME = "dex_home"
+        private const val KEY_TEAM = "team_name"
+        private const val KEY_KIDS = "kids_mode"
+        private const val KEY_TITLE = "title_id"
+        private const val KEY_PICKS_WEEK = "weekly_picks_week"
+        private const val KEY_PICKS = "weekly_picks"
+        const val DEFAULT_TEAM = "부릉 탐험대"
+        const val TEAM_MAX = 15
 
         fun today(): String = SimpleDateFormat("yyyyMMdd", Locale.KOREA).format(Date())
     }

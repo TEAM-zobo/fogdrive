@@ -1,5 +1,7 @@
 package com.zobo.burung.ui
 
+import com.zobo.burung.FogRuntime
+
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.outlined.Person
 import android.os.UserManager
@@ -23,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -69,7 +72,10 @@ fun SettingsScreen(
         Modifier.fillMaxSize().padding(40.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        SectionHeader("연결 상태")
+        SectionHeader("탐험대")
+        ExpeditionSettings()
+
+        SectionHeader("연결 상태", Modifier.padding(top = 16.dp))
         ConnectionCard(viewModel)
 
         SectionHeader("시연 모드", Modifier.padding(top = 16.dp))
@@ -289,6 +295,32 @@ fun SettingsScreen(
  * The car's driver profile: each one is a separate Android user, so its map, trips and settings
  * are its own (another driver starts with fog everywhere).
  */
+/** The 탐험대 name (changed here only) and 키즈모드. */
+@Composable
+private fun ExpeditionSettings() {
+    val prefs = FogRuntime.mapPrefs
+    val team by prefs.teamName.collectAsState()
+    val kids by prefs.kids.collectAsState()
+    FogCard(Modifier.fillMaxWidth()) {
+        Text("탐험대 이름", style = MaterialTheme.typography.titleMedium)
+        Text("내 탐험 화면에 보여요. 일반 모드와 키즈모드에서 같은 이름을 써요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+        OutlinedTextField(
+            value = team,
+            onValueChange = { prefs.setTeamName(it) },
+            singleLine = true,
+            placeholder = { Text(MapPrefs.DEFAULT_TEAM, color = FogColors.TextSub) },
+            supportingText = { Text("${team.length} / ${MapPrefs.TEAM_MAX}", color = FogColors.TextSub) },
+            textStyle = MaterialTheme.typography.titleLarge.copy(color = FogColors.TextMain),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        )
+        PrefToggle(
+            "키즈모드",
+            "아이와 함께 탈 때 켜요. 화면 문구와 음성 안내만 아이가 알아듣기 쉬운 말로 바뀌고, 기록·스탬프·칭호는 그대로예요.",
+            kids,
+        ) { prefs.setKids(it) }
+    }
+}
+
 @Composable
 private fun DriverProfileLine() {
     val context = LocalContext.current

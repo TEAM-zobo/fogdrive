@@ -126,24 +126,26 @@ def tap_scrolling(ctx, text, swipes=8):
     raise CaseFailed(f"'{text}'을(를) 찾지 못함")
 
 
-STAMP_NAMES = ("빗속 개척", "야간 개척", "가족 탐험", "충전소 깃발", "바람길 개척", "함께한 미션")
+STAMP_NAMES = ("가족 탐험", "충전소 깃발", "바람길 개척", "함께한 미션")
+# Retired: driving in the rain or with the low beam on earns nothing (no reward for riskier driving).
+RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척")
 
 
 def read_stamps(ctx):
-    """Stamp counts from the stamp tab. The stamps sit below the challenges, and off-screen nodes
-    are not in the UI dump, so the tab is scrolled down until all were read."""
-    ctx.dev.tap_text("스탬프")
+    """Stamp counts from the 내 탐험 tab. Each stamp's name is followed by "N회" once collected (or by
+    how to get it); the stamps sit below the title and the weekly picks, and off-screen nodes are not
+    in the UI dump, so the tab is scrolled to the end. Retired names seen anywhere are counted too."""
+    ctx.dev.tap_text("내 탐험")
     time.sleep(1.2)
-    out = {}
+    out = {name: 0 for name in STAMP_NAMES}
     for _ in range(8):
         t = ctx.dev.texts()
-        for name in STAMP_NAMES:
-            if name in t and name not in out:
-                i = t.index(name)
-                if i + 2 < len(t):
-                    out[name] = 0 if "아직" in t[i + 2] else int(number(t[i + 2]) or 0)
-        if len(out) == len(STAMP_NAMES):
-            break
+        for i, x in enumerate(t[:-1]):
+            if x in STAMP_NAMES or x in RETIRED_NAMES:
+                m = re.fullmatch(r"(\d+)회", t[i + 1])
+                out[x] = max(out.get(x, 0), int(m.group(1)) if m else 0)
+                if x in RETIRED_NAMES:
+                    out[x] = max(out[x], 1)  # shown at all is already wrong
         x = (APP_AREA[0] + APP_AREA[2]) // 2
         ctx.dev.swipe(x, APP_AREA[3] - 100, x, APP_AREA[1] + 100, 400)
         time.sleep(0.8)
@@ -291,25 +293,38 @@ def _stamp_case(ctx, setup, name):
     ctx.check(not others, f"다른 스탬프 없음 {others}")
 
 
-@case("TC-07", "상황 스탬프", "와이퍼를 켜고 새 길을 달리면 '빗속 개척'을 얻는다",
+def _no_stamp_case(ctx, setup):
+    fresh(ctx)
+    setup()
+    ctx.vc.gear("Drive")
+    drive(ctx, ROUTE[:12])
+    park(ctx)
+    stamps = read_stamps(ctx)
+    ctx.shot("expedition")
+    ctx.log(f"스탬프: {stamps}")
+    got = {k: v for k, v in stamps.items() if v}
+    ctx.check(not got, f"스탬프 없음 {got}")
+
+
+@case("TC-07", "안전", "와이퍼를 켜고 새 길을 달려도 빗길 스탬프를 주지 않는다",
       "앱 초기화",
-      ["앞 와이퍼 Low", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
-      ["빗속 개척 1회 획득", "다른 스탬프 없음"])
+      ["앞 와이퍼 Low", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
+      ["스탬프 없음 (빗속 개척은 목록에도 없음)"])
 def tc_stamp_rain(ctx):
-    _stamp_case(ctx, lambda: ctx.vc.wiper("Low"), "빗속 개척")
+    _no_stamp_case(ctx, lambda: ctx.vc.wiper("Low"))
 
 
-@case("TC-08", "상황 스탬프", "전조등(로우빔)을 켜고 새 길을 달리면 '야간 개척'을 얻는다",
+@case("TC-08", "안전", "전조등(로우빔)을 켜고 새 길을 달려도 야간 스탬프를 주지 않는다",
       "앱 초기화",
-      ["헤드램프 LowBeam", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
-      ["야간 개척 1회 획득", "다른 스탬프 없음"])
+      ["헤드램프 LowBeam", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
+      ["스탬프 없음 (야간 개척은 목록에도 없음)"])
 def tc_stamp_night(ctx):
-    _stamp_case(ctx, lambda: ctx.vc.headlamp("LowBeam"), "야간 개척")
+    _no_stamp_case(ctx, lambda: ctx.vc.headlamp("LowBeam"))
 
 
 @case("TC-09", "상황 스탬프", "뒷좌석 동승자와 새 길을 달리면 '가족 탐험'을 얻는다",
       "앱 초기화",
-      ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
+      ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
       ["가족 탐험 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_family(ctx):
     _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험")
@@ -317,7 +332,7 @@ def tc_stamp_family(ctx):
 
 @case("TC-10", "상황 스탬프", "정차 중 배터리가 2%p 이상 오르면 '충전소 깃발'을 얻는다",
       "앱 초기화, P단",
-      ["배터리 40%로 설정", "배터리 43%로 설정", "스탬프 탭 확인"],
+      ["배터리 40%로 설정", "배터리 43%로 설정", "내 탐험 탭 확인"],
       ["충전소 깃발 1회 획득 (정차 직후 값보다 낮아졌다 오른 경우도 인정)"])
 def tc_stamp_charge(ctx):
     fresh(ctx)
@@ -334,7 +349,7 @@ def tc_stamp_charge(ctx):
 @case("TC-11", "주행 모드", "주행 중에는 주행 모드(지도·현재 위치·짧은 숫자)만 보이고, 정차하면 전체 화면으로 돌아온다",
       "앱 실행 중 (distraction-optimized 액티비티)",
       ["기어 D, 차속 40km/h", "위치 10개 지점 주입", "화면 확인", "차속 0, 기어 P"],
-      ["'주행 모드' 표시, 기록·도감·설정 탭 숨김", "시스템 차단 화면 없음(앱 지도가 계속 보임)", "정차 후 탭 복귀"])
+      ["'주행 모드' 표시, 도감·내 탐험·설정 탭 숨김", "시스템 차단 화면 없음(앱 지도가 계속 보임)", "정차 후 탭 복귀"])
 def tc_driving_mode(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -343,7 +358,7 @@ def tc_driving_mode(ctx):
         ctx.check(ctx.dev.wait_text("주행 모드", timeout=10, exact=True), "주행 모드 표시")
         drive(ctx, ROUTE[:10])
         texts = ctx.dev.texts()
-        hidden = [t for t in ("기록", "도감", "스탬프", "설정") if t in texts]
+        hidden = [t for t in ("도감", "내 탐험", "설정") if t in texts]
         ctx.shot("driving_mode")
         ctx.check(not hidden, f"주행 중 탭 숨김 {hidden}")
         # The system block screen is flat light gray; the app's dark map means we are not blocked.
@@ -353,7 +368,7 @@ def tc_driving_mode(ctx):
     finally:
         ctx.vc.speed(0)
         ctx.vc.gear("Park")
-    ctx.check(ctx.dev.wait_text("스탬프", timeout=10, exact=True), "정차 후 탭 복귀")
+    ctx.check(ctx.dev.wait_text("내 탐험", timeout=10, exact=True), "정차 후 탭 복귀")
     ctx.check(ctx.dev.find("주행 모드") is None, "정차 후 주행 모드 해제")
 
 
@@ -390,7 +405,7 @@ def tc_detour(ctx):
 @case("TC-13", "시연 모드", "시연 모드가 출발→주행→하차까지 끝까지 재생된다",
       "앱 초기화",
       ["지도 → 시연 주행 → 시연 시작", "완료 메시지까지 대기(성수 코스 36 km, 기본 60 km/h·10배속으로 약 4분)", "기록·도감 확인", "시연 중지"],
-      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "빗속 개척·가족 탐험 획득"])
+      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "가족 탐험 획득, 빗속 개척 없음"])
 def tc_demo(ctx):
     fresh(ctx)
     # Started from the map's own demo panel: the drive ends back on the map, where the completion
@@ -404,7 +419,7 @@ def tc_demo(ctx):
     s = read_stamps(ctx)
     ctx.log(f"기록 {r} / 스탬프 {s}")
     ctx.check(r["landings"] == 1 and r["trips"] == 1, "하차 1곳, 주행 1건")
-    ctx.check(s.get("빗속 개척", 0) >= 1 and s.get("가족 탐험", 0) >= 1, "빗속 개척·가족 탐험")
+    ctx.check(s.get("가족 탐험", 0) >= 1 and not s.get("빗속 개척"), "가족 탐험, 빗속 개척 없음")
     ctx.dev.tap_text("설정")
     ctx.dev.tap_text("시연 중지")
 
@@ -430,12 +445,12 @@ def tc_reset(ctx):
 
 @case("TC-15", "내비게이션", "하위 탭에서 뒤로가기를 누르면 앱을 닫지 않고 지도로 돌아간다",
       "앱 실행 중",
-      ["스탬프 탭 이동", "뒤로가기"],
+      ["내 탐험 탭 이동", "뒤로가기"],
       ["지도 화면(최근 주행 버튼) 표시", "앱이 계속 포그라운드"])
 def tc_back(ctx):
     fresh(ctx)
-    ctx.dev.tap_text("스탬프")
-    ctx.check(ctx.dev.wait_text("챌린지", timeout=5, exact=True), "스탬프 화면")
+    ctx.dev.tap_text("내 탐험")
+    ctx.check(ctx.dev.wait_text("칭호", timeout=5, exact=True), "내 탐험 화면")
     ctx.dev.key("back")
     ctx.check(ctx.dev.wait_text("최근 주행", timeout=5), "지도 화면 복귀")
     ctx.check("com.zobo.burung" in ctx.dev.top_activity(), "앱 포그라운드 유지")
@@ -472,7 +487,7 @@ def tc_tutorial(ctx):
 
 @case("TC-17", "상황 스탬프", "창문을 열고 새 길을 달리면 '바람길 개척'을 얻는다",
       "앱 초기화",
-      ["운전석 창문 50% 열기", "기어 D로 12개 지점 주행", "스탬프 탭 확인"],
+      ["운전석 창문 50% 열기", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
       ["바람길 개척 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_window(ctx):
     _stamp_case(ctx, lambda: ctx.vc.window("front_left", 50), "바람길 개척")

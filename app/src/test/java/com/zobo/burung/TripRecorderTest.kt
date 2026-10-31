@@ -144,13 +144,21 @@ class TripRecorderTest {
     }
 
     @Test
-    fun rainOnNewGroundAwardsStampOncePerTrip() {
+    fun passengerOnNewGroundAwardsStampOncePerTrip() {
         val rec = TripRecorder(MemorySink())
-        val wet = drive.copy(wiperOn = true)
-        val first = rec.onFix(fix(37.5, 127.0), wet)
-        val second = rec.onFix(fix(37.5, 127.003), wet)
-        assertEquals(1, first.filterIsInstance<RecorderEvent.Stamp>().count { it.code == StampCode.RAIN })
-        assertTrue(second.none { it is RecorderEvent.Stamp })
+        val family = drive.copy(occupiedSeats = setOf("ROW_1_LEFT", "ROW_2_LEFT"))
+        val first = rec.onFix(fix(37.5, 127.0), family)
+        val second = rec.onFix(fix(37.5, 127.003), family)
+        assertEquals(1, first.filterIsInstance<RecorderEvent.Stamp>().count { it.code == StampCode.FAMILY })
+        assertTrue(second.none { it is RecorderEvent.Stamp && it.code == StampCode.FAMILY })
+    }
+
+    @Test
+    fun riskyConditionsAwardNoStamp() {
+        val rec = TripRecorder(MemorySink())
+        val risky = drive.copy(wiperOn = true, lowBeamOn = true, evSocPercent = 10, drivingMode = DriveMode.SPORT)
+        val codes = rec.onFix(fix(37.5, 127.0), risky).filterIsInstance<RecorderEvent.Stamp>().map { it.code }
+        assertTrue(codes.none { it in com.zobo.burung.explore.StampBook.RETIRED })
     }
 
     @Test
@@ -257,8 +265,5 @@ class TripRecorderTest {
         assertTrue(StampCode.SUNROOF in codes)
         assertTrue(StampCode.ECO in codes)
         assertFalse(StampCode.SPORT in codes)
-        // Sport mode on a road already cleared: no new cells, so no stamp.
-        val again = rec.onFix(fix(37.5, 127.0, 1), drive.copy(drivingMode = DriveMode.SPORT))
-        assertFalse(again.any { it is RecorderEvent.Stamp && it.code == StampCode.SPORT })
     }
 }
