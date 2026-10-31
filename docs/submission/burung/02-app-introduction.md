@@ -203,6 +203,12 @@ MAU = 국내 Pleos 탑재 누적 차량(V) × 앱 설치율(I) × 월간 활성�
 
 ![지도: 노란 개척로와 베이스캠프, 레벨 원형 게이지, 최근 주행 버튼](../images/burung/01-map.jpg)
 
+![주행 모드: 지나간 길만 일직선으로 열리고 노란 개척로, 회전 안내·제한속도](../images/burung/06-driving.jpg)
+
+![도착: 레벨업 축하와 이번 주행 요약, 처음 가 본 동네, 스탬프, 동승자 미션](../images/burung/07-arrival-levelup.jpg)
+
+![최근 주행 패널: 날짜별 주행 일지, 고른 주행의 경로와 상세](../images/burung/08-trips-panel.jpg)
+
 ![도감: 대한민국 지도에 가 본 시·도 색칠, 전국 대시보드](../images/burung/02-dex-country.jpg)
 
 ![도감: 서울 슬라이드, 많이 개척한 구일수록 진하게](../images/burung/03-dex-seoul.jpg)
@@ -210,8 +216,6 @@ MAU = 국내 Pleos 탑재 누적 차량(V) × 앱 설치율(I) × 월간 활성�
 ![도감: 아직 안 가 본 시·도와 가장 가까운 탐험 후보](../images/burung/04-dex-unexplored.jpg)
 
 ![스탬프: 챌린지와 상황 스탬프](../images/burung/05-stamps.jpg)
-
-【기입 필요: 주행 화면, 도착 결산(레벨업) 카드, 최근 주행 패널 화면 — 에뮬레이터로 다시 촬영】
 
 ## 8. 숏폼 링크
 
