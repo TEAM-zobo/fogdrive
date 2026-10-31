@@ -1,7 +1,6 @@
 package com.zobo.burung.ui
 
 import com.zobo.burung.FogRuntime
-
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.outlined.Person
 import android.os.UserManager
@@ -291,10 +290,6 @@ fun SettingsScreen(
     }
 }
 
-/**
- * The car's driver profile: each one is a separate Android user, so its map, trips and settings
- * are its own (another driver starts with fog everywhere).
- */
 /** The 탐험대 name (changed here only) and 키즈모드. */
 @Composable
 private fun ExpeditionSettings() {
@@ -321,6 +316,10 @@ private fun ExpeditionSettings() {
     }
 }
 
+/**
+ * The car's driver profile: each one is a separate Android user, so its map, trips and settings
+ * are its own (another driver starts with fog everywhere).
+ */
 @Composable
 private fun DriverProfileLine() {
     val context = LocalContext.current

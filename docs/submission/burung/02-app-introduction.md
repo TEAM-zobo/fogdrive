@@ -209,7 +209,7 @@ MAU = 국내 Pleos 탑재 누적 차량(V) × 앱 설치율(I) × 월간 활성�
 
 ## 7. 참고자료
 
-- GitHub 저장소: 【기입 필요: 부릉탐험대 소스를 제출할 저장소 주소 — 지금은 비공개 저장소 TEAM-zobo/fogdrive의 `design/pioneer-trail` 브랜치에만 있고 원격에 올리지 않음】
+- GitHub 저장소: 【기입 필요: 부릉탐험대 소스를 제출할 저장소 주소 — 지금은 비공개 저장소의 `design/pioneer-trail` 브랜치에만 있고 원격에 올리지 않음】
 - Release APK: 【기입 필요: 부릉탐험대 release APK 파일명과 위치 (규칙: 팀명_앱이름_release.apk)】
 - 시연 영상: 【기입 필요: 부릉탐험대 시연 영상 링크】
 - 실행 방법: 저장소 `README.md`, 테스트 환경 셋팅 `docs/SETUP.md` (Pleos Connect Emulator v2.1.0)

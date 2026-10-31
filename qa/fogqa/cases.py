@@ -128,7 +128,7 @@ def tap_scrolling(ctx, text, swipes=8):
 
 STAMP_NAMES = ("가족 탐험", "충전소 깃발", "바람길 개척", "함께한 미션")
 # Retired: driving in the rain or with the low beam on earns nothing (no reward for riskier driving).
-RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척")
+RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척", "마라톤 드라이브")
 
 
 def read_stamps(ctx):

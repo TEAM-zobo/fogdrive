@@ -325,12 +325,15 @@ class MainViewModel : ViewModel() {
      * kept until Monday, each marked once collected. A place to go is attached where one fits: the
      * nearest 시·도 not entered yet for 새 땅 밟기, the nearest 시·군·구 for 새 동네 첫발.
      */
-    val weeklyPicks: StateFlow<List<WeeklyPick>> = combine(stamps, dexStories) { s, stories ->
-        val collected = s.mapNotNullTo(HashSet()) { st -> StampCode.entries.firstOrNull { it.name == st.code } }
+    // From the database flow, not [stamps]: that starts as an empty list before Room's first read, and
+    // picks chosen then would be kept all week with stamps already collected among them.
+    val weeklyPicks: StateFlow<List<WeeklyPick>> = combine(repo.stamps, dexStories) { s, stories ->
+        val byName = StampCode.entries.associateBy { it.name }
+        val collected = s.mapNotNullTo(HashSet()) { byName[it.code] }
         val week = WeeklyPicks.weekKey(System.currentTimeMillis())
         val prefs = FogRuntime.mapPrefs
         val (savedWeek, saved) = prefs.weeklyPicks()
-        val codes = saved.mapNotNull { n -> StampCode.entries.firstOrNull { it.name == n } }
+        val codes = saved.mapNotNull { byName[it] }
             .takeIf { savedWeek == week && it.isNotEmpty() }
             ?: WeeklyPicks.pick(collected, week, listOf(StampCode.NEW_DISTRICT, StampCode.WEEKEND))
                 .also { prefs.setWeeklyPicks(week, it.map { c -> c.name }) }

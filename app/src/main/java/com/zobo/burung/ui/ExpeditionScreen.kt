@@ -119,7 +119,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                     Text(team.ifBlank { MapPrefs.DEFAULT_TEAM }, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = INK)
                 }
                 Text(
-                    shown?.name(kids) ?: k("아직 칭호가 없어요", "아직 칭호가 없어요"),
+                    shown?.name(kids) ?: "아직 칭호가 없어요",
                     fontSize = 56.sp, fontWeight = FontWeight.Black, color = INK, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(

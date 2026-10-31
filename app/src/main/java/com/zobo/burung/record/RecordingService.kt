@@ -374,7 +374,7 @@ class RecordingService : Service() {
             // Kids mode: the same facts, in words a child follows (no km², no "개척률").
             val found = summary.newDongs.size
             (if (found > 0) "도착! 오늘은 새 동네를 ${found}곳이나 찾았어요. 최고예요!" else "도착! 오늘도 멋진 모험이었어요.") +
-                if (summary.leveledUp) " 우와, 탐험대 레벨이 ${after}로 올랐어요!" else ""
+                if (summary.leveledUp) " 우와, 탐험대가 ${after}레벨이 되었어요!" else ""
         } else {
             "주행을 마쳤어요. 이번 주행에서 " + parts.joinToString(", ") + "." + if (summary.leveledUp) " 레벨 업! ${after}레벨이 되었어요." else ""
         }
