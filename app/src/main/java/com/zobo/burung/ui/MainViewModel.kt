@@ -21,7 +21,6 @@ import com.zobo.burung.explore.PeriodStats
 import com.zobo.burung.geo.Area
 import com.zobo.burung.geo.TileBox
 import com.zobo.burung.geo.Tiles
-import com.zobo.burung.explore.Story
 import com.zobo.burung.record.StampCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,7 +32,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -55,8 +53,8 @@ data class DexStory(val recent: DexRecent?, val next: DexNext?)
 /** The 동 explored most recently in a slide's area, when, and (on a 시·도 slide) its 시·군·구. */
 data class DexRecent(val name: String, val at: Long, val district: String? = null)
 
-/** The nearest region not entered yet, [km] from home (or the car). */
-data class DexNext(val region: RegionStat, val km: Double)
+/** The nearest region not entered yet, [km] from home ([fromHome]) or else the car. */
+data class DexNext(val region: RegionStat, val km: Double, val fromHome: Boolean = true)
 
 /** A past trip shown on the map: the recorded route, or for trips before routes were kept, its cells. */
 data class TripRoute(val trip: TripEntity, val points: List<Pair<Double, Double>>, val isTrack: Boolean)
@@ -104,8 +102,10 @@ class MainViewModel : ViewModel() {
     ) { _, l, s, t, lat ->
         val cells = repo.count()
         val cellKm = Tiles.cellSizeMeters(lat) / 1000.0
-        // Read from the database, as the arrival card's level-up is: [t] stops at the last 100 trips.
-        val xp = repo.xp()
+        // Distance from the database, as the arrival card's level-up ([ExploreRepository.xp]) reads it:
+        // [t] stops at the last 100 trips. Landings and stamps are all in [l] and [s] already.
+        val kinds = s.map { it.code }.distinct().size
+        val xp = Progress.xp(cells, l.size, s.size, kinds, repo.tripTotalsSince(0).distanceMeters)
         val dist = t.sumOf { it.distanceMeters }
         val newDist = t.sumOf { it.newDistanceMeters }
         Summary(
@@ -115,7 +115,7 @@ class MainViewModel : ViewModel() {
             level = Progress.level(xp),
             levelProgress = Progress.levelProgress(xp),
             landings = l.size,
-            stampKinds = s.map { it.code }.distinct().size,
+            stampKinds = kinds,
             newRoadRatio = if (dist > 0) newDist / dist else 0.0,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, Summary())
@@ -218,7 +218,7 @@ class MainViewModel : ViewModel() {
             return candidates.mapNotNull { (stat, o) ->
                 o ?: return@mapNotNull null
                 val km = Tiles.distanceMeters(origin.first, origin.second, Tiles.yToLat(o.labelY + 0.5), Tiles.xToLng(o.labelX + 0.5)) / 1000
-                DexNext(stat, km)
+                DexNext(stat, km, fromHome = home != null)
             }.minByOrNull { it.km }
         }
         buildMap {
@@ -291,14 +291,6 @@ class MainViewModel : ViewModel() {
                 }
         }
     }
-
-    /** Landmark line for the 동 under the car (only for 동 already entered, and while stories are on). */
-    val hereStory: StateFlow<Story?> = combine(
-        here.map { h -> h?.takeIf { it.dong.rate > 0 } }.distinctUntilChangedBy { it?.dongCode },
-        FogRuntime.mapPrefs.stories,
-    ) { h, on -> if (h != null && on) h else null }
-        .mapLatest { h -> h?.let { FogRuntime.stories.storyFor(it.dongCode, it.dongLat, it.dongLng) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val suggestionSkip = MutableStateFlow(0)
 

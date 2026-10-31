@@ -3,6 +3,8 @@ package com.zobo.burung.ui
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
@@ -136,6 +138,8 @@ fun DexMap(
     val edge = FogColors.Surface
     val chipBg = FogColors.TextMain
     val chipText = FogColors.Surface
+    // The tap handler lives as long as [shapes]; read the latest [onTap] (its regions change more often).
+    val tap by rememberUpdatedState(onTap)
     Spacer(
         modifier
             .pointerInput(shapes) {
@@ -143,7 +147,7 @@ fun DexMap(
                     val fit = Fit.of(shapes, size.width.toFloat(), size.height.toFloat()) ?: return@detectTapGestures
                     val x = fit.toX(p.x).toDouble()
                     val y = fit.toY(p.y).toDouble()
-                    shapes.firstOrNull { it.outline.contains(x, y) }?.let(onTap)
+                    shapes.firstOrNull { it.outline.contains(x, y) }?.let(tap)
                 }
             }
             .drawWithCache {

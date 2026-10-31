@@ -163,6 +163,12 @@ private fun DexSlides(viewModel: MainViewModel, regions: List<ProvinceProgress>,
     LaunchedEffect(notice) { if (notice != null) { delay(NOTICE_MS); notice = null } }
     // Remembered so a 동 list opened from this slide comes back to it.
     LaunchedEffect(pager.currentPage) { viewModel.dexProvince.value = slides.getOrNull(pager.currentPage)?.code }
+    // A 시·도 entered for the first time moves up among the slides: stay on the one being shown.
+    LaunchedEffect(slides) {
+        val code = viewModel.dexProvince.value ?: ""
+        val i = slides.indexOfFirst { (it?.code ?: "") == code }
+        if (i >= 0 && i != pager.currentPage) pager.scrollToPage(i)
+    }
     val go = { i: Int -> scope.launch { pager.animateScrollToPage(i.coerceIn(0, slides.size - 1)) }; Unit }
     val openProvince = { code: String -> slides.indexOfFirst { it?.code == code }.takeIf { it > 0 }?.let(go); Unit }
     val homeName = slides.firstOrNull { (it?.code ?: "") == home }?.let { slideName(it) } ?: "전국"
@@ -427,7 +433,7 @@ private fun SlideDashboard(
             StoryCard(
                 Icons.Outlined.TravelExplore, FogColors.Accent, "다음 탐험 후보",
                 if (p == null) shortProvince(nx.region.name) else nx.region.name,
-                "집에서 ${"%.0f".format(nx.km)}km · 아직 안 가 봤어요",
+                "${if (nx.fromHome) "집에서" else "여기서"} ${"%.0f".format(nx.km)}km · 아직 안 가 봤어요",
                 action = "지도에서 ›" to { onShowOnMap(nx.region) },
             )
         }

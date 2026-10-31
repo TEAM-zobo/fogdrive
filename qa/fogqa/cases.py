@@ -89,11 +89,15 @@ def read_record(ctx):
     time.sleep(1.0)
     ctx.dev.tap_text("최근 주행")
     time.sleep(1.2)
-    trips = set()
+    days = {}
     t = ctx.dev.texts()
     for _ in range(8):
-        # A trip row is its start time ("18:42") then its name; the time plus name keeps rows apart.
-        trips.update((x, t[i + 1]) for i, x in enumerate(t[:-1]) if re.fullmatch(r"\d\d:\d\d", x))
+        # Each day's header ("10월 31일 (토)") is followed by its count ("3회 · 12.4km"): rows of the
+        # same time and name (a daily commute) would collapse if trips were told apart by their rows.
+        for i, x in enumerate(t[:-1]):
+            m = re.match(r"(\d+)회 · ", t[i + 1])
+            if m and re.fullmatch(r"(오늘 · )?\d+월 \d+일 \(.\)", x):
+                days[x] = int(m.group(1))
         if "전체 기록" in t:
             break
         ctx.dev.swipe(PANEL_X, APP_AREA[3] - 100, PANEL_X, APP_AREA[1] + 200, 400)
@@ -103,7 +107,7 @@ def read_record(ctx):
         "area": area_m2(value_after(t, "밝힌 면적")),
         "landings": number(value_after(t, "하차 지점")),
         "new_ratio": number(value_after(t, "새 길 비율")),
-        "trips": len(trips),
+        "trips": sum(days.values()),
     }
     ctx.dev.shell("input", "keyevent", "KEYCODE_BACK")
     time.sleep(0.6)
@@ -349,7 +353,7 @@ def tc_driving_mode(ctx):
     finally:
         ctx.vc.speed(0)
         ctx.vc.gear("Park")
-    ctx.check(ctx.dev.wait_text("기록", timeout=10, exact=True), "정차 후 탭 복귀")
+    ctx.check(ctx.dev.wait_text("스탬프", timeout=10, exact=True), "정차 후 탭 복귀")
     ctx.check(ctx.dev.find("주행 모드") is None, "정차 후 주행 모드 해제")
 
 
@@ -426,14 +430,14 @@ def tc_reset(ctx):
 
 @case("TC-15", "내비게이션", "하위 탭에서 뒤로가기를 누르면 앱을 닫지 않고 지도로 돌아간다",
       "앱 실행 중",
-      ["기록 탭 이동", "뒤로가기"],
-      ["지도 화면(레벨 헤더) 표시", "앱이 계속 포그라운드"])
+      ["스탬프 탭 이동", "뒤로가기"],
+      ["지도 화면(최근 주행 버튼) 표시", "앱이 계속 포그라운드"])
 def tc_back(ctx):
     fresh(ctx)
-    ctx.dev.tap_text("기록")
-    ctx.check(ctx.dev.wait_text("나의 개척 기록", timeout=5), "기록 화면")
+    ctx.dev.tap_text("스탬프")
+    ctx.check(ctx.dev.wait_text("챌린지", timeout=5, exact=True), "스탬프 화면")
     ctx.dev.key("back")
-    ctx.check(ctx.dev.wait_text("Lv.", timeout=5), "지도 화면 복귀")
+    ctx.check(ctx.dev.wait_text("최근 주행", timeout=5), "지도 화면 복귀")
     ctx.check("com.zobo.burung" in ctx.dev.top_activity(), "앱 포그라운드 유지")
 
 
