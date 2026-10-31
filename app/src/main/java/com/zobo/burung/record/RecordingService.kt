@@ -20,6 +20,7 @@ import com.zobo.burung.car.Arrival
 import com.zobo.burung.car.ArrivalKind
 import com.zobo.burung.car.Fix
 import com.zobo.burung.car.LocationFeed
+import com.zobo.burung.car.Place
 import com.zobo.burung.car.VehicleState
 import com.zobo.burung.data.CellSource
 import com.zobo.burung.data.TripEntity
@@ -35,7 +36,10 @@ import com.zobo.burung.voice.Sound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -390,12 +394,19 @@ class RecordingService : Service() {
         val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_SEEDED, false)) return
         repo.loaded.first { it }
-        val recent = FogRuntime.navi.recent.filterNotNull().first()
-        // Bookmarks answer through their own callback, which may land after the recent list.
-        val bookmarks = FogRuntime.navi.bookmarks.value
-            ?: withTimeoutOrNull(BOOKMARK_WAIT_MS) { FogRuntime.navi.bookmarks.filterNotNull().first() }
-            ?: emptyList()
-        val places = recent + bookmarks
+        FogRuntime.navi.connected.first { it }
+        // Each list answers through its own callback, and the navigation may never answer one: the
+        // emulator's sends no recent destinations at all, and waiting for them held back the seed
+        // around its 집/회사 bookmarks too (no first-run fog cleared, no message).
+        // Both lists are awaited together, so a silent one costs one wait, not two.
+        val (recent, bookmarks) = coroutineScope {
+            val r = async { answerOf(FogRuntime.navi.recent) }
+            val b = async { answerOf(FogRuntime.navi.bookmarks) }
+            r.await() to b.await()
+        }
+        // An unset bookmark comes through as (0, 0).
+        // A place that is both a recent destination and a bookmark (집) counts once in the message.
+        val places = (recent + bookmarks).filter { it.lat != 0.0 || it.lng != 0.0 }.distinctBy { it.lat to it.lng }
         if (places.isEmpty()) return
         var added = 0
         for (p in places) {
@@ -404,6 +415,9 @@ class RecordingService : Service() {
         prefs.edit().putBoolean(KEY_SEEDED, true).apply()
         note("내비 최근 목적지·즐겨찾기 ${places.size}곳 주변을 밝혔어요 (+${Area.formatCells(added)})")
     }
+
+    private suspend fun answerOf(list: StateFlow<List<Place>?>): List<Place> =
+        list.value ?: withTimeoutOrNull(NAVI_ANSWER_WAIT_MS) { list.filterNotNull().first() } ?: emptyList()
 
     private fun startDemo() {
         if (demo?.running == true) return
@@ -491,7 +505,7 @@ class RecordingService : Service() {
         /** Route sampling step: dense enough to follow streets, ~50 points per km at most. */
         private const val TRACK_STEP_M = 20.0
         private const val SEED_RADIUS = 4
-        private const val BOOKMARK_WAIT_MS = 5_000L
+        private const val NAVI_ANSWER_WAIT_MS = 5_000L
         /** Shorter drives (moving the car in a car park) get no summary card. */
         private const val MIN_SUMMARY_M = 300.0
 
