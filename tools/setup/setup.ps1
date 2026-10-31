@@ -241,9 +241,22 @@ function Cmd-Image {
 
 function Write-Avd($name, $ram) {
   $dir = Join-Path $AvdHome "$name.avd"
-  if (Test-Path "$AvdHome\$name.ini") { Ok "AVD $name 이미 있음"; return }
-  New-Item -ItemType Directory -Force $dir | Out-Null
+  # 6 virtual cores where the host has 8 or more: with 4, the system's driving view and the on-device
+  # voice guidance starved the screen compositor and the driving map froze at every announcement.
+  $cores = if ([Environment]::ProcessorCount -ge 8) { 6 } else { 4 }
   $utf8 = New-Object Text.UTF8Encoding($false)
+  if (Test-Path "$AvdHome\$name.ini") {
+    $cfg = Join-Path $dir 'config.ini'
+    if ($cores -eq 6 -and (Test-Path $cfg) -and (Select-String -Path $cfg -Pattern '^hw\.cpu\.ncore=4$' -Quiet)) {
+      # ReadAllText (UTF-8) and \r? so a CRLF config.ini (as Android Studio may write) is matched too.
+      [IO.File]::WriteAllText($cfg, ([IO.File]::ReadAllText($cfg) -replace '(?m)^hw\.cpu\.ncore=4(?=\r?$)', 'hw.cpu.ncore=6'), $utf8)
+      Ok "AVD $name 이미 있음 · CPU 4 → 6코어 (다음 부팅부터)"
+    } else {
+      Ok "AVD $name 이미 있음"
+    }
+    return
+  }
+  New-Item -ItemType Directory -Force $dir | Out-Null
   [IO.File]::WriteAllText("$AvdHome\$name.ini", "avd.ini.encoding=UTF-8`npath=$dir`npath.rel=avd\$name.avd`ntarget=android-34`n", $utf8)
   # Same settings as the Pleos guide (Cold boot, 4 GB RAM) on the 2560x1440 head-unit screen.
   $config = @"
@@ -252,7 +265,7 @@ avd.ini.displayname=$($name.Replace('_', ' '))
 avd.ini.encoding=UTF-8
 abi.type=$Abi
 hw.cpu.arch=x86_64
-hw.cpu.ncore=4
+hw.cpu.ncore=$cores
 hw.ramSize=$ram
 vm.heapSize=512
 disk.dataPartition.size=8G

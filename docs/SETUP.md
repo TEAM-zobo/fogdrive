@@ -24,7 +24,7 @@ doctor → sdk → image → avd → boot → app        (all = sdk ~ app + doct
 | `doctor` | 설치 상태 점검만 함(아무것도 바꾸지 않음) | 수 초 |
 | `sdk` | cmdline-tools가 없으면 받고, `platform-tools`·`emulator`·`platforms;android-35`·`build-tools;35.0.0` 설치, `local.properties` 생성 | 수 분 |
 | `image` | Pleos Connect v2.1.0 시스템 이미지 다운로드(macOS arm64 약 4.7GB, Windows x86_64 약 4.1GB, 이어받기·SHA-1 확인) 후 SDK에 설치 | 네트워크에 따라 10분~1시간 |
-| `avd` | AVD `Pleos_Connect_v2.1` 생성(2560×1440, RAM 4GB, Cold boot). `--qa`/`-qa`는 QA용 `Pleos_Connect_QA`도 생성 | 수 초 |
+| `avd` | AVD `Pleos_Connect_v2.1` 생성(2560×1440, RAM 4GB, Cold boot, CPU 6코어 — PC 코어(Apple 실리콘은 성능 코어)가 8개 미만이면 4코어). 이미 있는 4코어 AVD는 6코어로 올림. `--qa`/`-qa`는 QA용 `Pleos_Connect_QA`도 생성 | 수 초 |
 | `boot` | 에뮬레이터 부팅을 기다린 뒤 위치를 향기5로 66으로 옮기고 Virtual Console 포트(8088)를 연결 | 1~3분 |
 | `app` | 디버그 APK 빌드 → 권한 허용 설치(`-g`) → 실행 → 프로세스 확인 | 첫 빌드 3~5분 |
 | `test` | 단위 테스트 | 1분 |

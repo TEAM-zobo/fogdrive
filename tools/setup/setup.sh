@@ -175,7 +175,21 @@ print(c.findtext("url"), c.findtext("checksum"), c.findtext("size"))')
 
 write_avd() {   # name ram_mb
   local name=$1 ram=$2 dir="$AVD_HOME/$1.avd"
-  if [ -f "$AVD_HOME/$name.ini" ]; then ok "AVD $name 이미 있음"; return; fi
+  # 6 virtual cores where the host has 8 or more: with 4, the system's driving view (over a core on
+  # its own) and the on-device voice guidance starved the screen compositor, and the driving map
+  # froze for 100-400 ms at every announcement. More than 6 made frame pacing worse again.
+  # Performance cores on Apple silicon (a base M1/M2 has only 4 next to 4 efficiency cores).
+  local host; host=$(sysctl -n hw.perflevel0.physicalcpu 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+  local cores=4; [ "$host" -ge 8 ] && cores=6
+  if [ -f "$AVD_HOME/$name.ini" ]; then
+    if [ $cores = 6 ] && grep -q '^hw\.cpu\.ncore=4$' "$dir/config.ini" 2>/dev/null; then
+      sed -i '' 's/^hw\.cpu\.ncore=4$/hw.cpu.ncore=6/' "$dir/config.ini"
+      ok "AVD $name 이미 있음 · CPU 4 → 6코어 (다음 부팅부터)"
+    else
+      ok "AVD $name 이미 있음"
+    fi
+    return
+  fi
   mkdir -p "$dir"
   cat > "$AVD_HOME/$name.ini" <<EOF
 avd.ini.encoding=UTF-8
@@ -191,7 +205,7 @@ avd.ini.displayname=${name//_/ }
 avd.ini.encoding=UTF-8
 abi.type=$ABI
 hw.cpu.arch=$arch
-hw.cpu.ncore=4
+hw.cpu.ncore=$cores
 hw.ramSize=$ram
 vm.heapSize=512
 disk.dataPartition.size=8G
