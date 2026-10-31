@@ -105,8 +105,9 @@ class Device:
         return p.stdout
 
     def region_brightness(self, x1, y1, x2, y2, step=16):
-        """Mean and spread of luminance (0–255) over a screen region, from a raw screencap.
-        Used where the UI tree cannot see the content (e.g. the system's driving block overlay)."""
+        """Mean and spread of luminance (0–255) over a screen region, and its mean chroma (max − min
+        of R, G, B), from a raw screencap. Used where the UI tree cannot see the content (e.g. the
+        system's driving block overlay, which is flat and grey: chroma near 0)."""
         raw = subprocess.run(self._cmd("exec-out", "screencap"), capture_output=True, timeout=30).stdout
         w = int.from_bytes(raw[0:4], "little")
         h = int.from_bytes(raw[4:8], "little")
@@ -114,15 +115,17 @@ class Device:
         if len(raw) < 12 or not w or not h or header < 12:
             raise RuntimeError(f"raw screencap unreadable ({len(raw)} bytes)")
         values = []
+        chroma = []
         for y in range(max(0, y1), min(h, y2), step):
             row = header + y * w * 4
             for x in range(max(0, x1), min(w, x2), step):
                 i = row + x * 4
                 r, g, b = raw[i], raw[i + 1], raw[i + 2]
                 values.append(0.299 * r + 0.587 * g + 0.114 * b)
+                chroma.append(max(r, g, b) - min(r, g, b))
         mean = sum(values) / len(values)
         spread = (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5
-        return mean, spread
+        return mean, spread, sum(chroma) / len(chroma)
 
     def save_screenshot(self, path):
         data = self.screencap()
@@ -234,7 +237,8 @@ class Device:
         """Starts the app; unless [tutorial], with the first-run tutorial marked as seen."""
         extra = [] if tutorial else ["--ez", "skip_onboarding", "true"]
         self.shell("am", "start", "--user", "current", "-n", ACTIVITY, *extra)
-        if wait and not self.wait_text("지도", timeout=15, exact=True):
+        # The first launch after a boot also parses the region atlas: give it longer.
+        if wait and not self.wait_text("지도", timeout=40, exact=True):
             raise AssertionError("앱 화면이 뜨지 않음")
 
 

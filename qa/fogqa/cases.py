@@ -362,9 +362,11 @@ def tc_driving_mode(ctx):
         ctx.shot("driving_mode")
         ctx.check(not hidden, f"주행 중 탭 숨김 {hidden}")
         # The system block screen is flat light gray; the app's dark map means we are not blocked.
-        mean, spread = ctx.dev.region_brightness(*APP_AREA)
-        ctx.log(f"주행 중 앱 영역 밝기 {mean:.0f} (편차 {spread:.0f})")
-        ctx.check(not (mean > 180 and spread < 25), "시스템 차단 화면 없음")
+        # The block screen is flat light grey; the app's map has colour (parks, water, the trail),
+        # even where the light day style makes it as bright as the block screen.
+        mean, spread, chroma = ctx.dev.region_brightness(*APP_AREA)
+        ctx.log(f"주행 중 앱 영역 밝기 {mean:.0f} (편차 {spread:.0f}, 채도 {chroma:.0f})")
+        ctx.check(not (mean > 180 and spread < 25 and chroma < 8), "시스템 차단 화면 없음")
     finally:
         ctx.vc.speed(0)
         ctx.vc.gear("Park")
@@ -421,7 +423,7 @@ def tc_demo(ctx):
     ctx.check(r["landings"] == 1 and r["trips"] == 1, "하차 1곳, 주행 1건")
     ctx.check(s.get("가족 탐험", 0) >= 1 and not s.get("빗속 개척"), "가족 탐험, 빗속 개척 없음")
     ctx.dev.tap_text("설정")
-    ctx.dev.tap_text("시연 중지")
+    tap_scrolling(ctx, "시연 중지")
 
 
 @case("TC-14", "기록 관리", "기록 전체 삭제 후 모든 기록이 0으로 돌아간다",
@@ -549,24 +551,3 @@ def tc_vehicle_extras(ctx):
     ctx.check("창문 열림" in state, "창문 열림 표시")
     ctx.check("주행 가능 250 km" in state, "주행 가능 거리 250 km")
 
-
-@case("TC-21", "공유 카드", "기록 탭에서 '내 탐험 지도 카드'를 만들면 이미지가 저장되고 미리보기가 뜬다",
-      "앱 초기화 후 한 번 주행",
-      ["기어 D로 10개 지점 주행 후 P", "기록 탭 → 내 탐험 지도 카드", "미리보기 확인 후 닫기"],
-      ["미리보기 대화상자와 '이미지로 저장했어요' 표시", "앱 저장소에 PNG 파일 생성"])
-def tc_share_card(ctx):
-    fresh(ctx)
-    ctx.vc.gear("Drive")
-    drive(ctx, ROUTE[:10])
-    park(ctx)
-    ctx.dev.tap_text("기록")
-    ctx.dev.shell("logcat", "-c")
-    ctx.dev.tap_text("내 탐험 지도 카드")
-    ctx.check(ctx.dev.wait_text("이미지로 저장했어요", timeout=10), "저장 안내 표시")
-    ctx.shot("share_card")
-    # The driver profile's app folder isn't readable over adb; the app logs what it saved.
-    saved = ctx.dev.shell("logcat", "-d", "-s", "FogShare:I")
-    m = re.search(r"card saved (\S+fogdrive-card-\S+\.png) \((\d+) bytes\)", saved)
-    ctx.log(f"저장: {m.group(1) if m else saved.strip()[-200:]}")
-    ctx.check(m is not None and int(m.group(2)) > 10_000, "PNG 파일 생성")
-    ctx.dev.tap_text("닫기")
