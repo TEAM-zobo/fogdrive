@@ -23,7 +23,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.EnergySavingsLeaf
@@ -72,6 +75,7 @@ import com.zobo.burung.FogRuntime
 import com.zobo.burung.explore.RegionStat
 import com.zobo.burung.explore.StampBook
 import com.zobo.burung.explore.StampField
+import com.zobo.burung.explore.StampProgress
 import com.zobo.burung.explore.Title
 import com.zobo.burung.explore.Titles
 import com.zobo.burung.record.StampCode
@@ -86,6 +90,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
     val prefs = FogRuntime.mapPrefs
     val stamps by viewModel.stamps.collectAsState()
     val picks by viewModel.weeklyPicks.collectAsState()
+    val progress = viewModel.stampProgress.collectAsState().value ?: StampProgress()
     val picked by prefs.title.collectAsState()
     val kids by prefs.kids.collectAsState()
     val team by prefs.teamName.collectAsState()
@@ -118,11 +123,11 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                     Text(team.ifBlank { MapPrefs.DEFAULT_TEAM }, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = INK)
                 }
                 Text(
-                    shown?.name(kids) ?: "아직 칭호가 없어요",
+                    shown?.name(kids) ?: Titles.NONE,
                     fontSize = 56.sp, fontWeight = FontWeight.Black, color = INK, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (shown == null) k("스탬프 1개를 모으면 첫 칭호가 생겨요", "스탬프 1개만 모으면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),
+                    if (shown == null) k("한 분야의 스탬프 4개를 모으면 첫 칭호가 생겨요", "스탬프 4개를 한 줄 모으면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),
                     fontSize = 22.sp, color = SUB,
                 )
             }
@@ -149,7 +154,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
         // This week's three suggestions: stamps still to collect, with how and (for a place) where.
         Heading(Icons.Outlined.Explore, MINT, k("이번 주 탐험 추천", "이번 주 모험 추천"), k("월요일마다 새로 골라요", "월요일마다 바뀌어요"))
         Section {
-            if (picks.isEmpty()) Text(k("스탬프를 모두 모았어요!", "스탬프를 다 모았어요! 최고예요!"), fontSize = 24.sp, color = FogColors.TextSub, modifier = Modifier.padding(vertical = 20.dp))
+            if (picks.isEmpty() && viewModel.stampProgress.collectAsState().value != null) Text(k("스탬프를 모두 모았어요!", "스탬프를 다 모았어요! 최고예요!"), fontSize = 24.sp, color = FogColors.TextSub, modifier = Modifier.padding(vertical = 20.dp))
             picks.forEachIndexed { i, p ->
                 if (i > 0) Box(Modifier.fillMaxWidth().height(2.dp).background(LINE))
                 Row(
@@ -164,6 +169,12 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                             Tag(pickTag(p.code, kids), MINT)
                         }
                         Text(StampBook.hint(p.code, kids), fontSize = 22.sp, color = FogColors.TextSub)
+                        if (!p.done) StampBook.progress(p.code, progress)?.let { (n, t) ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                ProgressBar(n.toFloat() / t, Modifier.weight(1f), color = MINT, height = 14.dp)
+                                Text(StampBook.progressLabel(p.code, progress) ?: "", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = MINT)
+                            }
+                        }
                     }
                     when {
                         p.done -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -190,7 +201,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
         // Every title: earned ones can be picked to show; locked ones say what opens them.
         Heading(Icons.Outlined.EmojiEvents, TEAL, "칭호", "${Titles.ALL.count { it.earned(collected) }} / ${Titles.ALL.size} · " + k("눌러서 대표 칭호로", "눌러서 내 칭호로 고르기"))
         Section(padding = 36.dp) {
-            Titles.ALL.chunked(4).forEachIndexed { r, row ->
+            Titles.ALL.chunked(TITLES_PER_ROW).forEachIndexed { r, row ->
                 if (r > 0) Spacer(Modifier.height(30.dp))
                 Row(Modifier.fillMaxWidth()) {
                     row.forEach { t ->
@@ -214,12 +225,12 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                             )
                         }
                     }
-                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                    repeat(TITLES_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
 
-        // Every stamp, by shelf: name always shown; a missing one says how to get it.
+        // Every stamp, by shelf: four coins, then the shelf's title, which lights up once all four are in.
         Heading(Icons.Outlined.AutoAwesome, AMBER_INK, k("스탬프", "내가 모은 스탬프"), "${collected.size} / ${StampBook.ACTIVE.size}")
         StampField.entries.forEach { field ->
             val list = StampBook.ACTIVE.filter { StampBook.field(it) == field }
@@ -232,22 +243,33 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                     Text("$got/${list.size}", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MINT)
                 }
                 Spacer(Modifier.height(20.dp))
-                // Collected first, then the rest.
-                list.sortedBy { it !in collected }.chunked(STAMPS_PER_ROW).forEach { row ->
-                    Row(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                        row.forEach { code ->
-                            val n = counts[code.name] ?: 0
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Coin(stampIcon(code), n > 0, 92.dp)
-                                // Name, then the count (QA reads it right after the name) or how to get it.
-                                Text(code.title, fontSize = 21.sp, fontWeight = if (n > 0) FontWeight.Bold else FontWeight.Medium, color = if (n > 0) INK else GREY_TEXT, textAlign = TextAlign.Center)
-                                Text(
-                                    if (n > 0) "${n}회" else StampBook.hint(code, kids),
-                                    fontSize = 16.sp, color = FogColors.TextSub, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                val title = Titles.ALL.first { it.field == field }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    list.forEach { code ->
+                        val got = code in collected
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Coin(stampIcon(code), got, 92.dp)
+                            // Name, then "받았어요" (QA reads it right after the name), the progress, or how to get it.
+                            Text(code.title, fontSize = 21.sp, fontWeight = if (got) FontWeight.Bold else FontWeight.Medium, color = if (got) INK else GREY_TEXT, textAlign = TextAlign.Center)
+                            Text(
+                                when {
+                                    got -> "받았어요"
+                                    else -> StampBook.progressLabel(code, progress) ?: StampBook.hint(code, kids)
+                                },
+                                fontSize = 16.sp, color = if (got) MINT else FogColors.TextSub, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        repeat(STAMPS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                    // The shelf's title at the end of the row: what the four stamps add up to.
+                    Column(
+                        Modifier.weight(1.2f).padding(top = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val earned = title.earned(collected)
+                        Shield(80.dp, if (earned) ShieldState.EARNED else ShieldState.LOCKED, titleIcon(title))
+                        Text(title.name(kids), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = if (earned) TEAL else GREY_TEXT, textAlign = TextAlign.Center)
+                        Text(if (earned) k("칭호 획득!", "칭호를 받았어요!") else k("4개 모으면 칭호", "4개 모으면 칭호!"), fontSize = 16.sp, color = FogColors.TextSub)
                     }
                 }
             }
@@ -333,21 +355,17 @@ private fun pickTag(code: StampCode, kids: Boolean): String = when (code) {
 }
 
 private fun titleIcon(t: Title): ImageVector = when (t.id) {
-    "rookie" -> Icons.Outlined.StarOutline
-    "dong" -> Icons.Outlined.Map
-    "commute" -> Icons.Outlined.WbSunny
-    "weekend" -> Icons.Outlined.Weekend
-    "alley" -> Icons.Outlined.Explore
-    "expedition" -> Icons.Outlined.TravelExplore
-    "family" -> Icons.Outlined.FamilyRestroom
-    else -> Icons.Outlined.Public
+    "daily" -> Icons.Outlined.WbSunny
+    "region" -> Icons.Outlined.Map
+    "trip" -> Icons.Outlined.Weekend
+    "veteran" -> Icons.Outlined.StarOutline
+    else -> Icons.Outlined.EmojiEvents
 }
 
 private fun fieldIcon(f: StampField): ImageVector = when (f) {
     StampField.DAILY -> Icons.Outlined.WbSunny
-    StampField.TRIP -> Icons.Outlined.Weekend
     StampField.REGION -> Icons.Outlined.Map
-    StampField.TOGETHER -> Icons.Outlined.Groups
+    StampField.TRIP -> Icons.Outlined.Weekend
 }
 
 fun stampIcon(code: StampCode): ImageVector = when (code) {
@@ -360,7 +378,7 @@ fun stampIcon(code: StampCode): ImageVector = when (code) {
     StampCode.WEEKEND -> Icons.Outlined.Weekend
     StampCode.LONG_DRIVE -> Icons.Outlined.Speed
     StampCode.PIONEER -> Icons.Outlined.Landscape
-    StampCode.NEW_DISTRICT -> Icons.Outlined.NewReleases
+    StampCode.NEW_DISTRICT -> Icons.Outlined.LocationCity
     StampCode.COMMUTE -> Icons.Outlined.WorkOutline
     StampCode.FULL_HOUSE -> Icons.Outlined.Groups
     StampCode.ALL_NEW -> Icons.Outlined.AutoAwesome
@@ -373,10 +391,17 @@ fun stampIcon(code: StampCode): ImageVector = when (code) {
     StampCode.SUNROOF -> Icons.Outlined.WbCloudy
     StampCode.ECO -> Icons.Outlined.EnergySavingsLeaf
     StampCode.CREW_MISSION -> Icons.Outlined.EmojiEvents
+    StampCode.WEEK_THREE -> Icons.Outlined.CalendarMonth
+    StampCode.STREAK_4W -> Icons.Outlined.EventRepeat
+    StampCode.KM_1000 -> Icons.Outlined.Speed
+    StampCode.DONG_10 -> Icons.Outlined.Explore
+    StampCode.DONG_100 -> Icons.Outlined.TravelExplore
+    StampCode.PROVINCE_3 -> Icons.Outlined.Public
+    StampCode.FAR_DAY -> Icons.Outlined.Moving
     else -> Icons.Outlined.DirectionsCar
 }
 
-private const val STAMPS_PER_ROW = 8
+private const val TITLES_PER_ROW = 5
 private val INK = Color(0xFF2B2A33)
 private val SUB = Color(0xFF7C7A86)
 private val MINT = Color(0xFF22B07D)

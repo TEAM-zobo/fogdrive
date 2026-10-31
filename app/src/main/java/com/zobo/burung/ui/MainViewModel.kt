@@ -15,6 +15,8 @@ import com.zobo.burung.explore.ProvinceProgress
 import com.zobo.burung.explore.RegionCounts
 import com.zobo.burung.explore.RegionStat
 import com.zobo.burung.explore.WeeklyPicks
+import com.zobo.burung.explore.Milestones
+import com.zobo.burung.explore.StampProgress
 import com.zobo.burung.explore.ChallengePeriod
 import com.zobo.burung.explore.PeriodStats
 import com.zobo.burung.geo.Area
@@ -320,28 +322,42 @@ class MainViewModel : ViewModel() {
 
     private var showTripJob: Job? = null
 
+    /** Progress on the milestone stamps (days this week, weeks in a row, km, 동, 시·도); null until read. */
+    val stampProgress: StateFlow<StampProgress?> = combine(trips, repo.stamps, FogRuntime.regionsLoaded) { _, _, loaded ->
+        // Without the atlas 동 and 시·도 would read 0: wait for it rather than show (and pick on) zeros.
+        if (loaded) repo.stampProgress(FogRuntime.regions?.atlas) else null
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /**
      * This week's three suggested stamps (see WeeklyPicks): picked on the first look of the week and
-     * kept until Monday, each marked once collected. A place to go is attached where one fits: the
-     * nearest 시·도 not entered yet for 새 땅 밟기, the nearest 시·군·구 for 새 동네 첫발.
+     * kept until Monday, each marked once collected. A place to go is attached where one fits and is
+     * within [PLACE_NEAR_KM]: the nearest 시·군·구 not entered for 새 도시 첫발, the nearest 시·도 for 시·도 3곳.
+     * 주말 탐험가 suggested two weeks running without being earned rests for four weeks.
      */
     // From the database flow, not [stamps]: that starts as an empty list before Room's first read, and
     // picks chosen then would be kept all week with stamps already collected among them.
-    val weeklyPicks: StateFlow<List<WeeklyPick>> = combine(repo.stamps, dexStories) { s, stories ->
+    val weeklyPicks: StateFlow<List<WeeklyPick>> = combine(repo.stamps, dexStories, stampProgress) { s, stories, progress ->
+        // Not before the progress is read: picks made on zeros would be kept all week.
+        if (progress == null) return@combine emptyList()
         val byName = StampCode.entries.associateBy { it.name }
         val collected = s.mapNotNullTo(HashSet()) { byName[it.code] }
-        val week = WeeklyPicks.weekKey(System.currentTimeMillis())
+        val week = Milestones.week(System.currentTimeMillis())
+        val province = stories[""]?.next?.takeIf { it.km <= PLACE_NEAR_KM }
+        val district = stories.filterKeys { it.isNotEmpty() }.values.mapNotNull { it.next }.minByOrNull { it.km }
+            ?.takeIf { it.km <= PLACE_NEAR_KM }
         val prefs = FogRuntime.mapPrefs
         val (savedWeek, saved) = prefs.weeklyPicks()
-        val codes = saved.mapNotNull { byName[it] }
-            .takeIf { savedWeek == week && it.isNotEmpty() }
-            ?: WeeklyPicks.pick(collected, week, listOf(StampCode.NEW_DISTRICT, StampCode.WEEKEND))
+        val codes = saved.mapNotNull { byName[it] }.takeIf { savedWeek == week && it.isNotEmpty() } ?: run {
+            // A new week: count a weekend pick that went unearned, and rest it after two such weeks.
+            if (savedWeek > 0 && StampCode.WEEKEND.name in saved) {
+                prefs.noteWeekendPick(earned = StampCode.WEEKEND in collected, week)
+            }
+            WeeklyPicks.pick(collected, progress, week, placeNear = district != null, weekendPaused = prefs.weekendPaused(week))
                 .also { prefs.setWeeklyPicks(week, it.map { c -> c.name }) }
-        val province = stories[""]?.next
-        val district = stories.filterKeys { it.isNotEmpty() }.values.mapNotNull { it.next }.minByOrNull { it.km }
+        }
         codes.map { c ->
             WeeklyPick(c, c in collected, when (c) {
-                StampCode.NEW_PROVINCE -> province
+                StampCode.PROVINCE_3 -> province
                 StampCode.NEW_DISTRICT -> district
                 else -> null
             })
@@ -585,6 +601,8 @@ class MainViewModel : ViewModel() {
         private const val RECENT_CELLS = 4_000
         /** A trip starting or ending this close to the navigation's home is named "집". */
         private const val HOME_NEAR_M = 400.0
+        /** A suggested place farther than this gets no map button (a stamp is not worth a long detour). */
+        private const val PLACE_NEAR_KM = 60.0
         /** 읍·면·동 exploration steps shown as a notice with a sparkle / also spoken. */
         const val MILESTONE_NOTICE = 25
         const val MILESTONE_VOICE = 50

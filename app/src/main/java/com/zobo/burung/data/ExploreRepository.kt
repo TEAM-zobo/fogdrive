@@ -1,6 +1,9 @@
 package com.zobo.burung.data
 
 import com.zobo.burung.explore.CellLog
+import com.zobo.burung.explore.Milestones
+import com.zobo.burung.explore.StampProgress
+import com.zobo.burung.geo.RegionAtlas
 import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Tiles
 import com.zobo.burung.record.ExploreSink
@@ -265,6 +268,29 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     suspend fun newestCleared(n: Int): List<ClearedCell> = withContext(Dispatchers.IO) { db.dao().newestCleared(n) }
 
     suspend fun tripTotalsSince(since: Long): TripTotals = withContext(Dispatchers.IO) { db.dao().tripTotalsSince(since) }
+
+    /** Codes of the stamps ever earned. */
+    suspend fun stampCodes(): Set<String> = withContext(Dispatchers.IO) { db.dao().stampCodes().toSet() }
+
+    /**
+     * Where the driver stands on the milestone stamps. 읍·면·동 and 시·도 count only places reached by
+     * driving or getting off: the first-run seed around the navigation's places doesn't count.
+     */
+    suspend fun stampProgress(atlas: RegionAtlas?, now: Long = System.currentTimeMillis()): StampProgress =
+        withContext(Dispatchers.IO) {
+            val dao = db.dao()
+            val (days, streak) = Milestones.weeks(dao.tripStarts(), now)
+            val km = (dao.tripTotalsSince(0).distanceMeters / 1000).toInt()
+            var dongs = 0
+            var provinces = 0
+            if (atlas != null) {
+                val d = HashSet<Int>()
+                for (c in dao.drivenCells()) atlas.dongOf(c).takeIf { it >= 0 }?.let(d::add)
+                dongs = d.size
+                provinces = d.mapTo(HashSet()) { atlas.districts[atlas.dongs[it].district].province }.size
+            }
+            StampProgress(days, streak, km, dongs, provinces)
+        }
 
     /** Total experience (see [Progress.xp]): every cell, every trip's distance, drop-off and stamp. */
     suspend fun xp(): Int {

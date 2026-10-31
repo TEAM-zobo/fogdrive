@@ -30,7 +30,7 @@ enum class StampCode(val title: String, val description: String) {
     WEEKEND("주말 탐험가", "토요일이나 일요일에 새 길을 달렸어요"),
     LONG_DRIVE("장거리 원정", "한 번의 주행으로 30 km 넘게 달렸어요"),
     PIONEER("개척왕", "한 번의 주행으로 0.1 km² 넘게 안개를 걷었어요"),
-    NEW_DISTRICT("새 동네 첫발", "처음 가 보는 시·군·구에 들어섰어요"),
+    NEW_DISTRICT("새 도시 첫발", "처음 가 보는 시·군·구에 들어섰어요"),
     MIDNIGHT("심야 질주", "자정부터 새벽 4시 사이에 새 길을 달렸어요"),
     COMMUTE("출근길 개척", "평일 아침 7~9시에 새 길을 달렸어요"),
     RAINY_NIGHT("비 오는 밤", "비 오는 밤에 전조등과 와이퍼를 켜고 새 길을 달렸어요"),
@@ -48,6 +48,14 @@ enum class StampCode(val title: String, val description: String) {
     ECO("에코 탐험가", "에코 모드로 새 길을 달렸어요"),
     SPORT("스포츠 개척", "스포츠 모드로 새 길을 달렸어요"),
     CREW_MISSION("함께한 미션", "동승자와 이번 주행 미션을 끝냈어요"),
+    // Milestones, checked when a trip ends (see Milestones): steady driving, a wider map, a far trip.
+    WEEK_THREE("탐험 주간", "한 주에 3일 이상 주행했어요"),
+    STREAK_4W("4주 연속 탐험", "4주 동안 매주 한 번 이상 주행했어요"),
+    KM_1000("1,000 km 탐험", "부릉탐험대와 누적 1,000 km를 달렸어요"),
+    DONG_10("동네 수집가", "읍·면·동 10곳을 탐험했어요"),
+    DONG_100("읍·면·동 100곳", "읍·면·동 100곳을 탐험했어요"),
+    PROVINCE_3("시·도 3곳 탐험", "시·도 3곳을 탐험했어요"),
+    FAR_DAY("멀리 떠난 날", "집에서 50 km 넘게 떨어진 곳에 도착했어요"),
 }
 
 sealed interface RecorderEvent {

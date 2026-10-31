@@ -26,6 +26,8 @@ import com.zobo.burung.data.TripEntity
 import com.zobo.burung.demo.DemoCourses
 import com.zobo.burung.demo.DemoDrive
 import com.zobo.burung.explore.CrewMission
+import com.zobo.burung.explore.Milestones
+import com.zobo.burung.explore.StampBook
 import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Area
 import com.zobo.burung.geo.Tiles
@@ -182,7 +184,14 @@ class RecordingService : Service() {
         fun stamp(code: StampCode, message: String) {
             if (awardedRegionStamps.add(code)) earned += code to message
         }
-        if (t.startProvince < 0) t.startProvince = province
+        // Where the trip starts is not a "new" 시·군·구 or 시·도 (on a first drive nothing is known yet),
+        // and it is the origin for 멀리 떠난 날 when no home is set.
+        if (t.startProvince < 0) {
+            t.startProvince = province
+            t.knownDistricts.add(district)
+            t.knownProvinces.add(province)
+            tripOrigin = fix.lat to fix.lng
+        }
         if (t.knownDongs.add(dong)) {
             t.newDongs++
             onNewDong(atlas.dongs[dong], atlas.districts[district].name)
@@ -197,6 +206,29 @@ class RecordingService : Service() {
         }
     }
     private val awardedRegionStamps = HashSet<StampCode>()
+
+    /** Where this trip's first placed fix was (the origin of 멀리 떠난 날 without a home). */
+    private var tripOrigin: Pair<Double, Double>? = null
+
+    /**
+     * Milestone stamps at the end of a trip (see Milestones): a week of 3 days, 4 weeks in a row,
+     * 1,000 km, 10 and 100 읍·면·동, 3 시·도, and 멀리 떠난 날 (got off 50 km+ from home, straight line:
+     * how far, not how long, so no reward for driving without a break). Each is earned once.
+     */
+    private suspend fun awardMilestones(at: Long) {
+        val have = repo.stampCodes()
+        val atlas = withContext(Dispatchers.Default) { FogRuntime.regions?.atlas }
+        val reached = Milestones.reached(repo.stampProgress(atlas, at)).toMutableList()
+        val end = lastFix
+        val origin = FogRuntime.navi.home.value?.let { it.lat to it.lng } ?: tripOrigin
+        if (end != null && origin != null &&
+            Tiles.distanceMeters(origin.first, origin.second, end.lat, end.lng) >= Milestones.FAR_M
+        ) reached += StampCode.FAR_DAY
+        for (code in reached) {
+            if (code.name in have) continue
+            apply(RecorderEvent.Stamp(code, end?.lat ?: 0.0, end?.lng ?: 0.0, at))
+        }
+    }
 
     // This trip, for the summary card: 동 entered for the first time and stamps earned, in order.
     private val tripNewDongs = ArrayList<NewDong>()
@@ -296,6 +328,7 @@ class RecordingService : Service() {
                     }
                 }
                 awardedRegionStamps.clear()
+                tripOrigin = null
                 tripNewDongs.clear()
                 tripStamps.clear()
                 levelAtStart = Progress.level(repo.xp())
@@ -315,6 +348,7 @@ class RecordingService : Service() {
                 }
                 persistTripStats(endedAt = event.at)
                 tripRow = null
+                awardMilestones(event.at)
                 showSummary(event.at)
                 // Each finished drive is synced when the driver left auto sync on.
                 if (FogRuntime.cloud.state.value.autoSync) FogRuntime.scope.launch { FogRuntime.cloud.syncNow() }
@@ -332,6 +366,8 @@ class RecordingService : Service() {
                 note("$what: ${event.name} 주변을 밝혔어요 (+${Area.formatCells(event.newCells)})")
             }
             is RecorderEvent.Stamp -> {
+                // Only the stamps of the stamp book are kept; the recorder's other codes are dropped.
+                if (event.code !in StampBook.ACTIVE) return
                 repo.addStamp(event.code.name, event.lat, event.lng, event.at, repo.currentTripId)
                 note(if (FogRuntime.mapPrefs.kids.value) "${event.code.title} 스탬프를 받았어요!" else "스탬프 획득: ${event.code.title}")
                 tripStamps += event.code

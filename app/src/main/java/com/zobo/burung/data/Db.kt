@@ -137,6 +137,16 @@ interface FogDao {
     @Query("SELECT COUNT(DISTINCT code) FROM stamps")
     suspend fun stampKindCount(): Int
 
+    @Query("SELECT DISTINCT code FROM stamps")
+    suspend fun stampCodes(): List<String>
+
+    @Query("SELECT startedAt FROM trips")
+    suspend fun tripStarts(): List<Long>
+
+    /** Cells cleared by driving, getting off or arriving: not the ones seeded from the navigation. */
+    @Query("SELECT cell FROM cells WHERE source != 2")
+    suspend fun drivenCells(): List<Long>
+
     @Insert
     suspend fun insertStamp(stamp: StampEntity): Long
 

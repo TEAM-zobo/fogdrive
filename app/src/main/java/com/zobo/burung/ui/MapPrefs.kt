@@ -117,12 +117,29 @@ class MapPrefs(context: Context) {
     }
 
     /** This week's suggested stamps as (week key, stamp names), kept so they stay put until Monday. */
-    fun weeklyPicks(): Pair<Int, List<String>> =
-        prefs.getInt(KEY_PICKS_WEEK, 0) to (prefs.getString(KEY_PICKS, "") ?: "").split(',').filter { it.isNotEmpty() }
+    fun weeklyPicks(): Pair<Long, List<String>> =
+        prefs.getLong(KEY_PICKS_WEEK2, 0) to (prefs.getString(KEY_PICKS, "") ?: "").split(',').filter { it.isNotEmpty() }
 
-    fun setWeeklyPicks(week: Int, names: List<String>) {
-        prefs.edit().putInt(KEY_PICKS_WEEK, week).putString(KEY_PICKS, names.joinToString(",")).apply()
+    fun setWeeklyPicks(week: Long, names: List<String>) {
+        prefs.edit().putLong(KEY_PICKS_WEEK2, week).putString(KEY_PICKS, names.joinToString(",")).apply()
     }
+
+    /**
+     * 주말 탐험가 picked for a week that ended without it: after two such weeks in a row it is not
+     * suggested for [WEEKEND_REST_WEEKS] weeks (some drivers just don't drive at weekends).
+     */
+    fun noteWeekendPick(earned: Boolean, week: Long) {
+        val misses = if (earned) 0 else prefs.getInt(KEY_WEEKEND_MISSES, 0) + 1
+        val e = prefs.edit()
+        if (misses >= 2) {
+            e.putLong(KEY_WEEKEND_REST_UNTIL, week + WEEKEND_REST_WEEKS).putInt(KEY_WEEKEND_MISSES, 0)
+        } else {
+            e.putInt(KEY_WEEKEND_MISSES, misses)
+        }
+        e.apply()
+    }
+
+    fun weekendPaused(week: Long): Boolean = week < prefs.getLong(KEY_WEEKEND_REST_UNTIL, 0)
 
     /** One suggestion card on the map ("탐험 우회 경로", "안 가본 동네 가보기"): off in Settings, or hidden for today. */
     inner class CardPref(private val key: String) {
@@ -159,7 +176,11 @@ class MapPrefs(context: Context) {
         private const val KEY_TEAM = "team_name"
         private const val KEY_KIDS = "kids_mode"
         private const val KEY_TITLE = "title_id"
-        private const val KEY_PICKS_WEEK = "weekly_picks_week"
+        /** Monday-based week number (the earlier int key held a different week code). */
+        private const val KEY_PICKS_WEEK2 = "weekly_picks_week3"
+        private const val KEY_WEEKEND_MISSES = "weekend_misses"
+        private const val KEY_WEEKEND_REST_UNTIL = "weekend_rest_until"
+        private const val WEEKEND_REST_WEEKS = 4
         private const val KEY_PICKS = "weekly_picks"
         const val DEFAULT_TEAM = "부릉 탐험대"
         const val TEAM_MAX = 15

@@ -126,14 +126,14 @@ def tap_scrolling(ctx, text, swipes=8):
     raise CaseFailed(f"'{text}'을(를) 찾지 못함")
 
 
-STAMP_NAMES = ("가족 탐험", "충전소 깃발", "바람길 개척", "함께한 미션")
+STAMP_NAMES = ("가족 탐험", "함께한 미션", "첫 시동")
 # Retired: driving in the rain or with the low beam on earns nothing (no reward for riskier driving).
-RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척", "마라톤 드라이브")
+RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척", "충전소 깃발", "바람길 개척", "마라톤 드라이브")
 
 
 def read_stamps(ctx):
-    """Stamp counts from the 내 탐험 tab. Each stamp's name is followed by "N회" once collected (or by
-    how to get it); the stamps sit below the title and the weekly picks, and off-screen nodes are not
+    """Stamps from the 내 탐험 tab (1 = earned). Each stamp's name is followed by "받았어요" once earned
+    (else its progress or how to get it); the stamps sit below the title and the weekly picks, and off-screen nodes are not
     in the UI dump, so the tab is scrolled to the end. Retired names seen anywhere are counted too."""
     ctx.dev.tap_text("내 탐험")
     time.sleep(1.2)
@@ -142,8 +142,8 @@ def read_stamps(ctx):
         t = ctx.dev.texts()
         for i, x in enumerate(t[:-1]):
             if x in STAMP_NAMES or x in RETIRED_NAMES:
-                m = re.fullmatch(r"(\d+)회", t[i + 1])
-                out[x] = max(out.get(x, 0), int(m.group(1)) if m else 0)
+                # Each stamp is earned once: "받았어요" right after its name.
+                out[x] = max(out.get(x, 0), 1 if t[i + 1] == "받았어요" else 0)
                 if x in RETIRED_NAMES:
                     out[x] = max(out[x], 1)  # shown at all is already wrong
         x = (APP_AREA[0] + APP_AREA[2]) // 2
@@ -289,7 +289,7 @@ def _stamp_case(ctx, setup, name):
     ctx.shot("dex")
     ctx.log(f"스탬프: {stamps}")
     ctx.check(stamps.get(name, 0) >= 1, f"{name} 획득")
-    others = {k: v for k, v in stamps.items() if k != name and v}
+    others = {k: v for k, v in stamps.items() if k not in (name, "첫 시동") and v}
     ctx.check(not others, f"다른 스탬프 없음 {others}")
 
 
@@ -302,7 +302,7 @@ def _no_stamp_case(ctx, setup):
     stamps = read_stamps(ctx)
     ctx.shot("expedition")
     ctx.log(f"스탬프: {stamps}")
-    got = {k: v for k, v in stamps.items() if v}
+    got = {k: v for k, v in stamps.items() if v and k != "첫 시동"}
     ctx.check(not got, f"스탬프 없음 {got}")
 
 
@@ -328,22 +328,6 @@ def tc_stamp_night(ctx):
       ["가족 탐험 1회 획득", "다른 스탬프 없음"])
 def tc_stamp_family(ctx):
     _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험")
-
-
-@case("TC-10", "상황 스탬프", "정차 중 배터리가 2%p 이상 오르면 '충전소 깃발'을 얻는다",
-      "앱 초기화, P단",
-      ["배터리 40%로 설정", "배터리 43%로 설정", "내 탐험 탭 확인"],
-      ["충전소 깃발 1회 획득 (정차 직후 값보다 낮아졌다 오른 경우도 인정)"])
-def tc_stamp_charge(ctx):
-    fresh(ctx)
-    ctx.vc.soc(40)
-    time.sleep(2)
-    ctx.vc.soc(43)
-    time.sleep(2)
-    stamps = read_stamps(ctx)
-    ctx.shot("dex")
-    ctx.log(f"스탬프: {stamps}")
-    ctx.check(stamps.get("충전소 깃발", 0) >= 1, "충전소 깃발 획득")
 
 
 @case("TC-11", "주행 모드", "주행 중에는 주행 모드(지도·현재 위치·짧은 숫자)만 보이고, 정차하면 전체 화면으로 돌아온다",
@@ -486,14 +470,6 @@ def tc_tutorial(ctx):
     ctx.check(ctx.dev.wait_text("부릉탐험대 둘러보기 1/5", timeout=5, exact=True), "설정에서 다시 열림")
     ctx.dev.tap_text("건너뛰기")
     ctx.check(ctx.dev.wait_text("부릉탐험대 둘러보기", timeout=5, present=False), "건너뛰기로 닫힘")
-
-
-@case("TC-17", "상황 스탬프", "창문을 열고 새 길을 달리면 '바람길 개척'을 얻는다",
-      "앱 초기화",
-      ["운전석 창문 50% 열기", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
-      ["바람길 개척 1회 획득", "다른 스탬프 없음"])
-def tc_stamp_window(ctx):
-    _stamp_case(ctx, lambda: ctx.vc.window("front_left", 50), "바람길 개척")
 
 
 @case("TC-18", "주행 요약", "하차하면 지도에 이번 주행 요약 카드가 뜨고, 닫으면 사라진다",
