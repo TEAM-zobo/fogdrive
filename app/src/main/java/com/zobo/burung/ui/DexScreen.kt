@@ -147,12 +147,13 @@ fun DexScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit) {
 }
 
 /**
- * The whole country, then each 시·도 entered, one slide each (swipe, the ‹ › buttons or the chips).
+ * The whole country, then every 시·도 (those entered first), one slide each (swipe, the ‹ › buttons
+ * or the chips). A 시·도 not entered yet shows its 시·군·구 all grey and the nearest one to try.
  * The dex opens on the slide picked with "이 지역을 기본으로 보기" (the country until one is picked).
  */
 @Composable
 private fun DexSlides(viewModel: MainViewModel, regions: List<ProvinceProgress>, onShowOnMap: (RegionStat) -> Unit) {
-    val slides: List<ProvinceProgress?> = remember(regions) { listOf(null) + regions.filter { it.visited } }
+    val slides: List<ProvinceProgress?> = remember(regions) { listOf(null) + regions.filter { it.visited } + regions.filter { !it.visited } }
     val home by FogRuntime.mapPrefs.dexHome.collectAsState()
     val stories by viewModel.dexStories.collectAsState()
     val start = remember { (viewModel.dexProvince.value ?: home).let { c -> slides.indexOfFirst { (it?.code ?: "") == c } }.coerceAtLeast(0) }
@@ -178,7 +179,11 @@ private fun DexSlides(viewModel: MainViewModel, regions: List<ProvinceProgress>,
                             Text(
                                 (if ((p?.code ?: "") == home) "📌 " else "") + "${slideName(p)} $count",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = if (on) FogColors.Surface else FogColors.TextMain,
+                                color = when {
+                                    on -> FogColors.Surface
+                                    p != null && !p.visited -> FogColors.TextSub
+                                    else -> FogColors.TextMain
+                                },
                             )
                         }
                     }
@@ -304,7 +309,7 @@ private fun SlideMap(
                     else DexLabel(n, sub, false, small = n in SMALL_PROVINCES)
                 },
                 home = homeTile,
-                onTap = { s -> if (byCode[s.code]?.visited == true) onOpenProvince(s.code) },
+                onTap = { s -> onOpenProvince(s.code) },
                 modifier = Modifier.fillMaxSize().padding(top = 64.dp, bottom = 16.dp, start = 56.dp, end = 56.dp),
             )
         } else {
@@ -330,7 +335,7 @@ private fun SlideMap(
             color = FogColors.TextMain,
             modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 18.dp),
         )
-        if (!isHome) {
+        if (!isHome && (p == null || p.visited)) {
             OutlinedButton(
                 onClick = onPin,
                 shape = RoundedCornerShape(24.dp),
@@ -434,14 +439,18 @@ private fun SlideDashboard(
             Text("아직 안 가 본 시·도 ${regions.count { !it.visited }}곳", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
             Text("행정구역 경계: admdongkor (CC BY 4.0), 원자료 통계청", style = MaterialTheme.typography.bodySmall, color = FogColors.TextSub)
         } else {
-            Text("시·군·구 · 개척률 순 · 누르면 동 목록이 열려요", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub, modifier = Modifier.padding(top = 6.dp))
+            if (p.visited) {
+                Text("시·군·구 · 개척률 순 · 누르면 동 목록이 열려요", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub, modifier = Modifier.padding(top = 6.dp))
+            } else {
+                Text("아직 탐험 전이에요. 가 보면 여기에 시·군·구가 하나씩 쌓여요.", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
+            }
             val shown = p.districts.filter { it.visited }.sortedByDescending { it.rate }
             val top = shown.firstOrNull()?.rate ?: 0.0
             shown.forEach { d ->
                 RegionRow(d.name, "동 ${d.visitedDongs}/${d.dongs.size}", if (top > 0) (d.rate / top).toFloat() else 0f, formatRate(d.rate)) { onOpenDistrict(d.code) }
             }
             val left = p.districts.count { !it.visited }
-            if (left > 0) Text("아직 안 가 본 시·군·구 ${left}곳", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
+            if (left > 0 && p.visited) Text("아직 안 가 본 시·군·구 ${left}곳", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
         }
     }
 }

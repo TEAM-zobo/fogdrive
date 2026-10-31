@@ -224,7 +224,7 @@ class MainViewModel : ViewModel() {
         buildMap {
             put("", DexStory(recent[""], nearest(r.filter { !it.visited }.map { p -> p to atlas.provinces.firstOrNull { it.code == p.code }?.outline })))
             val outlines = atlas.districts.associateBy({ it.code }, { it.outline })
-            r.filter { it.visited }.forEach { p ->
+            r.forEach { p ->
                 put(p.code, DexStory(recent[p.code], nearest(p.districts.filter { !it.visited }.map { it to outlines[it.code] })))
             }
         }

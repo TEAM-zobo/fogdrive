@@ -35,26 +35,28 @@ object DexShapes {
 
     /** Points closer than this share of the picture's width to the simplified line are dropped. */
     private const val DETAIL = 1f / 900
-    /** Islets smaller than this many tolerances across are left out (a dot is noise at this size). */
-    private const val MIN_RING = 4f
+    /** A region's main piece is kept unless it is under this many tolerances across (a dot). */
+    private const val MIN_MAIN = 4f
     /**
-     * On the country map, islands under ~13 km across too: far ones (울릉도) would stretch the frame
-     * and shrink the mainland; 제주 and 강화 stay.
+     * Its other pieces (islands) only from this size: far ones (울릉도 off the country, 추자도 off
+     * 제주) would stretch the frame and shrink the rest. ~2 % of the country (제주, 강화 stay), ~6 %
+     * of a 시·도.
      */
-    private const val MIN_RING_COUNTRY = 20f
+    private const val MIN_ISLAND_COUNTRY = 20f
+    private const val MIN_ISLAND_PROVINCE = 54f
 
     @Synchronized
     fun provinces(atlas: RegionAtlas): List<DexShape> = cache.getOrPut("") {
-        build(atlas.provinces.mapNotNull { p -> p.outline?.let { Triple(p.code, p.name, it) } }, MIN_RING_COUNTRY)
+        build(atlas.provinces.mapNotNull { p -> p.outline?.let { Triple(p.code, p.name, it) } }, MIN_ISLAND_COUNTRY)
     }
 
     @Synchronized
     fun districts(atlas: RegionAtlas, provinceCode: String): List<DexShape> = cache.getOrPut(provinceCode) {
         val p = atlas.provinces.indexOfFirst { it.code == provinceCode }
-        build(atlas.districts.filter { it.province == p }.mapNotNull { d -> d.outline?.let { Triple(d.code, d.name, it) } }, MIN_RING)
+        build(atlas.districts.filter { it.province == p }.mapNotNull { d -> d.outline?.let { Triple(d.code, d.name, it) } }, MIN_ISLAND_PROVINCE)
     }
 
-    private fun build(regions: List<Triple<String, String, Outline>>, minRing: Float): List<DexShape> {
+    private fun build(regions: List<Triple<String, String, Outline>>, minIsland: Float): List<DexShape> {
         if (regions.isEmpty()) return emptyList()
         val x0 = regions.minOf { it.third.bbox[0] }
         val x1 = regions.maxOf { it.third.bbox[2] }
@@ -62,13 +64,18 @@ object DexShapes {
         val y1 = regions.maxOf { it.third.bbox[3] }
         val tol = max(x1 - x0, y1 - y0) * DETAIL
         return regions.map { (code, name, o) ->
-            val rings = o.rings.mapNotNull { r ->
+            val spans = o.rings.map { r ->
                 var rx0 = Int.MAX_VALUE; var rx1 = Int.MIN_VALUE; var ry0 = Int.MAX_VALUE; var ry1 = Int.MIN_VALUE
                 for (i in 0 until r.size / 2) {
                     rx0 = min(rx0, r[2 * i]); rx1 = max(rx1, r[2 * i])
                     ry0 = min(ry0, r[2 * i + 1]); ry1 = max(ry1, r[2 * i + 1])
                 }
-                if (max(rx1 - rx0, ry1 - ry0) < tol * minRing) null else simplify(r, tol).takeIf { it.size >= 6 }
+                max(rx1 - rx0, ry1 - ry0)
+            }
+            val main = spans.indices.maxByOrNull { spans[it] }
+            val rings = o.rings.indices.mapNotNull { k ->
+                val min = tol * if (k == main) MIN_MAIN else minIsland
+                if (spans[k] < min) null else simplify(o.rings[k], tol).takeIf { it.size >= 6 }
             }
             DexShape(code, name, rings, o.labelX + 0.5f, o.labelY + 0.5f, o)
         }
