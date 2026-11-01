@@ -23,11 +23,11 @@ import com.zobo.burung.demo.DemoCourses
 import com.zobo.burung.geo.TileBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.maplibre.android.MapLibre
-import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.camera.CameraUpdateFactory
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapLibreMap
+import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.camera.CameraPosition
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
+import com.mapbox.mapboxsdk.geometry.LatLng
+import com.mapbox.mapboxsdk.maps.MapboxMap
 
 @Composable
 fun FogMap(
@@ -61,7 +61,7 @@ fun FogMap(
     // view) re-attaches it instead of building a new map, style, tiles and fog every time.
     val shared = LocalFogMapHolder.current
     val holder = shared ?: remember {
-        MapLibre.getInstance(context)
+        Mapbox.getInstance(context)
         FogMapHolder(context)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -101,10 +101,10 @@ fun FogMap(
             // While driving the fog is re-based only when a re-render lands (adoptRenderedCamera).
             map.addOnCameraMoveListener { if (!holder.driving) holder.overlay.invalidate() }
             map.addOnCameraIdleListener { if (!holder.driving) holder.overlay.invalidate() }
-            map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
-                override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) = holder.onUserMoved()
-                override fun onMove(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
-                override fun onMoveEnd(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
+            map.addOnMoveListener(object : MapboxMap.OnMoveListener {
+                override fun onMoveBegin(detector: com.mapbox.android.gestures.MoveGestureDetector) = holder.onUserMoved()
+                override fun onMove(detector: com.mapbox.android.gestures.MoveGestureDetector) = Unit
+                override fun onMoveEnd(detector: com.mapbox.android.gestures.MoveGestureDetector) = Unit
             })
             if (holder.showFocus(animate = false)) holder.onFocusShown()
         }
@@ -127,10 +127,13 @@ fun FogMap(
         if (layer == null) holder.overlay.regionsUnavailable = true else holder.overlay.regions = layer
         holder.regionsVersion = version
     }
-    LaunchedEffect(version, landings, detour) {
+    LaunchedEffect(landings, detour) {
         holder.overlay.landings = landings
         holder.overlay.detour = detour
         holder.overlay.invalidate()
+    }
+    LaunchedEffect(version) {
+        holder.overlay.dataChanged()
     }
     LaunchedEffect(current, driving) {
         holder.overlay.current = current

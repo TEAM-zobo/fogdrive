@@ -190,6 +190,7 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     override fun onRecentDestinationInfo(recentDestinationInfoList: List<RecentDestinationInfo>) {
         _recent.value = recentDestinationInfoList.map { Place(it.name ?: "최근 목적지", it.latitude, it.longitude, it.address) }
+        Log.i(TAG, "recent destinations: ${recentDestinationInfoList.size}")
     }
 
     override fun onBookmarkInfo(bookmarkInfoList: List<BookmarkInfo>) {
@@ -198,7 +199,11 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
         _home.value = bookmarkInfoList.firstOrNull { it.category == BookmarkType.HOME && (it.latitude != 0.0 || it.longitude != 0.0) }
             ?.let { Place(it.name ?: "집", it.latitude, it.longitude, it.address) }
         // Counts only: the places themselves stay out of the log.
-        Log.i(TAG, "bookmarks: ${bookmarkInfoList.size}, by category ${bookmarkInfoList.groupingBy { it.category }.eachCount()}")
+        Log.i(
+            TAG,
+            "bookmarks: ${bookmarkInfoList.size} (${bookmarkInfoList.count { it.latitude != 0.0 || it.longitude != 0.0 }} set), " +
+                "by category ${bookmarkInfoList.groupingBy { it.category }.eachCount()}",
+        )
     }
 
     override fun onBookMarkChanged() {

@@ -84,7 +84,12 @@ dependencies {
     implementation(libs.pleos.vehicle)
     implementation(libs.pleos.navihelper)
     implementation(libs.pleos.fusedlocation)
-    implementation(libs.pleos.texttospeech)
+    implementation(libs.pleos.texttospeech) {
+        // Its universal-access (the TTS sign-in token) declares AppCompat and Material Components but
+        // only uses JNA and security-crypto; their resources survive shrinking (~0.5 MB arsc, 400 files).
+        exclude(group = "androidx.appcompat", module = "appcompat")
+        exclude(group = "com.google.android.material", module = "material")
+    }
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

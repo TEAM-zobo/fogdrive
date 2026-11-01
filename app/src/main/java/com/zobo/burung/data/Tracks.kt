@@ -93,6 +93,20 @@ class Tracks {
         return Snapshot(out, latest, spots, spotCount)
     }
 
+    /** [Snapshot.latest] alone, without copying every trip (read per fix while driving). */
+    @Synchronized
+    fun latest(): Line? {
+        var latestId = Long.MIN_VALUE
+        var latest: Building? = null
+        for ((id, b) in lines) {
+            if (b.n > 0 && id > latestId) {
+                latestId = id
+                latest = b
+            }
+        }
+        return latest?.let { Line(it.xs, it.ys, it.n, it.bbox.copyOf()) }
+    }
+
     /** Where trip [tripId]'s route starts and ends (x0, y0, x1, y1 in tiles), or null without a route. */
     @Synchronized
     fun ends(tripId: Long): DoubleArray? {

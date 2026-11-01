@@ -110,7 +110,7 @@ Pleos Connect(Android Automotive OS) 앱이며, 현대자동차그룹 차량용 
 | 에뮬레이터 | Pleos Connect Emulator v2.1.0 (Android 14, API 34, arm64) |
 | Pleos SDK | Vehicle 2.3.2 · NaviHelper 3.0.5 · FusedLocation 1.1.3 |
 | 빌드 | JDK 17 · Gradle 8.10.2 · AGP 8.8.2 · Kotlin 2.0.21 · compileSdk 35 |
-| 지도 | MapLibre Android 11.13.5 + OpenFreeMap 타일 (© OpenStreetMap contributors) |
+| 지도 | MapLibre Android 10.3.7 + OpenFreeMap 타일 (© OpenStreetMap contributors) |
 | 행정구역 경계 | [admdongkor](https://github.com/vuski/admdongkor) ver20261001 (CC BY 4.0, 원자료 통계청). `python3 tools/regions/build_regions.py`로 `app/src/main/assets/regions/kr_regions.bin` 재생성 |
 
 ### 셋팅 (macOS / Windows)
@@ -235,7 +235,7 @@ tools/setup/setup.sh boot --record  # 녹화용 QA 에뮬레이터(소리 켬, �
 
 ## QA
 
-Pleos 에뮬레이터에서 실제 SDK 경로로 기능별 TC 21개를 자동 실행하는 도구와 웹 대시보드가 `qa/`에 있습니다. 사용법은 [`qa/README.md`](qa/README.md), TC 목록은 [`docs/test-cases.html`](docs/test-cases.html)을 보세요.
+Pleos 에뮬레이터에서 실제 SDK 경로로 기능별 TC 20개를 자동 실행하는 도구와 웹 대시보드가 `qa/`에 있습니다. 사용법은 [`qa/README.md`](qa/README.md), TC 목록은 [`docs/test-cases.html`](docs/test-cases.html)을 보세요.
 
 ## 구조
 
@@ -270,4 +270,4 @@ docs/
 - [테스트 환경 셋팅](docs/SETUP.md): macOS·Windows별 SDK·에뮬레이터 설치, 빌드·실행, 문제 해결
 - [시연·홍보 영상](docs/VIDEO.md): 영상 도구 설치, 구간별 녹화, HyperFrames 편집·렌더링, 라이선스
 - [공모전 준비 가이드](docs/index.html): 일정, 제출물, 접수양식 작성법, 일자별 계획, 개발 현황, 근거 링크
-- [테스트 케이스](docs/test-cases.html): 기능별 TC 21개 (`qa/fogqa/cases.py`에서 생성)
+- [테스트 케이스](docs/test-cases.html): 기능별 TC 20개 (`qa/fogqa/cases.py`에서 생성)

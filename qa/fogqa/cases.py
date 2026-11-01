@@ -7,7 +7,7 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from .device import demo_route
+from .device import ACTIVITY, demo_route
 
 ROUTE = demo_route()
 START = ROUTE[0]
@@ -58,6 +58,16 @@ def fresh(ctx):
         raise CaseFailed("기록 서비스가 시작되지 않음")
     time.sleep(2)
     ctx.dev.tap_text("지도")
+
+
+def navi_has_places(ctx):
+    """Whether the navigation answered with any recent destination or set bookmark (the app logs
+    the counts, see NaviBridge); bookmarks of a fresh emulator come through unset, at (0, 0)."""
+    log = ctx.dev.shell("logcat", "-d", "-s", "FogNavi:I")
+    recent = [int(n) for n in re.findall(r"recent destinations: (\d+)", log)]
+    marked = [int(n) for n in re.findall(r"bookmarks: \d+ \((\d+) set\)", log)]
+    ctx.log(f"내비 최근 목적지 {recent[-1:] or '응답 없음'}, 설정된 즐겨찾기 {marked[-1:] or '응답 없음'}")
+    return bool(recent and recent[-1]) or bool(marked and marked[-1])
 
 
 def value_after(texts, label):
@@ -196,11 +206,31 @@ def tc_connect(ctx):
 
 @case("TC-02", "첫 실행 지도 채우기", "첫 실행 때 내비 최근 목적지·즐겨찾기 주변 안개가 걷힌다",
       "앱 데이터 초기화, 에뮬레이터 내비에 최근 목적지/즐겨찾기 존재",
-      ["앱 첫 실행", "지도 헤더 메시지와 기록 탭 밝힌 면적 확인"],
+      ["앱 첫 실행", "지도 메시지와 최근 주행 패널의 밝힌 면적 확인", "내비에 최근 목적지·즐겨찾기가 없으면 지도 카드의 '내비 안내'로 하나 만든 뒤 다시 실행"],
       ["'내비 최근 목적지·즐겨찾기 N곳 주변을 밝혔어요' 표시", "밝힌 면적 > 0, 주행 기록 0건"])
 def tc_seed(ctx):
-    fresh(ctx)
-    ctx.check(ctx.dev.wait_text("주변을 밝혔어요", timeout=10), "시드 완료 메시지 표시")
+    def start_and_watch():
+        # The message shows for 4 s a few seconds after the start: watched from the start, since
+        # fresh() first visits the settings tab and missed it.
+        ctx.vc.reset()
+        ctx.dev.app_stop()
+        ctx.dev.app_reset()
+        ctx.dev.geo(*START)
+        ctx.dev.app_start()
+        return ctx.dev.wait_text("주변을 밝혔어요", timeout=15)
+
+    ctx.dev.shell("logcat", "-c")
+    seeded = start_and_watch()
+    if not seeded and not navi_has_places(ctx):
+        # A fresh emulator's navigation has no history and its 집/회사 are unset, so there is nothing
+        # to seed from. Routing once to the map card's suggestion leaves a recent destination behind.
+        ctx.log("내비에 최근 목적지·즐겨찾기가 없어 '내비 안내'로 최근 목적지를 하나 만든 뒤 다시 시작")
+        ctx.dev.tap_text("내비 안내")
+        time.sleep(6)
+        ctx.dev.shell("input", "keyevent", "HOME")
+        time.sleep(2)
+        seeded = start_and_watch()
+    ctx.check(seeded, "시드 완료 메시지 표시")
     ctx.shot("map")
     r = read_record(ctx)
     ctx.log(f"기록: {r}")
@@ -210,7 +240,7 @@ def tc_seed(ctx):
 
 @case("TC-03", "자동 안개 걷기", "D단으로 주행하면 지나간 길의 안개가 걷히고 주행 기록이 생긴다",
       "앱 초기화, 차량 P단",
-      ["기어 D", "실제 도로 경로 25개 지점 위치 주입", "기록 탭 확인"],
+      ["기어 D", "실제 도로 경로 25개 지점 위치 주입", "최근 주행 패널 확인"],
       ["밝힌 면적 증가(+0.04 km² 이상, 약 50칸)", "주행 기록 1건", "새 길 비율 90% 이상"])
 def tc_drive_reveal(ctx):
     fresh(ctx)
@@ -229,7 +259,7 @@ def tc_drive_reveal(ctx):
 
 @case("TC-04", "자동 안개 걷기", "P단에서 위치가 바뀌어도 안개가 걷히지 않는다",
       "앱 초기화, 차량 P단",
-      ["기어 P 유지", "다른 지역(여의도)으로 위치 3회 주입", "기록 탭 확인"],
+      ["기어 P 유지", "다른 지역(여의도)으로 위치 3회 주입", "최근 주행 패널 확인"],
       ["밝힌 면적 변화 없음", "주행 기록 0건"])
 def tc_parked_no_reveal(ctx):
     fresh(ctx)
@@ -279,7 +309,7 @@ def tc_no_landing_while_driving(ctx):
     ctx.check(r["landings"] == 0, f"하차 지점 {r['landings']}곳")
 
 
-def _stamp_case(ctx, setup, name):
+def _stamp_case(ctx, setup, name, also=()):
     fresh(ctx)
     setup()
     ctx.vc.gear("Drive")
@@ -289,7 +319,7 @@ def _stamp_case(ctx, setup, name):
     ctx.shot("dex")
     ctx.log(f"스탬프: {stamps}")
     ctx.check(stamps.get(name, 0) >= 1, f"{name} 획득")
-    others = {k: v for k, v in stamps.items() if k not in (name, "첫 시동") and v}
+    others = {k: v for k, v in stamps.items() if k not in (name, "첫 시동") and k not in also and v}
     ctx.check(not others, f"다른 스탬프 없음 {others}")
 
 
@@ -327,13 +357,15 @@ def tc_stamp_night(ctx):
       ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
       ["가족 탐험 획득", "다른 스탬프 없음"])
 def tc_stamp_family(ctx):
-    _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험")
+    # A passenger also starts a passenger mission; finishing it (it depends on the minute the drive
+    # starts) earns "함께한 미션" on the same drive. TC-19 covers the mission.
+    _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험", also=("함께한 미션",))
 
 
 @case("TC-11", "주행 모드", "주행 중에는 주행 모드(지도·현재 위치·짧은 숫자)만 보이고, 정차하면 전체 화면으로 돌아온다",
       "앱 실행 중 (distraction-optimized 액티비티)",
       ["기어 D, 차속 40km/h", "위치 10개 지점 주입", "화면 확인", "차속 0, 기어 P"],
-      ["'주행 모드' 표시, 도감·내 탐험·설정 탭 숨김", "시스템 차단 화면 없음(앱 지도가 계속 보임)", "정차 후 탭 복귀"])
+      ["'주행 모드' 표시, 도감·내 탐험·설정 탭 숨김", "시스템 차단 화면 없음(포커스가 앱에 그대로)", "정차 후 탭 복귀"])
 def tc_driving_mode(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -345,12 +377,12 @@ def tc_driving_mode(ctx):
         hidden = [t for t in ("도감", "내 탐험", "설정") if t in texts]
         ctx.shot("driving_mode")
         ctx.check(not hidden, f"주행 중 탭 숨김 {hidden}")
-        # The system block screen is flat light gray; the app's dark map means we are not blocked.
-        # The block screen is flat light grey; the app's map has colour (parks, water, the trail),
-        # even where the light day style makes it as bright as the block screen.
-        mean, spread, chroma = ctx.dev.region_brightness(*APP_AREA)
-        ctx.log(f"주행 중 앱 영역 밝기 {mean:.0f} (편차 {spread:.0f}, 채도 {chroma:.0f})")
-        ctx.check(not (mean > 180 and spread < 25 and chroma < 8), "시스템 차단 화면 없음")
+        # The system block screen is an activity of its own: blocked, it has the focus instead of the
+        # app. (Telling it by its flat light gray failed on the day map, which is light too.)
+        # Each display (main, cluster) lists its own focused app, so the app's is looked for in all.
+        focus = [l.strip() for l in ctx.dev.shell("dumpsys", "window").splitlines() if "mFocusedApp=" in l]
+        ctx.log(f"주행 중 포커스: {focus}")
+        ctx.check(any(ACTIVITY in l for l in focus), "시스템 차단 화면 없음")
     finally:
         ctx.vc.speed(0)
         ctx.vc.gear("Park")
@@ -413,7 +445,7 @@ def tc_demo(ctx):
 
 @case("TC-14", "기록 관리", "기록 전체 삭제 후 모든 기록이 0으로 돌아간다",
       "앱 초기화 후 한 번 주행",
-      ["기어 D로 10개 지점 주행 후 P", "설정 → 기록 전체 삭제 → 정말 삭제", "기록 탭 확인"],
+      ["기어 D로 10개 지점 주행 후 P", "설정 → 기록 전체 삭제 → 정말 삭제", "최근 주행 패널 확인"],
       ["밝힌 면적 0, 하차 0곳, 주행 기록 0건"])
 def tc_reset(ctx):
     fresh(ctx)
@@ -527,4 +559,3 @@ def tc_vehicle_extras(ctx):
     ctx.log(f"차량 상태: {state}")
     ctx.check("창문 열림" in state, "창문 열림 표시")
     ctx.check("주행 가능 250 km" in state, "주행 가능 거리 250 km")
-

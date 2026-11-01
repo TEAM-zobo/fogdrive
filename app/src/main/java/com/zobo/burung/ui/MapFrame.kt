@@ -8,7 +8,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.view.View
 import android.widget.FrameLayout
-import org.maplibre.android.maps.Style
+import com.mapbox.mapboxsdk.maps.Style
 import kotlin.math.abs
 
 /** Viewport that holds an oversized pan layer (map + fog) and a car marker fixed at the centre. */

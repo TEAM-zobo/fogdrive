@@ -24,7 +24,7 @@ doctor → sdk → image → avd → boot → app        (all = sdk ~ app + doct
 | `doctor` | 설치 상태 점검만 함(아무것도 바꾸지 않음) | 수 초 |
 | `sdk` | cmdline-tools가 없으면 받고, `platform-tools`·`emulator`·`platforms;android-35`·`build-tools;35.0.0` 설치, `local.properties` 생성 | 수 분 |
 | `image` | Pleos Connect v2.1.0 시스템 이미지 다운로드(macOS arm64 약 4.7GB, Windows x86_64 약 4.1GB, 이어받기·SHA-1 확인) 후 SDK에 설치 | 네트워크에 따라 10분~1시간 |
-| `avd` | AVD `Pleos_Connect_v2.1` 생성(2560×1440, RAM 4GB, Cold boot). `--qa`/`-qa`는 QA용 `Pleos_Connect_QA`도 생성 | 수 초 |
+| `avd` | AVD `Pleos_Connect_v2.1` 생성(2560×1440, RAM 4GB, Cold boot, CPU 6코어 — PC 코어(Apple 실리콘은 성능 코어)가 8개 미만이면 4코어). 이미 있는 4코어 AVD는 6코어로 올림. `--qa`/`-qa`는 QA용 `Pleos_Connect_QA`도 생성 | 수 초 |
 | `boot` | 에뮬레이터 부팅을 기다린 뒤 위치를 향기5로 66으로 옮기고 Virtual Console 포트(8088)를 연결 | 1~3분 |
 | `app` | 디버그 APK 빌드 → 권한 허용 설치(`-g`) → 실행 → 프로세스 확인 | 첫 빌드 3~5분 |
 | `test` | 단위 테스트 | 1분 |
@@ -174,7 +174,7 @@ curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 2. **Virtual Console**: 브라우저에서 `http://127.0.0.1:8088/`을 열고 기어·도어·창문·와이퍼·좌석을 바꿔 봅니다.
 3. **위치 옮기기**: `adb emu geo fix <경도> <위도>` (예: `adb emu geo fix 127.0559 37.5446`). 집 위치로 되돌리기는 macOS `tools/emulator/set_home.sh`, Windows `adb emu geo fix 126.89592 37.60852`.
 4. **단위 테스트**: `setup.sh test` / `setup.ps1 test`.
-5. **QA 자동 테스트(TC 21개, 약 20분)**:
+5. **QA 자동 테스트(TC 20개, 약 20분)**:
    ```bash
    cd qa
    python3 -m fogqa list                         # Windows: python -m fogqa list
