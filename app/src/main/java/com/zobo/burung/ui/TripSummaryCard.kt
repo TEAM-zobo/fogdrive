@@ -6,9 +6,13 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -64,6 +68,8 @@ import kotlin.math.sin
 fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val kids by FogRuntime.mapPrefs.kids.collectAsState()
     FogCard(modifier, color = FogColors.Surface.copy(alpha = 0.97f)) {
+        // Above the celebration, a word of its own: someone rode along today.
+        if (summary.withPassenger) TogetherNote()
         if (summary.leveledUp) LevelUpBanner(summary.levelBefore, summary.levelAfter, kids)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconBadge(Icons.Outlined.EmojiEvents, FogColors.Amber, size = 44.dp)
@@ -78,54 +84,63 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
                 Text("닫기", style = MaterialTheme.typography.titleMedium, color = FogColors.Accent)
             }
         }
+        // The three things this trip added, in one form: an icon and a heading, then name tags.
         if (summary.newDongs.isNotEmpty()) {
-            Text(if (kids) "처음 가 본 동네 ${summary.newDongs.size}곳 발견!" else "처음 가 본 동네 ${summary.newDongs.size}곳", style = MaterialTheme.typography.titleMedium, color = FogColors.Blue)
-            // A long drive opens dozens of 동: three are named, the rest open on "자세히 보기".
+            // A long drive opens dozens of 동: three are named, the rest open on "더 보기".
             var all by remember(summary) { mutableStateOf(false) }
-            val shown = if (all) summary.newDongs else summary.newDongs.take(MAX_DONGS)
-            Column(
-                Modifier.heightIn(max = 260.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                shown.forEach { d ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.Place, contentDescription = null, tint = FogColors.Blue, modifier = Modifier.size(22.dp))
-                        Text("${d.district} ${d.name}", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-            if (summary.newDongs.size > MAX_DONGS) {
-                TextButton(onClick = { all = !all }, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                    Text(
-                        if (all) "접기" else "외 ${summary.newDongs.size - MAX_DONGS}곳 자세히 보기",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = FogColors.Accent,
-                    )
-                }
+            val more = summary.newDongs.size - MAX_DONGS
+            SummarySection(Icons.Outlined.Place, FogColors.Blue, "처음 가 본 동네", "${summary.newDongs.size}곳") {
+                (if (all) summary.newDongs else summary.newDongs.take(MAX_DONGS)).forEach { Pill("${it.district} ${it.name}", FogColors.Blue) }
+                if (more > 0) Pill(
+                    if (all) "접기" else "외 ${more}곳 더 보기",
+                    FogColors.TextSub,
+                    Modifier.clickable { all = !all },
+                )
             }
         }
-        // What this trip added to 내 탐험: titles it completed first, then the stamps it got for the first time.
         val titles = summary.newTitles.mapNotNull { id -> Titles.ALL.firstOrNull { it.id == id } }
         if (titles.isNotEmpty()) {
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.Shield, contentDescription = null, tint = FogColors.Accent, modifier = Modifier.size(22.dp))
-                Text(if (kids) "새 칭호를 받았어요!" else "새 칭호", style = MaterialTheme.typography.titleSmall, color = FogColors.Accent)
+            SummarySection(Icons.Outlined.Shield, FogColors.Accent, "새 칭호", "${titles.size}개") {
                 titles.forEach { Pill(it.name(kids), FogColors.Accent) }
             }
         }
         if (summary.newStamps.isNotEmpty()) {
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.Verified, contentDescription = null, tint = FogColors.Amber, modifier = Modifier.size(22.dp))
-                Text("새 스탬프", style = MaterialTheme.typography.titleSmall, color = FogColors.Amber)
-                summary.newStamps.take(MAX_STAMP_PILLS).forEach { Pill(it.title, FogColors.Amber) }
-                if (summary.newStamps.size > MAX_STAMP_PILLS) Pill("+${summary.newStamps.size - MAX_STAMP_PILLS}", FogColors.TextSub)
+            SummarySection(Icons.Outlined.Verified, FogColors.Amber, "새 스탬프", "${summary.newStamps.size}개") {
+                summary.newStamps.forEach { Pill(it.title, FogColors.Amber) }
             }
         }
-        if (summary.withPassenger) Text(
-            "오늘은 함께 탐험했어요!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = FogColors.Accent,
-        )
+    }
+}
+
+/** "오늘은 함께 탐험했어요!": a note of its own at the top of the card, for a drive with someone aboard. */
+@Composable
+private fun TogetherNote() {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(FogColors.Accent.copy(alpha = 0.12f))
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(Icons.Outlined.Groups, contentDescription = null, tint = FogColors.Accent, modifier = Modifier.size(26.dp))
+        Text("오늘은 함께 탐험했어요!", style = MaterialTheme.typography.titleMedium, color = FogColors.Accent)
+    }
+}
+
+/** One part of the summary: icon, heading and count in [color], then its items as tags (wrapping, scrolling when long). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SummarySection(icon: ImageVector, color: Color, title: String, count: String, items: @Composable () -> Unit) {
+    Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, color = color)
+            Text(count, style = MaterialTheme.typography.titleSmall, color = FogColors.TextSub)
+        }
+        FlowRow(
+            Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) { items() }
     }
 }
 
@@ -219,7 +234,6 @@ private class Confetti(i: Int) {
 }
 
 private const val MAX_DONGS = 3
-private const val MAX_STAMP_PILLS = 4
 private const val CONFETTI = 28
 private const val BURST_MS = 1_400
 private const val ROLL_DELAY_MS = 350L
