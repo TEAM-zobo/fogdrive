@@ -12,7 +12,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
@@ -34,8 +33,10 @@ class DexMark(val name: String, val x: Float, val y: Float, val dot: Boolean)
 class DexShape(
     val code: String, val name: String, val rings: List<FloatArray>, val labelX: Float, val labelY: Float, val outline: Outline,
     val marks: List<DexMark> = emptyList(),
-    /** A box drawn around an inset (울릉도·독도 on the country map), in tile units: x0, y0, x1, y1. */
+    /** Where an inset (울릉도·독도 on the country map) sits, in tile units: x0, y0, x1, y1 (taps there pick the region; not drawn). */
     val inset: FloatArray? = null,
+    /** How far the shape is drawn from where it is, in tile units southwards (제주, nearer the mainland). */
+    val shiftY: Float = 0f,
 )
 
 /**
@@ -59,8 +60,23 @@ object DexShapes {
     @Synchronized
     fun provinces(atlas: RegionAtlas): List<DexShape> = cache.getOrPut("") {
         build(atlas.provinces.mapNotNull { p -> p.outline?.let { Triple(p.code, p.name, it) } }, MIN_ISLAND_COUNTRY) { emptyList() }
-            .map { if (isGyeongbuk(it.name)) withEastInset(it) else it }
+            .map { if (isGyeongbuk(it.name)) withEastInset(it) else if (it.name.startsWith("제주")) nearerJeju(it) else it }
     }
+
+    /**
+     * 제주 drawn [JEJU_SHIFT_DEG] of latitude nearer the mainland than it is. Its true place is right
+     * (the outline is the official boundary), but drawn small on the whole-country map the sea in
+     * between reads as farther than it is; nudging it north, as many small maps of Korea do, keeps
+     * the country compact. Shape and size are unchanged.
+     */
+    private fun nearerJeju(s: DexShape): DexShape {
+        val dy = Tiles.latToY(JEJU_LAT + JEJU_SHIFT_DEG).toFloat() - Tiles.latToY(JEJU_LAT).toFloat()
+        val rings = s.rings.map { r -> FloatArray(r.size) { i -> r[i] + if (i % 2 == 1) dy else 0f } }
+        return DexShape(s.code, s.name, rings, s.labelX, s.labelY + dy, s.outline, s.marks, s.inset, dy)
+    }
+
+    private const val JEJU_LAT = 33.4
+    private const val JEJU_SHIFT_DEG = 0.3
 
     /**
      * 울릉도 and 독도 in an inset off the 강원 coast, as on the usual maps of Korea: drawn where they are,
@@ -200,7 +216,7 @@ fun DexMap(
                     val x = fit.toX(p.x).toDouble()
                     val y = fit.toY(p.y).toDouble()
                     // An inset (울릉도·독도) is drawn away from its outline: a tap inside its box picks its region.
-                    (shapes.firstOrNull { it.outline.contains(x, y) }
+                    (shapes.firstOrNull { it.outline.contains(x, y - it.shiftY) }
                         ?: shapes.firstOrNull { s -> s.inset?.let { b -> x in b[0]..b[2] && y in b[1]..b[3] } == true })
                         ?.let(tap)
                 }
@@ -224,13 +240,6 @@ fun DexMap(
                         drawPath(paths[i], edge, style = Stroke(strokeW))
                     }
                     shapes.forEach { s ->
-                        s.inset?.let { b ->
-                            val tl = Offset(fit.px(b[0]), fit.py(b[1]))
-                            drawRoundRect(
-                                markEdge.copy(alpha = 0.5f), tl, Size(fit.px(b[2]) - tl.x, fit.py(b[3]) - tl.y), CornerRadius(8f * density),
-                                style = Stroke(1.5f * density, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f * density, 4f * density))),
-                            )
-                        }
                         s.marks.forEach { m ->
                             val c = Offset(fit.px(m.x), fit.py(m.y))
                             if (m.dot) {
