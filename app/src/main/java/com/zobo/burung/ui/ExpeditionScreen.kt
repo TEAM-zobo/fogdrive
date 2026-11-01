@@ -127,7 +127,10 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                 }
                 Text(
                     shown?.name(kids) ?: Titles.NONE,
-                    fontSize = 56.sp, fontWeight = FontWeight.Black, color = INK, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    // No title yet reads as a state, smaller and quieter than a title.
+                    fontSize = if (shown == null) 44.sp else 56.sp,
+                    fontWeight = if (shown == null) FontWeight.Bold else FontWeight.Black,
+                    color = if (shown == null) SUB else INK, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     if (shown == null) k("한 분야의 스탬프를 모두 모으면 첫 칭호가 생겨요", "스탬프를 한 줄 다 모으면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),

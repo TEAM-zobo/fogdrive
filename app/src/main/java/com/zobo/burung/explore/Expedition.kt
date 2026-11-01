@@ -201,8 +201,8 @@ data class Title(
 }
 
 object Titles {
-    /** Shown before the first title. */
-    const val NONE = "탐험대원"
+    /** Shown in the title's place before the first one (a state, not a title). */
+    const val NONE = "아직 칭호가 없어요"
     const val COMMUTE_NEED = 20
     const val SEOUL_DISTRICTS = 25
 
