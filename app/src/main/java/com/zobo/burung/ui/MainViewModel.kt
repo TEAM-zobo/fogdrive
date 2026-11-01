@@ -596,6 +596,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    /** Deletes one finished trip (the trip being recorded can't be). */
+    fun deleteTrip(trip: TripEntity) {
+        if (trip.endedAt == null) return
+        showTripJob?.cancel()
+        shownTrip.value = null
+        viewModelScope.launch {
+            repo.deleteTrip(trip.id)
+            FogRuntime.live.update { it.copy(lastEvent = "주행 기록 1건을 지웠어요", lastEventId = System.nanoTime()) }
+        }
+    }
+
     /** Wipes every record and puts the screens back to a first-run state (e.g. before a demo). */
     fun resetAll() {
         showTripJob?.cancel()

@@ -202,6 +202,26 @@ interface FogDao {
     @Query("DELETE FROM cells")
     suspend fun deleteCells()
 
+    // One trip deleted: the ground only it opened goes dark again; ground another trip also drove
+    // over (visits > 1) stays, one visit fewer.
+    @Query("DELETE FROM cells WHERE tripId = :trip AND visits <= 1")
+    suspend fun deleteCellsOnlyOf(trip: Long)
+
+    @Query("UPDATE cells SET visits = visits - 1 WHERE tripId = :trip AND visits > 1")
+    suspend fun forgetVisitOf(trip: Long)
+
+    @Query("DELETE FROM trips WHERE id = :trip")
+    suspend fun deleteTrip(trip: Long)
+
+    @Query("DELETE FROM landings WHERE tripId = :trip")
+    suspend fun deleteLandingsOf(trip: Long)
+
+    @Query("DELETE FROM stamps WHERE tripId = :trip")
+    suspend fun deleteStampsOf(trip: Long)
+
+    @Query("DELETE FROM track WHERE tripId = :trip")
+    suspend fun deleteTrackOf(trip: Long)
+
     @Query("DELETE FROM trips")
     suspend fun deleteTrips()
 

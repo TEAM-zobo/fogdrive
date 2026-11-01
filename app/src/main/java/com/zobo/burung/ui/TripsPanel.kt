@@ -26,6 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -125,6 +128,7 @@ fun TripsPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier: Modifier
                         open = open,
                         noRoute = open && shown?.isTrack == false,
                         onClick = { if (open) viewModel.shownTrip.value = null else viewModel.showTrip(trip, leftInset = PANEL_SHARE) },
+                        onDelete = { viewModel.deleteTrip(trip) },
                     )
                 }
             }
@@ -189,6 +193,7 @@ private fun TripRow(
     open: Boolean,
     noRoute: Boolean,
     onClick: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val ratio = if (trip.distanceMeters > 0) trip.newDistanceMeters / trip.distanceMeters else 0.0
     FogCard(
@@ -219,6 +224,21 @@ private fun TripRow(
             }
             if (noRoute) {
                 Text("경로 기록 기능 전의 주행이라 이때 새로 탐험한 곳만 점으로 보여 줘요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+            }
+            // A finished trip can be deleted on its own (asked once more first).
+            if (trip.endedAt != null) {
+                var confirm by remember(trip.id) { mutableStateOf(false) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    if (!confirm) {
+                        TextButton(onClick = { confirm = true }) {
+                            Text("이 주행 삭제", style = MaterialTheme.typography.titleSmall, color = FogColors.Amber)
+                        }
+                    } else {
+                        Text("이 주행으로 열린 길과 받은 스탬프도 지워져요", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { confirm = false }) { Text("취소", style = MaterialTheme.typography.titleSmall, color = FogColors.TextSub) }
+                        TextButton(onClick = onDelete) { Text("삭제", style = MaterialTheme.typography.titleSmall, color = FogColors.Amber) }
+                    }
+                }
             }
         }
     }

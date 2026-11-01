@@ -1,5 +1,7 @@
 package com.zobo.burung.data
 
+import androidx.room.withTransaction
+
 import com.zobo.burung.explore.CellLog
 import com.zobo.burung.explore.Milestones
 import com.zobo.burung.explore.StampProgress
@@ -318,6 +320,27 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     }
 
     suspend fun exportTo(file: File): BackupSummary = withContext(Dispatchers.IO) { Backup.export(db, file) }
+
+    /**
+     * Deletes one finished trip: its route, drop-off points, the stamps it earned and the ground only it
+     * opened; then reloads the record (level, dex and stamps follow from what is left).
+     */
+    suspend fun deleteTrip(tripId: Long) {
+        if (tripId == currentTripId) return
+        withContext(Dispatchers.IO) {
+            db.withTransaction {
+                val dao = db.dao()
+                dao.deleteCellsOnlyOf(tripId)
+                dao.forgetVisitOf(tripId)
+                dao.deleteTrackOf(tripId)
+                dao.deleteLandingsOf(tripId)
+                dao.deleteStampsOf(tripId)
+                dao.deleteTrip(tripId)
+            }
+        }
+        forgetAll()
+        load()
+    }
 
     /** Replaces all records with a backup, then reloads them (the recorder drops its trip, as on reset). */
     suspend fun importFrom(file: File): BackupSummary {
