@@ -53,21 +53,9 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     /** The bookmark saved as 회사 in the navigation, if any. */
     private val _work = MutableStateFlow<Place?>(null)
     val work: StateFlow<Place?> = _work.asStateFlow()
-    private var naviHome: Place? = null
-    private var naviWork: Place? = null
-    private var homeOverride: Place? = null
-    private var workOverride: Place? = null
-
-    /**
-     * 집 and 회사 that win over the navigation's (a demo record brings its driver's, which the
-     * emulator's navigation doesn't have); null goes back to the navigation's.
-     */
-    fun setSavedPlacesOverride(home: Place?, work: Place?) {
-        homeOverride = home
-        workOverride = work
-        _home.value = home ?: naviHome
-        _work.value = work ?: naviWork
-    }
+    /** The other places saved in the navigation's 즐겨찾기 (not 집, 회사 or chargers). */
+    private val _favorites = MutableStateFlow<List<Place>>(emptyList())
+    val favorites: StateFlow<List<Place>> = _favorites.asStateFlow()
 
     private val _destination = MutableStateFlow<Place?>(null)
     val destination: StateFlow<Place?> = _destination.asStateFlow()
@@ -214,12 +202,11 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     override fun onBookmarkInfo(bookmarkInfoList: List<BookmarkInfo>) {
         _bookmarks.value = bookmarkInfoList.map { Place(it.name ?: "즐겨찾기", it.latitude, it.longitude, it.address) }
         // An unset 집 comes through as (0, 0) (seen on the emulator): no base camp then.
-        naviHome = bookmarkInfoList.firstOrNull { it.category == BookmarkType.HOME && (it.latitude != 0.0 || it.longitude != 0.0) }
-            ?.let { Place(it.name ?: "집", it.latitude, it.longitude, it.address) }
-        naviWork = bookmarkInfoList.firstOrNull { it.category == BookmarkType.OFFICE && (it.latitude != 0.0 || it.longitude != 0.0) }
-            ?.let { Place(it.name ?: "회사", it.latitude, it.longitude, it.address) }
-        _home.value = homeOverride ?: naviHome
-        _work.value = workOverride ?: naviWork
+        val set = bookmarkInfoList.filter { it.latitude != 0.0 || it.longitude != 0.0 }
+        _home.value = set.firstOrNull { it.category == BookmarkType.HOME }?.let { Place(it.name ?: "집", it.latitude, it.longitude, it.address) }
+        _work.value = set.firstOrNull { it.category == BookmarkType.OFFICE }?.let { Place(it.name ?: "회사", it.latitude, it.longitude, it.address) }
+        _favorites.value = set.filter { it.category == BookmarkType.DEFAULT }
+            .map { Place(it.name ?: "즐겨찾기", it.latitude, it.longitude, it.address) }
         // Counts only: the places themselves stay out of the log.
         Log.i(
             TAG,

@@ -205,7 +205,6 @@ object FogRuntime {
         cloud = CloudSync(app, repo)
         demoPrefs = DemoPrefs(app)
         mapPrefs = MapPrefs(app)
-        navi.setSavedPlacesOverride(mapPrefs.demoHome(), mapPrefs.demoWork())
         announcer = Announcer(app) { mapPrefs.voice.value }
         // Quiet while a voice line plays: a tick over speech only gets in the way.
         Sfx.init(enabled = { mapPrefs.sound.value && !announcer.speaking }, volume = { mapPrefs.soundVolume.value / 100f })

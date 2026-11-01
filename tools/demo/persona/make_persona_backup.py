@@ -34,8 +34,6 @@ LANDING_RADIUS = 3    # TripRecorder.LANDING_RADIUS
 TRACK_STEP_M = 20.0
 SOURCE_DRIVE, SOURCE_LANDING = 0, 1
 WEEKS = 10
-HOME_NAME = "집"
-WORK_NAME = "회사"
 # Weekday holidays in the period: no commute (추석 9/24·9/25, 개천절 대체 10/5, 한글날 10/9).
 HOLIDAYS = {date(2026, 9, 24), date(2026, 9, 25), date(2026, 10, 5), date(2026, 10, 9)}
 # 추석 holidays, spent at the parents' (no outings those days).
@@ -305,8 +303,6 @@ def main():
         "format": "fogdrive-backup",
         "version": 1,
         "exportedAt": int(datetime(today.year, today.month, today.day, 7, 0, tzinfo=KST).timestamp() * 1000),
-        "home": [home[0], home[1], HOME_NAME],
-        "work": [*data["places"]["hq"], WORK_NAME],
         "cells": [[c, *v] for c, v in sorted(cells.items())],
         "trips": trips,
         "landings": landings,

@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zobo.burung.FogRuntime
-import com.zobo.burung.data.Backup
 import com.zobo.burung.data.LandingEntity
 import com.zobo.burung.data.StampEntity
 import com.zobo.burung.data.TripEntity
@@ -378,13 +377,15 @@ class MainViewModel : ViewModel() {
      * "집 → 구산동" per trip: where its route starts and ends, as 집 within [HOME_NEAR_M] of the
      * navigation's home, else the 읍·면·동 there. Trips without a route have no name.
      */
-    val tripNames: StateFlow<Map<Long, String>> = combine(trips, combine(navi.home, navi.work) { h, w -> h to w }, FogRuntime.regionsLoaded, version) { t, (home, work), _, _ ->
+    val tripNames: StateFlow<Map<Long, String>> = combine(trips, combine(navi.home, navi.work, navi.favorites) { h, w, f -> Triple(h, w, f) }, FogRuntime.regionsLoaded, version) { t, (home, work, favorites), _, _ ->
         val atlas = FogRuntime.regions?.atlas
         fun place(x: Double, y: Double): String? {
             val lat = Tiles.yToLat(y)
             val lng = Tiles.xToLng(x)
             if (home != null && Tiles.distanceMeters(lat, lng, home.lat, home.lng) < HOME_NEAR_M) return "집"
             if (work != null && Tiles.distanceMeters(lat, lng, work.lat, work.lng) < HOME_NEAR_M) return "회사"
+            // A place saved in the navigation's 즐겨찾기 goes by its name there ("코스트코홀세일 양재점").
+            favorites.firstOrNull { Tiles.distanceMeters(lat, lng, it.lat, it.lng) < HOME_NEAR_M }?.let { return it.name }
             return atlas?.dongOf(Tiles.cellOf(lat, lng))?.takeIf { it >= 0 }?.let { atlas.dongs[it].name }
         }
         t.mapNotNull { trip ->
@@ -580,13 +581,7 @@ class MainViewModel : ViewModel() {
             backupMessage.value = if (!file.exists()) {
                 "불러올 파일이 없어요. ${FogRuntime.backupFile.path} 에 백업 파일을 넣어 주세요."
             } else {
-                runCatching {
-                    val (home, work) = Backup.savedPlacesOf(file)
-                    repo.importFrom(file).also {
-                        FogRuntime.mapPrefs.setDemoPlaces(home, work)
-                        FogRuntime.navi.setSavedPlacesOverride(home, work)
-                    }
-                }.fold(
+                runCatching { repo.importFrom(file) }.fold(
                     { "불러왔어요: 칸 ${it.cells}개 · 주행 ${it.trips}건 · 하차 ${it.landings}곳" },
                     { "불러오지 못했어요: ${it.message}" },
                 )
@@ -604,8 +599,6 @@ class MainViewModel : ViewModel() {
         dexDistrict.value = null
         backupMessage.value = null
         suggestionSkip.value = 0
-        FogRuntime.mapPrefs.setDemoPlaces(null, null)
-        FogRuntime.navi.setSavedPlacesOverride(null, null)
         viewModelScope.launch {
             repo.reset()
             FogRuntime.live.update { it.copy(lastEvent = "기록을 모두 지웠어요. 처음 상태에서 다시 시작해요", lastEventId = System.nanoTime()) }
@@ -618,7 +611,7 @@ class MainViewModel : ViewModel() {
         const val SUGGEST_CHOICES = 8
         /** Newest cleared cells read for the dex's "최근 개척": enough to reach back past the last few trips. */
         private const val RECENT_CELLS = 4_000
-        /** A trip starting or ending this close to the navigation's home is named "집". */
+        /** A trip starting or ending this close to the navigation's 집 / 회사 / 즐겨찾기 is named after it. */
         private const val HOME_NEAR_M = 400.0
         /** A suggested place farther than this gets no map button (a stamp is not worth a long detour). */
         private const val PLACE_NEAR_KM = 60.0

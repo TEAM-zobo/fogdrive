@@ -7,8 +7,8 @@
 
 Steps: (install) → Virtual Console reset (P, doors shut, no passengers, wipers/lights off) → app data
 cleared and permissions granted → location: the persona's home (위례) → record copied into the
-app's files folder → app opened and 설정 → 불러오기 tapped → back on the map. The record brings the
-persona's 집 and 회사, which the app uses in place of the navigation's.
+app's files folder → app opened and 설정 → 불러오기 tapped → back on the map. 집, 회사 and the
+즐겨찾기 come from the navigation (PLEOS NaviHelper): save them there once (docs/submission/burung/persona.md).
 Uses the QA tool (qa/fogqa) for adb and the Virtual Console.
 """
 import argparse

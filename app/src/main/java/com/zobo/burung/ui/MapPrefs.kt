@@ -116,22 +116,6 @@ class MapPrefs(context: Context) {
         prefs.edit().putString(KEY_TITLE, id).apply()
     }
 
-    /** 집 / 회사 brought by an imported demo record (see NaviBridge.setSavedPlacesOverride), or null. */
-    fun demoHome(): com.zobo.burung.car.Place? = place(KEY_DEMO_HOME)
-    fun demoWork(): com.zobo.burung.car.Place? = place(KEY_DEMO_WORK)
-
-    fun setDemoPlaces(home: com.zobo.burung.car.Place?, work: com.zobo.burung.car.Place?) {
-        prefs.edit().apply {
-            for ((key, p) in listOf(KEY_DEMO_HOME to home, KEY_DEMO_WORK to work)) {
-                if (p == null) remove(key) else putString(key, "${p.lat}|${p.lng}|${p.name}")
-            }
-        }.apply()
-    }
-
-    private fun place(key: String) = prefs.getString(key, null)?.split('|')?.takeIf { it.size == 3 }?.let {
-        com.zobo.burung.car.Place(it[2], it[0].toDouble(), it[1].toDouble(), "")
-    }
-
     /** This week's suggested stamps as (week key, stamp names), kept so they stay put until Monday. */
     fun weeklyPicks(): Pair<Long, List<String>> =
         prefs.getLong(KEY_PICKS_WEEK2, 0) to (prefs.getString(KEY_PICKS, "") ?: "").split(',').filter { it.isNotEmpty() }
@@ -205,8 +189,6 @@ class MapPrefs(context: Context) {
         private const val KEY_WEEKEND_REST_UNTIL = "weekend_rest_until"
         private const val WEEKEND_REST_WEEKS = 4
         private const val KEY_PICKS = "weekly_picks"
-        private const val KEY_DEMO_HOME = "demo_home"
-        private const val KEY_DEMO_WORK = "demo_work"
         const val DEFAULT_TEAM = "부릉 탐험대"
         const val TEAM_MAX = 15
 
