@@ -10,7 +10,6 @@ import com.zobo.burung.data.CloudSync
 import com.zobo.burung.data.ExploreRepository
 import com.zobo.burung.data.FogDb
 import com.zobo.burung.demo.DemoPrefs
-import com.zobo.burung.explore.CrewMission
 import com.zobo.burung.explore.LocalStories
 import com.zobo.burung.explore.RegionTally
 import com.zobo.burung.explore.Story
@@ -43,9 +42,6 @@ data class LiveStatus(
     val lastEvent: String? = null,
     /** Distinct per notice, so the same text arriving again shows again (see EventToast). */
     val lastEventId: Long = 0,
-    /** Mission for the passengers on this trip, and its progress in the mission's unit. */
-    val mission: CrewMission? = null,
-    val missionProgress: Int = 0,
     /** The trip that just ended, shown as a summary card until dismissed or the next trip starts. */
     val lastTrip: TripSummary? = null,
 )
@@ -61,8 +57,8 @@ data class TripSummary(
     val newDistanceMeters: Double,
     val newDongs: List<NewDong>,
     val stamps: List<StampCode>,
-    val mission: CrewMission?,
-    val missionDone: Boolean,
+    /** Someone rode along (front or rear seat). */
+    val withPassenger: Boolean = false,
     /** Level when the trip started and when it ended; 0 when the start wasn't seen (app restarted mid-trip). */
     val levelBefore: Int = 0,
     val levelAfter: Int = 0,

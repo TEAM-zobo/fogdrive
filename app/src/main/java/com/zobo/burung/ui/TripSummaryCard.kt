@@ -98,13 +98,11 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
                 if (summary.stamps.size > MAX_STAMP_PILLS) Pill("+${summary.stamps.size - MAX_STAMP_PILLS}", FogColors.TextSub)
             }
         }
-        summary.mission?.let { m ->
-            Text(
-                if (summary.missionDone) "동승자 미션 성공 · ${m.title()}" else "동승자 미션 · ${m.title()} (다음엔 꼭!)",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (summary.missionDone) FogColors.Accent else FogColors.TextSub,
-            )
-        }
+        if (summary.withPassenger) Text(
+            if (kids) "오늘은 함께 탐험했어요!" else "동승자와 함께한 주행",
+            style = MaterialTheme.typography.bodyMedium,
+            color = FogColors.Accent,
+        )
     }
 }
 

@@ -47,7 +47,8 @@ enum class StampCode(val title: String, val description: String) {
     SUNROOF("하늘 열고 개척", "선루프를 열고 새 길을 달렸어요"),
     ECO("에코 탐험가", "에코 모드로 새 길을 달렸어요"),
     SPORT("스포츠 개척", "스포츠 모드로 새 길을 달렸어요"),
-    CREW_MISSION("함께한 미션", "동승자와 이번 주행 미션을 끝냈어요"),
+    // The code keeps its old name (stored in records); it is now earned by any drive with a passenger.
+    CREW_MISSION("함께한 드라이브", "동승자와 함께 주행했어요"),
     // Milestones, checked when a trip ends (see Milestones): steady driving, a wider map, a far trip.
     WEEK_THREE("탐험 주간", "한 주에 3일 이상 주행했어요"),
     STREAK_4W("4주 연속 탐험", "4주 동안 매주 한 번 이상 주행했어요"),

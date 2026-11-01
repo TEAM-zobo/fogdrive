@@ -1,7 +1,6 @@
 package com.zobo.burung
 
 import com.zobo.burung.car.VehicleState
-import com.zobo.burung.explore.CrewMission
 import com.zobo.burung.explore.DetourPlanner
 import com.zobo.burung.explore.LocalStories
 import com.zobo.burung.explore.StoryCandidate
@@ -13,25 +12,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FeaturesTest {
-    @Test
-    fun crewMissionProgressPerKind() {
-        val dongs = CrewMission(CrewMission.Kind.NEW_DONGS, 2)
-        assertEquals(1, dongs.progress(newDongs = 1, areaM2 = 5_000.0, newRoadMeters = 900.0))
-        assertEquals("2/2", dongs.progressLabel(5))  // capped at the target
-        val area = CrewMission(CrewMission.Kind.AREA, 100_000)
-        assertEquals(42_000, area.progress(0, 42_000.4, 0.0))
-        val road = CrewMission(CrewMission.Kind.NEW_ROAD_KM, 3)
-        assertEquals(2, road.progress(0, 0.0, 2_999.0))
-        assertEquals("새 길 3 km 달리기", road.title())
-    }
-
-    @Test
-    fun crewMissionPickIsStableWithinAMinute() {
-        val t = 1_761_350_400_000L
-        assertEquals(CrewMission.pick(t), CrewMission.pick(t + 59_000))
-        assertEquals(3, (0 until 3).map { CrewMission.pick(t + it * 60_000L).kind }.toSet().size)
-    }
-
     @Test
     fun passengerMeansAnyoneButTheDriver() {
         assertFalse(VehicleState(occupiedSeats = setOf("ROW_1_LEFT")).hasPassenger)

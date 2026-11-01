@@ -396,7 +396,7 @@ fun stampIcon(code: StampCode): ImageVector = when (code) {
     StampCode.OPEN_AIR -> Icons.Outlined.Air
     StampCode.SUNROOF -> Icons.Outlined.WbCloudy
     StampCode.ECO -> Icons.Outlined.EnergySavingsLeaf
-    StampCode.CREW_MISSION -> Icons.Outlined.EmojiEvents
+    StampCode.CREW_MISSION -> Icons.Outlined.Groups
     StampCode.WEEK_THREE -> Icons.Outlined.CalendarMonth
     StampCode.STREAK_4W -> Icons.Outlined.EventRepeat
     StampCode.KM_1000 -> Icons.Outlined.Speed

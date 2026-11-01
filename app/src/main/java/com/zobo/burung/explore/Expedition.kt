@@ -84,7 +84,7 @@ object StampBook {
         StampCode.WEEKEND -> "주말에 새 길 주행"
         StampCode.FAR_DAY -> "집에서 50 km 넘게 떨어진 곳 도착"
         StampCode.FAMILY -> "뒷좌석 동승자와 새 길 주행"
-        StampCode.CREW_MISSION -> "동승자 미션 성공"
+        StampCode.CREW_MISSION -> "동승자와 함께 주행"
         else -> code.description
     } else when (code) {
         StampCode.FIRST_DRIVE -> "처음 같이 달리면 받아요"
@@ -98,7 +98,7 @@ object StampBook {
         StampCode.WEEKEND -> "주말에 새 길로 나들이 가요"
         StampCode.FAR_DAY -> "멀리 여행을 떠나요"
         StampCode.FAMILY -> "뒷자리에 가족을 태우고 새 길을 가요"
-        StampCode.CREW_MISSION -> "함께 탄 사람이랑 미션을 깨요"
+        StampCode.CREW_MISSION -> "누군가와 함께 달려요"
         else -> code.description
     }
 }
@@ -190,7 +190,7 @@ object WeeklyPicks {
      * 2. a progress stamp well on its way (60 % or more),
      * 3. a place to go now: a new 시·군·구 when one is near ([placeNear]), the third 시·도 when one is
      *    near ([provinceNear]) and two are in,
-     * 4. the rest (a weekend drive unless [weekendPaused], a far trip, family, a crew mission).
+     * 4. the rest (a weekend drive unless [weekendPaused], a far trip, family, a drive together).
      * Never 첫 시동 (it comes with the first drive), and never what a week can't reach: 4 weeks in a
      * row before the third, more than [WEEK_KM] km or [WEEK_DONGS] 동 still to go, a place with
      * none near. Ties are broken in an order fixed for the [week].

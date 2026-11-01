@@ -26,7 +26,6 @@ import com.zobo.burung.data.CellSource
 import com.zobo.burung.data.TripEntity
 import com.zobo.burung.demo.DemoCourses
 import com.zobo.burung.demo.DemoDrive
-import com.zobo.burung.explore.CrewMission
 import com.zobo.burung.explore.Milestones
 import com.zobo.burung.explore.StampBook
 import com.zobo.burung.explore.Progress
@@ -122,7 +121,7 @@ class RecordingService : Service() {
         }
         FogRuntime.vehicle.stop()
         FogRuntime.navi.stop()
-        FogRuntime.live.update { it.copy(recording = false, demo = false, tripActive = false, mission = null) }
+        FogRuntime.live.update { it.copy(recording = false, demo = false, tripActive = false) }
         super.onDestroy()
     }
 
@@ -155,9 +154,9 @@ class RecordingService : Service() {
         }
         recordTrack(fix)
         stampRegions(fix)
-        updateMission(fix)
+        if (recorder.tripActive && FogRuntime.vehicle.state.value.hasPassenger) tripPassenger = true
         FogRuntime.live.update {
-            it.copy(location = fix, tripActive = recorder.tripActive, trip = recorder.stats, missionProgress = missionProgress)
+            it.copy(location = fix, tripActive = recorder.tripActive, trip = recorder.stats)
         }
         persistTripStats()
     }
@@ -220,7 +219,8 @@ class RecordingService : Service() {
     /**
      * Milestone stamps at the end of a trip (see Milestones): a week of 3 days, 4 weeks in a row,
      * 1,000 km, 10 and 100 읍·면·동, 3 시·도, and 멀리 떠난 날 (got off 50 km+ from home, straight line:
-     * how far, not how long, so no reward for driving without a break). Each is earned once.
+     * how far, not how long, so no reward for driving without a break), and 함께한 드라이브 (a drive
+     * with someone aboard; nothing to do for it, the seats tell). Each is earned once.
      */
     private suspend fun awardMilestones(at: Long) {
         val have = repo.stampCodes()
@@ -231,6 +231,7 @@ class RecordingService : Service() {
         if (end != null && origin != null &&
             Tiles.distanceMeters(origin.first, origin.second, end.lat, end.lng) >= Milestones.FAR_M
         ) reached += StampCode.FAR_DAY
+        if (tripPassenger && recorder.stats.distanceMeters >= MIN_SUMMARY_M) reached += StampCode.CREW_MISSION
         for (code in reached) {
             if (code.name in have) continue
             apply(RecorderEvent.Stamp(code, end?.lat ?: 0.0, end?.lng ?: 0.0, at))
@@ -240,9 +241,8 @@ class RecordingService : Service() {
     // This trip, for the summary card: 동 entered for the first time and stamps earned, in order.
     private val tripNewDongs = ArrayList<NewDong>()
     private val tripStamps = ArrayList<StampCode>()
-    private var mission: CrewMission? = null
-    private var missionProgress = 0
-    private var missionDone = false
+    /** Someone rode along (front or rear seat) at some point of this trip. */
+    private var tripPassenger = false
     /** Level when this trip started, for the arrival card's level-up; null when the start wasn't seen. */
     private var levelAtStart: Int? = null
 
@@ -272,18 +272,6 @@ class RecordingService : Service() {
         }
     }
 
-    /** Passenger mission progress; finishing it earns "함께한 미션" once. */
-    private suspend fun updateMission(fix: Fix) {
-        val m = mission ?: return
-        if (!recorder.tripActive) return
-        val s = recorder.stats
-        missionProgress = m.progress(tripRegions?.newDongs ?: 0, Area.ofCells(s.newCells, fix.lat), s.newDistanceMeters)
-        if (!missionDone && missionProgress >= m.target) {
-            missionDone = true
-            apply(RecorderEvent.Stamp(StampCode.CREW_MISSION, fix.lat, fix.lng, fix.timeMs))
-            note("동승자 미션 성공: ${m.title()}")
-        }
-    }
     private var trackTrip = 0L
     private var trackLat = 0.0
     private var trackLng = 0.0
@@ -339,11 +327,8 @@ class RecordingService : Service() {
                 tripNewDongs.clear()
                 tripStamps.clear()
                 levelAtStart = Progress.level(repo.xp())
-                missionProgress = 0
-                missionDone = false
-                // A mission only when someone rides along (front passenger or rear).
-                mission = if (FogRuntime.vehicle.state.value.hasPassenger) CrewMission.pick(event.at) else null
-                FogRuntime.live.update { it.copy(mission = mission, missionProgress = 0, lastTrip = null) }
+                tripPassenger = FogRuntime.vehicle.state.value.hasPassenger
+                FogRuntime.live.update { it.copy(lastTrip = null) }
                 note("새 주행 기록을 시작했어요")
             }
             is RecorderEvent.TripEnded -> {
@@ -385,9 +370,8 @@ class RecordingService : Service() {
     /** Summary card + a spoken wrap-up for a trip that went somewhere. */
     private suspend fun showSummary(endedAt: Long) {
         val s = recorder.stats
-        val m = mission
-        mission = null
-        FogRuntime.live.update { it.copy(mission = null) }
+        val withPassenger = tripPassenger
+        tripPassenger = false
         val before = levelAtStart ?: 0
         levelAtStart = null
         if (s.distanceMeters < MIN_SUMMARY_M && s.newCells == 0) return
@@ -400,8 +384,7 @@ class RecordingService : Service() {
             newDistanceMeters = s.newDistanceMeters,
             newDongs = tripNewDongs.toList(),
             stamps = tripStamps.distinct(),
-            mission = m,
-            missionDone = missionDone,
+            withPassenger = withPassenger,
             levelBefore = before,
             levelAfter = after,
         )

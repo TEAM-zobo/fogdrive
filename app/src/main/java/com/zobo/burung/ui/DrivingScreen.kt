@@ -79,7 +79,7 @@ fun DrivingScreen(viewModel: MainViewModel) {
             destination = destination?.let { it.lat to it.lng },
             home = home?.let { it.lat to it.lng },
         )
-        // Stamps, missions, drop-offs: a moment on screen below the header, then gone.
+        // Stamps, drop-offs: a moment on screen below the header, then gone.
         EventToast(live.lastEvent, live.lastEventId, viewModel::eventShown, Modifier.padding(top = 128.dp).align(Alignment.TopCenter))
         Row(
             modifier = Modifier
@@ -113,32 +113,6 @@ fun DrivingScreen(viewModel: MainViewModel) {
             }
         }
         GuidancePanel(guidance, Modifier.align(Alignment.TopEnd).padding(28.dp))
-        // Passenger mission: one line with its progress, nothing to touch (the passengers follow
-        // it; the driver hears when it is done).
-        live.mission?.let { m ->
-            val done = live.missionProgress >= m.target
-            Row(
-                Modifier
-                    .clearAndSetSemantics { contentDescription = "동승자 미션" }
-                    // Centred: the bottom-left corner keeps the map credit visible.
-                    .align(Alignment.BottomCenter)
-                    .padding(28.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(FogColors.Surface.copy(alpha = 0.94f))
-                    .padding(horizontal = 28.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("동승자 미션", style = MaterialTheme.typography.titleMedium, color = FogColors.TextSub)
-                Text(m.title(), style = MaterialTheme.typography.titleLarge, color = FogColors.TextMain)
-                Text(
-                    if (done) "성공!" else m.progressLabel(live.missionProgress),
-                    style = MaterialTheme.typography.titleLarge.tabular(),
-                    modifier = Modifier.widthIn(min = 240.dp),
-                    color = if (done) FogColors.Accent else FogColors.Amber,
-                )
-            }
-        }
         Column(
             Modifier.align(Alignment.BottomEnd).padding(28.dp),
             horizontalAlignment = Alignment.End,
