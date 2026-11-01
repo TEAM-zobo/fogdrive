@@ -109,7 +109,7 @@ class MainViewModel : ViewModel() {
         // Distance from the database, as the arrival card's level-up ([ExploreRepository.xp]) reads it:
         // [t] stops at the last 100 trips. Landings and stamps are all in [l] and [s] already.
         val kinds = s.map { it.code }.distinct().size
-        val xp = Progress.xp(cells, l.size, s.size, kinds, repo.tripTotalsSince(0).distanceMeters)
+        val xp = Progress.xp(repo.earnedCount(), l.size, s.size, kinds, repo.tripTotalsSince(0).distanceMeters)
         val dist = t.sumOf { it.distanceMeters }
         val newDist = t.sumOf { it.newDistanceMeters }
         Summary(
@@ -278,8 +278,10 @@ class MainViewModel : ViewModel() {
         regionCounts.distinctUntilChangedBy { it?.visitedDongs },
         live.map { it.location?.let { f -> Tiles.parent(Tiles.cellOf(f.lat, f.lng), 5) } }.distinctUntilChanged(),
         suggestionSkip,
-    ) { n, area, skip ->
-        if (n == null || area == null) return@combine null
+        trips.map { it.isNotEmpty() }.distinctUntilChanged(),
+    ) { n, area, skip, driven ->
+        // Only once there is a record to compare with: before the first drive every 동 is unexplored.
+        if (n == null || area == null || !driven) return@combine null
         val atlas = n.atlas
         val lat = Tiles.yToLat(Tiles.y(area) * 32.0 + 16)
         val lng = Tiles.xToLng(Tiles.x(area) * 32.0 + 16)

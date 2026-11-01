@@ -147,6 +147,9 @@ interface FogDao {
     @Query("SELECT cell FROM cells WHERE source != 2")
     suspend fun drivenCells(): List<Long>
 
+    @Query("SELECT COUNT(*) FROM cells WHERE source = 2")
+    suspend fun seedCellCount(): Int
+
     @Insert
     suspend fun insertStamp(stamp: StampEntity): Long
 

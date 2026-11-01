@@ -60,16 +60,6 @@ def fresh(ctx):
     ctx.dev.tap_text("지도")
 
 
-def navi_has_places(ctx):
-    """Whether the navigation answered with any recent destination or set bookmark (the app logs
-    the counts, see NaviBridge); bookmarks of a fresh emulator come through unset, at (0, 0)."""
-    log = ctx.dev.shell("logcat", "-d", "-s", "FogNavi:I")
-    recent = [int(n) for n in re.findall(r"recent destinations: (\d+)", log)]
-    marked = [int(n) for n in re.findall(r"bookmarks: \d+ \((\d+) set\)", log)]
-    ctx.log(f"내비 최근 목적지 {recent[-1:] or '응답 없음'}, 설정된 즐겨찾기 {marked[-1:] or '응답 없음'}")
-    return bool(recent and recent[-1]) or bool(marked and marked[-1])
-
-
 def value_after(texts, label):
     """StatTile/StatusLine render label then value as consecutive text nodes."""
     for i, t in enumerate(texts):
@@ -204,10 +194,10 @@ def tc_connect(ctx):
     ctx.check(s["Pleos NaviHelper"] == "연결됨", "NaviHelper 연결")
 
 
-@case("TC-02", "첫 실행 지도 채우기", "첫 실행 때 내비 최근 목적지·즐겨찾기 주변 안개가 걷힌다",
-      "앱 데이터 초기화, 에뮬레이터 내비에 최근 목적지/즐겨찾기 존재",
-      ["앱 첫 실행", "지도 메시지와 최근 주행 패널의 탐험한 면적 확인", "내비에 최근 목적지·즐겨찾기가 없으면 지도 카드의 '내비 안내'로 하나 만든 뒤 다시 실행"],
-      ["'내비 최근 목적지·즐겨찾기 N곳 주변을 지도에 열어 뒀어요' 표시", "탐험한 면적 > 0, 주행 기록 0건"])
+@case("TC-02", "첫 실행 베이스캠프", "첫 실행 때 내비에 저장된 집 주변만 열리고, 레벨은 Lv.1에서 시작한다",
+      "앱 데이터 초기화, 에뮬레이터 내비에 '집' 즐겨찾기 저장",
+      ["앱 첫 실행", "지도 메시지와 최근 주행 패널의 탐험한 면적, 레벨 확인"],
+      ["'베이스캠프(집) 주변을 지도에 열어 뒀어요' 표시", "탐험한 면적 > 0, 주행 기록 0건", "Lv 1, 안 가본 동네 추천 카드 없음"])
 def tc_seed(ctx):
     def start_and_watch():
         # The message shows for 4 s a few seconds after the start: watched from the start, since
@@ -221,21 +211,18 @@ def tc_seed(ctx):
 
     ctx.dev.shell("logcat", "-c")
     seeded = start_and_watch()
-    if not seeded and not navi_has_places(ctx):
-        # A fresh emulator's navigation has no history and its 집/회사 are unset, so there is nothing
-        # to seed from. Routing once to the map card's suggestion leaves a recent destination behind.
-        ctx.log("내비에 최근 목적지·즐겨찾기가 없어 '내비 안내'로 최근 목적지를 하나 만든 뒤 다시 시작")
-        ctx.dev.tap_text("내비 안내")
-        time.sleep(6)
-        ctx.dev.shell("input", "keyevent", "HOME")
-        time.sleep(2)
-        seeded = start_and_watch()
     ctx.check(seeded, "시드 완료 메시지 표시")
     ctx.shot("map")
     r = read_record(ctx)
     ctx.log(f"기록: {r}")
     ctx.check((r["area"] or 0) > 0, f"탐험한 면적 {(r['area'] or 0) / 1e6:.4f} km² > 0")
     ctx.check(r["trips"] == 0, "주행 기록 없음")
+    ctx.dev.tap_text("지도")
+    time.sleep(2)
+    t = ctx.dev.texts()
+    lv = t[t.index("Lv") + 1] if "Lv" in t else None
+    ctx.check(lv == "1", f"레벨 1 (화면: {lv})")
+    ctx.check("안 가본 동네 가보기" not in t, "첫 주행 전에는 안 가본 동네 추천 없음")
 
 
 @case("TC-03", "자동 안개 걷기", "D단으로 주행하면 지나간 길의 안개가 걷히고 주행 기록이 생긴다",

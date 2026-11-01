@@ -106,6 +106,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
         val all = withContext(Dispatchers.IO) { db.dao().allCellIds() }
         synchronized(lock) { for (c in all) if (cells.add(c)) append(c) }
         hasTrips = withContext(Dispatchers.IO) { db.dao().tripCount() } > 0
+        seedCells = withContext(Dispatchers.IO) { db.dao().seedCellCount() }
         beforeShown()
         bump()
         _loaded.value = true
@@ -134,6 +135,12 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     }
 
     fun count(): Int = synchronized(lock) { cells.size }
+
+    /** Cells opened around the base camp on the first run (not driven): they earn no experience. */
+    @Volatile private var seedCells = 0
+
+    /** Explored cells that count for experience: all but the first-run base-camp seed. */
+    fun earnedCount(): Int = (count() - seedCells).coerceAtLeast(0)
 
     override fun isExplored(cell: Long): Boolean = cells.has(cell)  // lock-free read
 
@@ -186,6 +193,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
                 tripCells.addAll(added)
             }
         }
+        if (added.isNotEmpty() && source == CellSource.SEED) seedCells += added.size
         if (added.isNotEmpty()) {
             // Driven cells show through the route's band; the others (drop-off, arrival, seeding) as spots.
             if (source != CellSource.DRIVE) tracks.addSpots(added)
@@ -294,7 +302,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     /** Total experience (see [Progress.xp]): every cell, every trip's distance, drop-off and stamp. */
     suspend fun xp(): Int {
-        val cells = count()
+        val cells = earnedCount()
         return withContext(Dispatchers.IO) {
             val dao = db.dao()
             Progress.xp(cells, dao.landingCount(), dao.stampCount(), dao.stampKindCount(), dao.tripTotalsSince(0).distanceMeters)
@@ -321,6 +329,7 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
 
     private fun forgetAll() {
         hasTrips = false
+        seedCells = 0
         synchronized(lock) {
             resetGeneration++
             cells.clear()

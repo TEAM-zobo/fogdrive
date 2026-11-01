@@ -422,31 +422,23 @@ class RecordingService : Service() {
         repo.saveTrip(updated)
     }
 
-    /** First run: clear the fog around recent destinations and bookmarks so the map is not empty. */
+    /**
+     * First run: open the ground around the base camp (the navigation's 집) only, so the map starts
+     * from home. Other bookmarks and recent destinations stay dark until driven: a long bookmark list
+     * would light places never driven to. The seed earns no experience (see ExploreRepository.earnedCount).
+     */
     private suspend fun seedFromNavigation() {
         val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_SEEDED, false)) return
         repo.loaded.first { it }
         FogRuntime.navi.connected.first { it }
-        // Each list answers through its own callback, and the navigation may never answer one: the
-        // emulator's sends no recent destinations at all, and waiting for them held back the seed
-        // around its 집/회사 bookmarks too (no first-run fog cleared, no message).
-        // Both lists are awaited together, so a silent one costs one wait, not two.
-        val (recent, bookmarks) = coroutineScope {
-            val r = async { answerOf(FogRuntime.navi.recent) }
-            val b = async { answerOf(FogRuntime.navi.bookmarks) }
-            r.await() to b.await()
-        }
-        // An unset bookmark comes through as (0, 0).
-        // A place that is both a recent destination and a bookmark (집) counts once in the message.
-        val places = (recent + bookmarks).filter { it.lat != 0.0 || it.lng != 0.0 }.distinctBy { it.lat to it.lng }
-        if (places.isEmpty()) return
-        var added = 0
-        for (p in places) {
-            added += repo.reveal(Tiles.neighborhood(Tiles.cellOf(p.lat, p.lng), SEED_RADIUS), CellSource.SEED)
-        }
+        // 집 comes with the bookmark list; the navigation may never answer it (then no seed, retried
+        // on the next start).
+        answerOf(FogRuntime.navi.bookmarks)
+        val home = FogRuntime.navi.home.value ?: return
+        val added = repo.reveal(Tiles.neighborhood(Tiles.cellOf(home.lat, home.lng), SEED_RADIUS), CellSource.SEED)
         prefs.edit().putBoolean(KEY_SEEDED, true).apply()
-        note("내비 최근 목적지·즐겨찾기 ${places.size}곳 주변을 지도에 열어 뒀어요 (+${Area.formatCells(added)})")
+        note("베이스캠프(집) 주변을 지도에 열어 뒀어요 (+${Area.formatCells(added)})")
     }
 
     private suspend fun answerOf(list: StateFlow<List<Place>?>): List<Place> =

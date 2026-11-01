@@ -141,7 +141,7 @@
 | 도어·좌석 | Vehicle 2.3.2 Door, Seat(점유·안전벨트) | 하차 지점, 함께 탐험 | 구현 |
 | 주행 상황 | Vehicle Wiper, Light, EvBattery, DrivingMode | 위험 조건 거르기(빗길·야간·저배터리·스포츠) | 구현 |
 | 주행거리 | Vehicle Odometer, `RangeRemaining` | 우회 경로 거르기 | 구현 |
-| 내비 연동 | NaviHelper 3.0.5 즐겨찾기(`getBookmarkInfo`: 집·회사·장소), 최근 목적지, `getDestinationInfo`, `addWaypoint`, `requestRoute`, 경로 안내 상태 | 베이스캠프, 목적지 깃발, 우회 경유지, 탐험지 안내, 도착 판정 | 구현 |
+| 내비 연동 | NaviHelper 3.0.5 즐겨찾기(`getBookmarkInfo`: 집·회사·장소), `getDestinationInfo`, `addWaypoint`, `requestRoute`, 경로 안내 상태 | 베이스캠프, 목적지 깃발, 우회 경유지, 탐험지 안내, 도착 판정 | 구현 |
 | 주행 규제 | AAOS `CarUxRestrictionsManager` | 주행 모드 전환 | 구현 |
 | 음성 | Pleos TextToSpeech 3.3.1 (온디바이스) | 새 동네·도착 요약·레벨업 음성, 키즈모드 말투 | 구현 |
 | 동기화 | 기기 내 보낼 함(outbox) 대체 구현 | 백업·클라우드 동기화 | Pleos Sync SDK 공개 시 교체 |

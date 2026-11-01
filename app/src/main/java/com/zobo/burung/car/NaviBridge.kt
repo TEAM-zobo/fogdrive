@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * Pleos NaviHelper bridge: reads recent destinations / bookmarks (first-run map seeding),
+ * Pleos NaviHelper bridge: reads bookmarks (집 = base camp, first-run map seeding; 회사·장소 = trip names),
  * the active destination (detour suggestions) and adds the detour as a waypoint.
  * While guiding it also relays arrivals (fog reveal + stamps) and the speed limit / next turn
  * for the driving screen.
@@ -109,7 +109,6 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
 
     fun refresh() {
         val h = helper ?: return
-        call("recent") { h.getRecentDestinationInfo() }
         call("bookmark") { h.getBookmarkInfo() }
         call("destination") { h.getDestinationInfo() }
     }
