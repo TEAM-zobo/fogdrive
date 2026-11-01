@@ -25,9 +25,10 @@ class ExpeditionTest {
     }
 
     @Test
-    fun twelveStampsFourPerFieldNoneRisky() {
-        assertEquals(12, StampBook.ACTIVE.size)
-        for (f in StampField.entries) assertEquals(f.name, 4, StampBook.ACTIVE.count { StampBook.field(it) == f })
+    fun elevenStampsNoneRiskyNoneBySeat() {
+        assertEquals(11, StampBook.ACTIVE.size)
+        assertEquals(listOf(4, 4, 3), StampField.entries.map { f -> StampBook.ACTIVE.count { StampBook.field(it) == f } })
+        assertFalse(StampCode.FAMILY in StampBook.ACTIVE)
         assertTrue(StampBook.ACTIVE.none { it in StampBook.RETIRED })
         assertNull(StampBook.field(StampCode.RAIN))
     }

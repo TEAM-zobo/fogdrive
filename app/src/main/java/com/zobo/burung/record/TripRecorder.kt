@@ -21,7 +21,7 @@ interface ExploreSink {
 enum class StampCode(val title: String, val description: String) {
     RAIN("빗속 개척", "와이퍼가 켜진 채 새 길을 달렸어요"),
     NIGHT("야간 개척", "전조등을 켜고 새 길을 달렸어요"),
-    FAMILY("가족 탐험", "뒷좌석에 가족을 태우고 함께 새 길을 탐험했어요"),
+    FAMILY("뒷좌석 탐험", "뒷좌석에 누군가 타고 함께 새 길을 탐험했어요"),
     CHARGE("충전소 깃발", "정차 중 충전으로 배터리가 올랐어요"),
     ARRIVAL("목적지 정복", "내비 안내를 따라 목적지에 도착했어요"),
     EXPEDITION("새 동네 원정", "새 동네 탐험 경유지에 도착했어요"),

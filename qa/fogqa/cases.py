@@ -136,9 +136,9 @@ def tap_scrolling(ctx, text, swipes=8):
     raise CaseFailed(f"'{text}'을(를) 찾지 못함")
 
 
-STAMP_NAMES = ("가족 탐험", "함께 탐험", "첫 시동")
+STAMP_NAMES = ("함께 탐험", "첫 시동")
 # Retired: driving in the rain or with the low beam on earns nothing (no reward for riskier driving).
-RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척", "충전소 깃발", "바람길 개척", "마라톤 드라이브")
+RETIRED_NAMES = ("뒷좌석 탐험", "가족 탐험", "빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척", "충전소 깃발", "바람길 개척", "마라톤 드라이브")
 
 
 def read_stamps(ctx):
@@ -352,13 +352,12 @@ def tc_stamp_night(ctx):
     _no_stamp_case(ctx, lambda: ctx.vc.headlamp("LowBeam"))
 
 
-@case("TC-09", "상황 스탬프", "뒷좌석 동승자와 새 길을 달리면 '가족 탐험'을 얻는다",
+@case("TC-09", "상황 스탬프", "뒷좌석에 누가 타도 자리별 스탬프는 없다 (누가 탔는지 알 수 없음)",
       "앱 초기화",
       ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
-      ["가족 탐험 획득", "다른 스탬프 없음"])
+      ["스탬프 없음 (첫 시동 제외; 함께 탐험은 주행이 끝난 뒤라 TC-19에서 확인)"])
 def tc_stamp_family(ctx):
-    # Any drive with a passenger also earns "함께 탐험" (TC-19).
-    _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험", also=("함께 탐험",))
+    _no_stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True))
 
 
 @case("TC-11", "주행 모드", "주행 중에는 주행 모드(지도·현재 위치·짧은 숫자)만 보이고, 정차하면 전체 화면으로 돌아온다",
@@ -422,7 +421,7 @@ def tc_detour(ctx):
 @case("TC-13", "시연 모드", "시연 모드가 출발→주행→하차까지 끝까지 재생된다",
       "앱 초기화",
       ["지도 → 시연 주행 → 시연 시작", "완료 메시지까지 대기(성수 코스 36 km, 기본 60 km/h·10배속으로 약 4분)", "기록·도감 확인", "시연 중지"],
-      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "가족 탐험 획득, 빗속 개척 없음"])
+      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "함께 탐험 획득, 빗속 개척 없음"])
 def tc_demo(ctx):
     fresh(ctx)
     # Started from the map's own demo panel: the drive ends back on the map, where the completion
@@ -436,7 +435,7 @@ def tc_demo(ctx):
     s = read_stamps(ctx)
     ctx.log(f"기록 {r} / 스탬프 {s}")
     ctx.check(r["landings"] == 1 and r["trips"] == 1, "하차 1곳, 주행 1건")
-    ctx.check(s.get("가족 탐험", 0) >= 1 and not s.get("빗속 개척"), "가족 탐험, 빗속 개척 없음")
+    ctx.check(s.get("함께 탐험", 0) >= 1 and not s.get("빗속 개척"), "함께 탐험, 빗속 개척 없음")
     # Stopped from the map's demo panel, which keeps "시연 중지" on screen after the drive ends.
     ctx.dev.tap_text("지도")
     ctx.dev.tap_text("시연 중지")

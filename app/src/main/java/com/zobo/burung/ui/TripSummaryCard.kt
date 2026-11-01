@@ -8,6 +8,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.zobo.burung.FogRuntime
 import com.zobo.burung.TripSummary
 import com.zobo.burung.explore.Progress
+import com.zobo.burung.explore.Titles
 import com.zobo.burung.geo.Area
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -51,7 +59,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Shown on the parked map after a trip: what it cleared, the 동 it opened (with their stories), its stamps. */
+/** Shown on the parked map after a trip: what it cleared, the 동 it opened (three, the rest on demand), its stamps. */
 @Composable
 fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val kids by FogRuntime.mapPrefs.kids.collectAsState()
@@ -72,30 +80,45 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
         }
         if (summary.newDongs.isNotEmpty()) {
             Text(if (kids) "처음 가 본 동네 ${summary.newDongs.size}곳 발견!" else "처음 가 본 동네 ${summary.newDongs.size}곳", style = MaterialTheme.typography.titleMedium, color = FogColors.Blue)
-            // A long drive opens dozens of 동; the first few carry the story, the rest are named.
-            summary.newDongs.take(MAX_STORIES).forEach { d ->
-                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Outlined.Place, contentDescription = null, tint = FogColors.Blue)
-                    Column {
+            // A long drive opens dozens of 동: three are named, the rest open on "자세히 보기".
+            var all by remember(summary) { mutableStateOf(false) }
+            val shown = if (all) summary.newDongs else summary.newDongs.take(MAX_DONGS)
+            Column(
+                Modifier.heightIn(max = 260.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                shown.forEach { d ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Outlined.Place, contentDescription = null, tint = FogColors.Blue, modifier = Modifier.size(22.dp))
                         Text("${d.district} ${d.name}", style = MaterialTheme.typography.bodyLarge)
-                        d.story?.let {
-                            Text("${it.title} · ${it.line}", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
-                        }
                     }
                 }
             }
-            if (summary.newDongs.size > MAX_STORIES) {
-                Text(
-                    summary.newDongs.drop(MAX_STORIES).joinToString(", ") { it.name }.let { if (it.length > 80) it.take(79) + "…" else it },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = FogColors.TextSub,
-                )
+            if (summary.newDongs.size > MAX_DONGS) {
+                TextButton(onClick = { all = !all }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                    Text(
+                        if (all) "접기" else "외 ${summary.newDongs.size - MAX_DONGS}곳 자세히 보기",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = FogColors.Accent,
+                    )
+                }
             }
         }
-        if (summary.stamps.isNotEmpty()) {
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                summary.stamps.take(MAX_STAMP_PILLS).forEach { Pill(it.title, FogColors.Amber) }
-                if (summary.stamps.size > MAX_STAMP_PILLS) Pill("+${summary.stamps.size - MAX_STAMP_PILLS}", FogColors.TextSub)
+        // What this trip added to 내 탐험: titles it completed first, then the stamps it got for the first time.
+        val titles = summary.newTitles.mapNotNull { id -> Titles.ALL.firstOrNull { it.id == id } }
+        if (titles.isNotEmpty()) {
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.Shield, contentDescription = null, tint = FogColors.Accent, modifier = Modifier.size(22.dp))
+                Text(if (kids) "새 칭호를 받았어요!" else "새 칭호", style = MaterialTheme.typography.titleSmall, color = FogColors.Accent)
+                titles.forEach { Pill(it.name(kids), FogColors.Accent) }
+            }
+        }
+        if (summary.newStamps.isNotEmpty()) {
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.Verified, contentDescription = null, tint = FogColors.Amber, modifier = Modifier.size(22.dp))
+                Text("새 스탬프", style = MaterialTheme.typography.titleSmall, color = FogColors.Amber)
+                summary.newStamps.take(MAX_STAMP_PILLS).forEach { Pill(it.title, FogColors.Amber) }
+                if (summary.newStamps.size > MAX_STAMP_PILLS) Pill("+${summary.newStamps.size - MAX_STAMP_PILLS}", FogColors.TextSub)
             }
         }
         if (summary.withPassenger) Text(
@@ -195,7 +218,7 @@ private class Confetti(i: Int) {
     val color = r.nextInt(4)
 }
 
-private const val MAX_STORIES = 3
+private const val MAX_DONGS = 3
 private const val MAX_STAMP_PILLS = 4
 private const val CONFETTI = 28
 private const val BURST_MS = 1_400

@@ -23,7 +23,7 @@ class DemoCourse(
     val rain: ClosedFloatingPointRange<Double>? = null,
     /** Low beams on for the whole drive (야간 개척). */
     val lowBeam: Boolean = false,
-    /** Someone in the rear seat (가족 탐험). */
+    /** Someone in the rear seat (a passenger: 함께 탐험). */
     val rearPassenger: Boolean = false,
     /** Speed limit shown by the stand-in guidance, km/h. */
     val speedLimit: Int = 50,

@@ -28,6 +28,7 @@ import com.zobo.burung.demo.DemoCourses
 import com.zobo.burung.demo.DemoDrive
 import com.zobo.burung.explore.Milestones
 import com.zobo.burung.explore.StampBook
+import com.zobo.burung.explore.Titles
 import com.zobo.burung.explore.Progress
 import com.zobo.burung.geo.Area
 import com.zobo.burung.geo.Tiles
@@ -243,6 +244,8 @@ class RecordingService : Service() {
     private val tripStamps = ArrayList<StampCode>()
     /** Someone rode along (front or rear seat) at some point of this trip. */
     private var tripPassenger = false
+    /** Stamp codes already collected when this trip started; null when the start wasn't seen. */
+    private var stampsAtStart: Set<String>? = null
     /** Level when this trip started, for the arrival card's level-up; null when the start wasn't seen. */
     private var levelAtStart: Int? = null
 
@@ -328,6 +331,7 @@ class RecordingService : Service() {
                 tripStamps.clear()
                 levelAtStart = Progress.level(repo.xp())
                 tripPassenger = FogRuntime.vehicle.state.value.hasPassenger
+                stampsAtStart = repo.stampCodes().toSet()
                 FogRuntime.live.update { it.copy(lastTrip = null) }
                 note("새 주행 기록을 시작했어요")
             }
@@ -372,6 +376,17 @@ class RecordingService : Service() {
         val s = recorder.stats
         val withPassenger = tripPassenger
         tripPassenger = false
+        val stampsBefore = stampsAtStart
+        stampsAtStart = null
+        val have = repo.stampCodes().toSet()
+        fun codes(names: Set<String>) = StampBook.ACTIVE.filterTo(HashSet()) { it.name in names }
+        // Only what this trip added: a stamp held already (주말 탐험가 again) is not news.
+        val newStamps = tripStamps.distinct().filter { stampsBefore == null || it.name !in stampsBefore }
+        val newTitles = if (stampsBefore == null) emptyList() else {
+            val was = codes(stampsBefore)
+            val now = codes(have)
+            Titles.ALL.filter { it.earned(now) && !it.earned(was) }.map { it.id }
+        }
         val before = levelAtStart ?: 0
         levelAtStart = null
         if (s.distanceMeters < MIN_SUMMARY_M && s.newCells == 0) return
@@ -385,6 +400,8 @@ class RecordingService : Service() {
             newDongs = tripNewDongs.toList(),
             stamps = tripStamps.distinct(),
             withPassenger = withPassenger,
+            newStamps = newStamps,
+            newTitles = newTitles,
             levelBefore = before,
             levelAfter = after,
         )

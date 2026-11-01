@@ -4,7 +4,7 @@ import com.zobo.burung.record.StampCode
 import java.util.TimeZone
 import kotlin.random.Random
 
-/** The three shelves of the stamp book; filling one (all four stamps) earns its title. */
+/** The three shelves of the stamp book; filling one (all its stamps) earns its title. */
 enum class StampField(val label: String, val kidsLabel: String) {
     DAILY("꾸준함", "매일 탐험"),
     REGION("넓힘", "새 동네 찾기"),
@@ -25,12 +25,16 @@ data class StampProgress(
 
 /** Which stamps are collected, on which shelf, how a missing one is earned and how far along it is. */
 object StampBook {
-    /** The twelve stamps shown and awarded, four per field, in the order shown. */
-    val ACTIVE: List<StampCode> = listOf(
-        StampCode.FIRST_DRIVE, StampCode.WEEK_THREE, StampCode.STREAK_4W, StampCode.KM_1000,
-        StampCode.DONG_10, StampCode.NEW_DISTRICT, StampCode.PROVINCE_3, StampCode.DONG_100,
-        StampCode.WEEKEND, StampCode.FAR_DAY, StampCode.FAMILY, StampCode.CREW_MISSION,
+    /** The stamps of each field, in the order shown. */
+    val BY_FIELD: Map<StampField, List<StampCode>> = linkedMapOf(
+        StampField.DAILY to listOf(StampCode.FIRST_DRIVE, StampCode.WEEK_THREE, StampCode.STREAK_4W, StampCode.KM_1000),
+        StampField.REGION to listOf(StampCode.DONG_10, StampCode.NEW_DISTRICT, StampCode.PROVINCE_3, StampCode.DONG_100),
+        // No stamp for who sits where: the car knows a seat is taken, not who is in it.
+        StampField.TRIP to listOf(StampCode.WEEKEND, StampCode.FAR_DAY, StampCode.CREW_MISSION),
     )
+
+    /** The eleven stamps shown and awarded, field by field. */
+    val ACTIVE: List<StampCode> = BY_FIELD.values.flatten()
 
     /**
      * Never awarded again: they reward driving in the rain, at night, on a nearly empty battery, in
@@ -42,12 +46,9 @@ object StampBook {
         StampCode.LOW_BATTERY, StampCode.SPORT, StampCode.MARATHON,
     )
 
-    fun field(code: StampCode): StampField? = when (ACTIVE.indexOf(code)) {
-        in 0..3 -> StampField.DAILY
-        in 4..7 -> StampField.REGION
-        in 8..11 -> StampField.TRIP
-        else -> null
-    }
+    fun field(code: StampCode): StampField? = BY_FIELD.entries.firstOrNull { code in it.value }?.key
+
+    fun inField(f: StampField): List<StampCode> = BY_FIELD.getValue(f)
 
     /** (now, target) for a stamp earned by reaching a number, else null. */
     fun progress(code: StampCode, p: StampProgress): Pair<Int, Int>? = when (code) {
@@ -83,7 +84,6 @@ object StampBook {
         StampCode.DONG_100 -> "읍·면·동 100곳 탐험"
         StampCode.WEEKEND -> "주말에 새 길 주행"
         StampCode.FAR_DAY -> "집에서 50 km 넘게 떨어진 곳 도착"
-        StampCode.FAMILY -> "뒷좌석에 가족과 함께 새 길 탐험"
         StampCode.CREW_MISSION -> "누군가와 함께 탐험"
         else -> code.description
     } else when (code) {
@@ -97,7 +97,6 @@ object StampBook {
         StampCode.DONG_100 -> "동네 100곳을 찾아요"
         StampCode.WEEKEND -> "주말에 새 길로 나들이 가요"
         StampCode.FAR_DAY -> "멀리 여행을 떠나요"
-        StampCode.FAMILY -> "뒷자리에 가족을 태우고 새 길을 가요"
         StampCode.CREW_MISSION -> "누군가와 함께 탐험해요"
         else -> code.description
     }
@@ -159,11 +158,11 @@ object Titles {
     const val NONE = "탐험대원"
 
     val ALL: List<Title> = listOf(
-        Title("daily", "우리 동네 탐험가", "우리 동네 탐험가", StampField.DAILY, 4),
-        Title("region", "지도 개척자", "지도 대장", StampField.REGION, 4),
-        Title("trip", "주말 원정대", "주말 모험왕", StampField.TRIP, 4),
+        Title("daily", "우리 동네 탐험가", "우리 동네 탐험가", StampField.DAILY, StampBook.inField(StampField.DAILY).size),
+        Title("region", "지도 개척자", "지도 대장", StampField.REGION, StampBook.inField(StampField.REGION).size),
+        Title("trip", "주말 원정대", "주말 모험왕", StampField.TRIP, StampBook.inField(StampField.TRIP).size),
         Title("veteran", "베테랑 탐험가", "베테랑 탐험가", null, 8),
-        Title("captain", "부릉 탐험대장", "부릉 탐험대장", null, 12),
+        Title("captain", "부릉 탐험대장", "부릉 탐험대장", null, StampBook.ACTIVE.size),
     )
 
     /** The picked title if still earned, else the hardest one earned; null before any. */
@@ -190,7 +189,7 @@ object WeeklyPicks {
      * 2. a progress stamp well on its way (60 % or more),
      * 3. a place to go now: a new 시·군·구 when one is near ([placeNear]), the third 시·도 when one is
      *    near ([provinceNear]) and two are in,
-     * 4. the rest (a weekend drive unless [weekendPaused], a far trip, family, a drive together).
+     * 4. the rest (a weekend drive unless [weekendPaused], a far trip, a drive together).
      * Never 첫 시동 (it comes with the first drive), and never what a week can't reach: 4 weeks in a
      * row before the third, more than [WEEK_KM] km or [WEEK_DONGS] 동 still to go, a place with
      * none near. Ties are broken in an order fixed for the [week].
@@ -204,7 +203,7 @@ object WeeklyPicks {
         provinceNear: Boolean = placeNear,
     ): List<StampCode> {
         val open = StampBook.ACTIVE.filter { it !in collected && it != StampCode.FIRST_DRIVE }
-        val closing = StampField.entries.filter { f -> StampBook.ACTIVE.count { StampBook.field(it) == f && it in collected } == 3 }.toSet()
+        val closing = StampField.entries.filter { f -> StampBook.inField(f).count { it !in collected } == 1 }.toSet()
         fun ratio(c: StampCode) = StampBook.progress(c, p)?.let { (n, t) -> n.toDouble() / t } ?: 0.0
         fun left(c: StampCode) = StampBook.progress(c, p)?.let { (n, t) -> t - n } ?: 0
         fun reachable(c: StampCode): Boolean = when (c) {

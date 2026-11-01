@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.EnergySavingsLeaf
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.FamilyRestroom
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
@@ -128,7 +127,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                     fontSize = 56.sp, fontWeight = FontWeight.Black, color = INK, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (shown == null) k("한 분야의 스탬프 4개를 모으면 첫 칭호가 생겨요", "스탬프 4개를 한 줄 모으면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),
+                    if (shown == null) k("한 분야의 스탬프를 모두 모으면 첫 칭호가 생겨요", "스탬프를 한 줄 다 모으면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),
                     fontSize = 22.sp, color = SUB,
                 )
             }
@@ -275,7 +274,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                         val earned = title.earned(collected)
                         Shield(80.dp, if (earned) ShieldState.EARNED else ShieldState.LOCKED, titleIcon(title))
                         Text(title.name(kids), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = if (earned) TEAL else GREY_TEXT, textAlign = TextAlign.Center)
-                        Text(if (earned) k("칭호 획득!", "칭호를 받았어요!") else k("4개 모으면 칭호", "4개 모으면 칭호!"), fontSize = 16.sp, color = FogColors.TextSub)
+                        Text(if (earned) k("칭호 획득!", "칭호를 받았어요!") else k("${title.need}개 모으면 칭호", "${title.need}개 모으면 칭호!"), fontSize = 16.sp, color = FogColors.TextSub)
                     }
                 }
             }
@@ -375,7 +374,6 @@ private fun fieldIcon(f: StampField): ImageVector = when (f) {
 }
 
 fun stampIcon(code: StampCode): ImageVector = when (code) {
-    StampCode.FAMILY -> Icons.Outlined.FamilyRestroom
     StampCode.CHARGE -> Icons.Outlined.BatteryChargingFull
     StampCode.ARRIVAL -> Icons.Outlined.Flag
     StampCode.EXPEDITION -> Icons.Outlined.TravelExplore

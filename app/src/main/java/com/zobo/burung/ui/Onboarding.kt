@@ -50,7 +50,7 @@ private val pages: List<TutorialPage>
         TutorialPage(
             Icons.Outlined.Flag, FogColors.Amber, "내린 곳에는 깃발",
             "P단에서 문을 열고 내리면 그 주변까지 탐험하고 깃발을 꽂아요. " +
-                "주말 나들이, 가족과 함께, 멀리 떠난 날에는 스탬프도 모여요.",
+                "주말 나들이, 누군가와 함께한 날, 멀리 떠난 날에는 스탬프도 모여요.",
         ),
         TutorialPage(
             Icons.Outlined.Explore, FogColors.Blue, "도감과 내 탐험",

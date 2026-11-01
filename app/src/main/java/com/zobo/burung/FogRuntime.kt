@@ -59,6 +59,9 @@ data class TripSummary(
     val stamps: List<StampCode>,
     /** Someone rode along (front or rear seat). */
     val withPassenger: Boolean = false,
+    /** Stamps collected for the first time on this trip, and the titles they completed (Title ids). */
+    val newStamps: List<StampCode> = emptyList(),
+    val newTitles: List<String> = emptyList(),
     /** Level when the trip started and when it ended; 0 when the start wasn't seen (app restarted mid-trip). */
     val levelBefore: Int = 0,
     val levelAfter: Int = 0,
