@@ -256,7 +256,7 @@ object WeeklyPicks {
         provinceNear: Boolean = placeNear,
     ): List<StampCode> {
         val open = StampBook.ACTIVE.filter { it !in collected && it != StampCode.FIRST_DRIVE }
-        val closing = StampField.entries.filter { f -> StampBook.inField(f).count { it !in collected } == 1 }.toSet()
+        val closing = Titles.ALL.mapNotNull { it.field }.filter { f -> StampBook.inField(f).count { it !in collected } == 1 }.toSet()
         fun ratio(c: StampCode) = StampBook.progress(c, p)?.let { (n, t) -> n.toDouble() / t } ?: 0.0
         fun left(c: StampCode) = StampBook.progress(c, p)?.let { (n, t) -> t - n } ?: 0
         fun reachable(c: StampCode): Boolean = when (c) {

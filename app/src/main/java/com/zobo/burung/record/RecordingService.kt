@@ -375,7 +375,7 @@ class RecordingService : Service() {
         stampsAtStart = null
         val have = repo.stampCodes().toSet()
         fun codes(names: Set<String>) = StampBook.ACTIVE.filterTo(HashSet()) { it.name in names }
-        // Only what this trip added: a stamp held already (주말 탐험가 again) is not news.
+        // Only what this trip added: a stamp held already (주말 드라이브 again) is not news.
         val newStamps = tripStamps.distinct().filter { stampsBefore == null || it.name !in stampsBefore }
         val titlesBefore = titlesAtStart
         titlesAtStart = null

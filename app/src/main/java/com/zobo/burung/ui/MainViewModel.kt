@@ -340,7 +340,7 @@ class MainViewModel : ViewModel() {
      * This week's three suggested stamps (see WeeklyPicks): picked on the first look of the week and
      * kept until Monday, each marked once collected. A place to go is attached where one fits and is
      * within [PLACE_NEAR_KM]: the nearest 시·군·구 not entered for 새 도시 첫발, the nearest 시·도 for 시·도 3곳.
-     * 주말 탐험가 suggested two weeks running without being earned rests for four weeks.
+     * 주말 드라이브 suggested two weeks running without being earned rests for four weeks.
      */
     // From the database flow, not [stamps]: that starts as an empty list before Room's first read, and
     // picks chosen then would be kept all week with stamps already collected among them.

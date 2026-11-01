@@ -125,7 +125,7 @@ class MapPrefs(context: Context) {
     }
 
     /**
-     * The picks of [pickedWeek] are replaced in [week]: 주말 탐험가 picked that week and not earned is a
+     * The picks of [pickedWeek] are replaced in [week]: 주말 드라이브 picked that week and not earned is a
      * miss; after two misses in consecutive weeks it is not suggested for [WEEKEND_REST_WEEKS] weeks
      * (some drivers just don't drive at weekends). A week without it, or with it earned, resets the run.
      */
