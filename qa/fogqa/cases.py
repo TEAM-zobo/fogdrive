@@ -136,7 +136,7 @@ def tap_scrolling(ctx, text, swipes=8):
     raise CaseFailed(f"'{text}'을(를) 찾지 못함")
 
 
-STAMP_NAMES = ("가족 탐험", "함께한 드라이브", "첫 시동")
+STAMP_NAMES = ("가족 탐험", "함께 탐험", "첫 시동")
 # Retired: driving in the rain or with the low beam on earns nothing (no reward for riskier driving).
 RETIRED_NAMES = ("빗속 개척", "야간 개척", "비 오는 밤", "심야 질주", "아슬아슬 탐험", "스포츠 개척", "충전소 깃발", "바람길 개척", "마라톤 드라이브")
 
@@ -357,8 +357,8 @@ def tc_stamp_night(ctx):
       ["뒷좌석 왼쪽 탑승", "기어 D로 12개 지점 주행", "내 탐험 탭 확인"],
       ["가족 탐험 획득", "다른 스탬프 없음"])
 def tc_stamp_family(ctx):
-    # Any drive with a passenger also earns "함께한 드라이브" (TC-19).
-    _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험", also=("함께한 드라이브",))
+    # Any drive with a passenger also earns "함께 탐험" (TC-19).
+    _stamp_case(ctx, lambda: ctx.vc.seat("rear_left", True), "가족 탐험", also=("함께 탐험",))
 
 
 @case("TC-11", "주행 모드", "주행 중에는 주행 모드(지도·현재 위치·짧은 숫자)만 보이고, 정차하면 전체 화면으로 돌아온다",
@@ -523,10 +523,10 @@ def tc_trip_summary(ctx):
     ctx.check(ctx.dev.wait_text("이번 주행 요약", timeout=5, present=False), "닫기 후 사라짐")
 
 
-@case("TC-19", "동승자 주행", "동승자와 주행하면 '함께한 드라이브' 스탬프를 받고, 주행 요약에 함께한 주행으로 나온다",
+@case("TC-19", "동승자 주행", "동승자와 주행하면 '함께 탐험' 스탬프를 받고, 주행 요약에 '오늘은 함께 탐험했어요!'가 나온다",
       "앱 초기화",
       ["조수석 탑승", "기어 D로 20개 지점 주행", "기어 P, 도어 열기", "요약 카드 확인"],
-      ["주행 중 '동승자 미션' 표시 없음", "주행 요약에 '동승자와 함께한 주행'과 '함께한 드라이브' 스탬프"])
+      ["주행 중 '동승자 미션' 표시 없음", "주행 요약에 '오늘은 함께 탐험했어요!'와 '함께 탐험' 스탬프"])
 def tc_crew_mission(ctx):
     fresh(ctx)
     ctx.vc.seat("passenger", True)
@@ -540,8 +540,8 @@ def tc_crew_mission(ctx):
     t = ctx.dev.texts()
     ctx.shot("crew_drive")
     ctx.log(f"요약: {[x for x in t if '함께' in x]}")
-    ctx.check("동승자와 함께한 주행" in t, "동승자와 함께한 주행 표시")
-    ctx.check("함께한 드라이브" in t, "함께한 드라이브 스탬프")
+    ctx.check("오늘은 함께 탐험했어요!" in t, "오늘은 함께 탐험했어요! 표시")
+    ctx.check("함께 탐험" in t, "함께 탐험 스탬프")
 
 
 @case("TC-20", "차량 신호", "창문·주행 가능 거리 신호가 연결 상태에 그대로 보인다",

@@ -31,7 +31,7 @@ class DemoCourse(
     val windowOpen: ClosedFloatingPointRange<Double>? = null,
     /** Sunroof open for the whole drive (하늘 열고 개척). */
     val sunroof: Boolean = false,
-    /** Front passenger aboard (a drive with a passenger earns 함께한 드라이브). */
+    /** Front passenger aboard (a drive with a passenger earns 함께 탐험). */
     val frontPassenger: Boolean = false,
     val driveMode: DriveMode = DriveMode.NORMAL,
 ) {

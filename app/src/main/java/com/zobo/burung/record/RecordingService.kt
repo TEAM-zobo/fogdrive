@@ -219,7 +219,7 @@ class RecordingService : Service() {
     /**
      * Milestone stamps at the end of a trip (see Milestones): a week of 3 days, 4 weeks in a row,
      * 1,000 km, 10 and 100 읍·면·동, 3 시·도, and 멀리 떠난 날 (got off 50 km+ from home, straight line:
-     * how far, not how long, so no reward for driving without a break), and 함께한 드라이브 (a drive
+     * how far, not how long, so no reward for driving without a break), and 함께 탐험 (a drive
      * with someone aboard; nothing to do for it, the seats tell). Each is earned once.
      */
     private suspend fun awardMilestones(at: Long) {

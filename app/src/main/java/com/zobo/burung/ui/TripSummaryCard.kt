@@ -99,7 +99,7 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
             }
         }
         if (summary.withPassenger) Text(
-            if (kids) "오늘은 함께 탐험했어요!" else "동승자와 함께한 주행",
+            "오늘은 함께 탐험했어요!",
             style = MaterialTheme.typography.bodyMedium,
             color = FogColors.Accent,
         )

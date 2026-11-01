@@ -83,8 +83,8 @@ object StampBook {
         StampCode.DONG_100 -> "읍·면·동 100곳 탐험"
         StampCode.WEEKEND -> "주말에 새 길 주행"
         StampCode.FAR_DAY -> "집에서 50 km 넘게 떨어진 곳 도착"
-        StampCode.FAMILY -> "뒷좌석 동승자와 새 길 주행"
-        StampCode.CREW_MISSION -> "동승자와 함께 주행"
+        StampCode.FAMILY -> "뒷좌석에 가족과 함께 새 길 탐험"
+        StampCode.CREW_MISSION -> "누군가와 함께 탐험"
         else -> code.description
     } else when (code) {
         StampCode.FIRST_DRIVE -> "처음 같이 달리면 받아요"
@@ -98,7 +98,7 @@ object StampBook {
         StampCode.WEEKEND -> "주말에 새 길로 나들이 가요"
         StampCode.FAR_DAY -> "멀리 여행을 떠나요"
         StampCode.FAMILY -> "뒷자리에 가족을 태우고 새 길을 가요"
-        StampCode.CREW_MISSION -> "누군가와 함께 달려요"
+        StampCode.CREW_MISSION -> "누군가와 함께 탐험해요"
         else -> code.description
     }
 }
