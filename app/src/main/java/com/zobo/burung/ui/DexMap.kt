@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
@@ -33,7 +34,7 @@ class DexMark(val name: String, val x: Float, val y: Float, val dot: Boolean)
 class DexShape(
     val code: String, val name: String, val rings: List<FloatArray>, val labelX: Float, val labelY: Float, val outline: Outline,
     val marks: List<DexMark> = emptyList(),
-    /** Where an inset (울릉도·독도 on the country map) sits, in tile units: x0, y0, x1, y1 (taps there pick the region; not drawn). */
+    /** Where an inset (울릉도·독도 on the country map) sits, in tile units: x0, y0, x1, y1 (a faint dashed box; taps there pick the region). */
     val inset: FloatArray? = null,
     /** How far the shape is drawn from where it is, in tile units southwards (제주, nearer the mainland). */
     val shiftY: Float = 0f,
@@ -97,8 +98,8 @@ object DexShapes {
             mark(DOKDO.name, INSET_DOKDO_LAT, INSET_DOKDO_LNG, dot = true),
         )
         val box = floatArrayOf(
-            Tiles.lngToX(129.62).toFloat(), Tiles.latToY(37.12).toFloat(),
-            Tiles.lngToX(130.16).toFloat(), Tiles.latToY(36.80).toFloat(),
+            Tiles.lngToX(129.58).toFloat(), Tiles.latToY(37.16).toFloat(),
+            Tiles.lngToX(130.20).toFloat(), Tiles.latToY(36.70).toFloat(),
         )
         return DexShape(s.code, s.name, rings, s.labelX, s.labelY, s.outline, marks, box)
     }
@@ -240,6 +241,14 @@ fun DexMap(
                         drawPath(paths[i], edge, style = Stroke(strokeW))
                     }
                     shapes.forEach { s ->
+                        // The inset (울릉도·독도) in a faint dashed box, as maps mark a moved-in island.
+                        s.inset?.let { box ->
+                            val tl = Offset(fit.px(box[0]), fit.py(box[1]))
+                            drawRoundRect(
+                                markEdge.copy(alpha = 0.22f), tl, Size(fit.px(box[2]) - tl.x, fit.py(box[3]) - tl.y), CornerRadius(4f * density),
+                                style = Stroke(1.2f * density, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f * density, 4f * density))),
+                            )
+                        }
                         s.marks.forEach { m ->
                             val c = Offset(fit.px(m.x), fit.py(m.y))
                             if (m.dot) {
