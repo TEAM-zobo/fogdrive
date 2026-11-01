@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds the demo record of the persona: a driver in their 30s living in 위례 (송파꿈에그린 위례24단지) who drives to
 현대자동차 본사 (서초구 양재) on weekdays, to 코스트코 양재점 on Saturday mornings, out of town at
-weekends, and once a quarter to 강릉. Ten weeks are on record; 강릉 is left for the live demo.
+weekends, and once a quarter to 강릉. Four weeks are on record; 강릉 is left for the live demo.
 
     python3 tools/demo/persona/fetch_routes.py          # once: road paths -> routes.json
     python3 tools/demo/persona/make_persona_backup.py [--today 2026-11-01]
@@ -33,7 +33,7 @@ DRIVE_RADIUS = 1      # TripRecorder.DRIVE_RADIUS
 LANDING_RADIUS = 3    # TripRecorder.LANDING_RADIUS
 TRACK_STEP_M = 20.0
 SOURCE_DRIVE, SOURCE_LANDING = 0, 1
-WEEKS = 10
+WEEKS = 4
 # Weekday holidays in the period: no commute (추석 9/24·9/25, 개천절 대체 10/5, 한글날 10/9).
 HOLIDAYS = {date(2026, 9, 24), date(2026, 9, 25), date(2026, 10, 5), date(2026, 10, 9)}
 # 추석 holidays, spent at the parents' (no outings those days).
@@ -159,11 +159,11 @@ def length_m(pts):
     return sum(dist_m(a, b) for a, b in zip(pts, pts[1:]))
 
 
-# ---- the ten weeks ----
+# ---- the four weeks ----
 
 def plan(today):
     """(start datetime, place, outbound, passenger) per one-way trip, oldest first."""
-    first = today - timedelta(days=today.weekday() + 7 * (WEEKS - 1))   # Monday of the first of the ten weeks
+    first = today - timedelta(days=today.weekday() + 7 * (WEEKS - 1))   # Monday of the first of the four weeks
     trips = []
     sat_i = sun_i = 0
     d = first

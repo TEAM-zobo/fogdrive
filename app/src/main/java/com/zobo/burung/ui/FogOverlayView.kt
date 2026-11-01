@@ -286,12 +286,6 @@ class FogOverlayView(context: Context) : View(context) {
         style = Paint.Style.STROKE
         strokeWidth = 2.5f * density
     }
-    private val pinText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textAlign = Paint.Align.CENTER
-        textSize = 16f * density
-        typeface = Typeface.create(Typeface.DEFAULT, 600, false)
-    }
     private val detourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#0081F8")
         style = Paint.Style.STROKE
@@ -752,8 +746,8 @@ class FogOverlayView(context: Context) : View(context) {
     private var clusterN = IntArray(64)
 
     /**
-     * Drop-off pins, merged on screen: pins within [CLUSTER_DP] of a group join it (drawn at the
-     * group's average position with the count), so repeated stops at home or work stay one marker.
+     * Drop-off pins, merged on screen: pins within [CLUSTER_DP] of a group join it (one pin at the
+     * group's average position, no count), so repeated stops at home or work stay one marker.
      */
     private fun drawLandingPins(c: Canvas, x0: Double, y0: Double, px: Double) {
         if (landings.isEmpty()) return
@@ -790,17 +784,9 @@ class FogOverlayView(context: Context) : View(context) {
             val x = clusterX[g] / n
             val y = clusterY[g] / n
             if (x < -radius || y < -radius || x > width + radius || y > height + radius) continue
-            if (n == 1) {
-                c.drawRect(x - 2.5f * density, y - 18f * density, x + 2.5f * density, y, pinPaint)
-                c.drawCircle(x, y - 20f * density, 10f * density, pinPaint)
-                c.drawCircle(x, y - 20f * density, 10f * density, pinRing)
-            } else {
-                val r = (14f + 2f * minOf(n, 9)) * density
-                c.drawCircle(x, y, r, pinPaint)
-                c.drawCircle(x, y, r, pinRing)
-                val label = if (n > 99) "99+" else n.toString()
-                c.drawText(label, x, y - (pinText.descent() + pinText.ascent()) / 2, pinText)
-            }
+            c.drawRect(x - 2.5f * density, y - 18f * density, x + 2.5f * density, y, pinPaint)
+            c.drawCircle(x, y - 20f * density, 10f * density, pinPaint)
+            c.drawCircle(x, y - 20f * density, 10f * density, pinRing)
         }
     }
 
