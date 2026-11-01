@@ -34,14 +34,21 @@ class ExpeditionTest {
     }
 
     @Test
-    fun aFullFieldEarnsItsTitle() {
+    fun titlesOpenFromStampsAndTheRecord() {
         val daily = StampBook.ACTIVE.filter { StampBook.field(it) == StampField.DAILY }.toSet()
         assertEquals("daily", Titles.shown("", daily)?.id)
         assertNull(Titles.shown("", daily - StampCode.KM_1000))
         // Stamps outside the book count for nothing.
         assertNull(Titles.shown("", setOf(StampCode.RAIN, StampCode.ARRIVAL, StampCode.ECO)))
-        assertEquals("captain", Titles.shown("", StampBook.ACTIVE.toSet())?.id)
-        assertEquals("daily", Titles.shown("daily", StampBook.ACTIVE.toSet())?.id)
+        // 넓힘 has no title of its own.
+        assertNull(Titles.shown("", StampBook.ACTIVE.filter { StampBook.field(it) == StampField.REGION }.toSet()))
+        val p = StampProgress(commutes = 20, islands = 1, seoulDistricts = 25)
+        assertEquals(setOf("commute", "island", "seoul"), Titles.earnedIds(emptySet(), p))
+        assertEquals("seoul", Titles.shown("", emptySet(), p)?.id)
+        assertEquals("island", Titles.shown("island", emptySet(), p)?.id)
+        assertFalse("commute" in Titles.earnedIds(emptySet(), StampProgress(commutes = 19)))
+        // Nearest to done: 18 of 20 commutes beats 1 of 25 구.
+        assertEquals("commute", Titles.next(emptySet(), StampProgress(commutes = 18, seoulDistricts = 1))?.id)
     }
 
     @Test

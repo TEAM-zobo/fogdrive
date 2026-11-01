@@ -21,7 +21,18 @@ data class StampProgress(
     /** 읍·면·동 / 시·도 entered by driving or getting off (not the cells seeded from the navigation). */
     val dongs: Int = 0,
     val provinces: Int = 0,
+    /** Weekday trips ending at the navigation's 회사. */
+    val commutes: Int = 0,
+    /** Island 시·군 entered (see [Islands]). */
+    val islands: Int = 0,
+    /** 서울 자치구 entered. */
+    val seoulDistricts: Int = 0,
 )
+
+/** The 시·군 that are islands (or made of islands), for 섬 탐험가. */
+object Islands {
+    val DISTRICTS = setOf("제주시", "서귀포시", "울릉군", "강화군", "옹진군", "신안군", "완도군", "진도군")
+}
 
 /** Which stamps are collected, on which shelf, how a missing one is earned and how far along it is. */
 object StampBook {
@@ -140,39 +151,77 @@ object Milestones {
     }
 }
 
-/** A title: earned once [need] of the active stamps of its [field] (or of all, when null) are collected. */
-data class Title(val id: String, val name: String, val kidsName: String, val field: StampField?, val need: Int) {
+/** What opens a title: a full stamp field, or a count from the driver's own record. */
+enum class TitleKind { FIELD, COMMUTE, ISLAND, SEOUL }
+
+/** A title: earned once its progress reaches [need] (stamps of its [field], commutes, islands or 서울 구). */
+data class Title(
+    val id: String,
+    val name: String,
+    val kidsName: String,
+    val field: StampField?,
+    val need: Int,
+    val kind: TitleKind = TitleKind.FIELD,
+) {
     fun name(kids: Boolean) = if (kids) kidsName else name
 
-    fun progress(collected: Set<StampCode>): Int =
-        collected.count { it in StampBook.ACTIVE && (field == null || StampBook.field(it) == field) }
+    fun progress(collected: Set<StampCode>, p: StampProgress = StampProgress()): Int = when (kind) {
+        TitleKind.FIELD -> collected.count { it in StampBook.ACTIVE && StampBook.field(it) == field }
+        TitleKind.COMMUTE -> p.commutes
+        TitleKind.ISLAND -> p.islands
+        TitleKind.SEOUL -> p.seoulDistricts
+    }.coerceAtMost(need)
 
-    fun earned(collected: Set<StampCode>) = progress(collected) >= need
+    fun earned(collected: Set<StampCode>, p: StampProgress = StampProgress()) = progress(collected, p) >= need
 
-    fun condition(kids: Boolean): String = field?.let { "${if (kids) it.kidsLabel else it.label} 스탬프 모두" }
-        ?: "스탬프 ${need}개"
+    private fun fieldLabel(kids: Boolean) = field?.let { if (kids) it.kidsLabel else it.label } ?: ""
+
+    /** How the title is opened, short (under its shield). */
+    fun condition(kids: Boolean): String = when (kind) {
+        TitleKind.FIELD -> "${fieldLabel(kids)} 스탬프 모두"
+        TitleKind.COMMUTE -> if (kids) "회사에 ${need}번 출근" else "평일 회사 주행 ${need}회"
+        TitleKind.ISLAND -> if (kids) "섬에 놀러 가기" else "섬 지역 가 보기"
+        TitleKind.SEOUL -> "서울 ${need}개 구 모두"
+    }
+
+    /** What is left, for the "다음 칭호" box. */
+    fun remaining(kids: Boolean, collected: Set<StampCode>, p: StampProgress): String {
+        val left = need - progress(collected, p)
+        return when (kind) {
+            TitleKind.FIELD -> "${fieldLabel(kids)} " + if (kids) "스탬프 ${left}개만 더 모아요!" else "스탬프 ${left}개만 더!"
+            TitleKind.COMMUTE -> if (kids) "출근 ${left}번만 더 해요!" else "회사 주행 ${left}회만 더!"
+            TitleKind.ISLAND -> if (kids) "섬에 놀러 가면 받아요!" else "섬 지역에 가 보면 받아요!"
+            TitleKind.SEOUL -> if (kids) "서울 동네 ${left}곳만 더 가 봐요!" else "서울 구 ${left}곳만 더!"
+        }
+    }
 }
 
 object Titles {
     /** Shown before the first title. */
     const val NONE = "탐험대원"
+    const val COMMUTE_NEED = 20
+    const val SEOUL_DISTRICTS = 25
 
     val ALL: List<Title> = listOf(
         Title("daily", "우리 동네 탐험가", "우리 동네 탐험가", StampField.DAILY, StampBook.inField(StampField.DAILY).size),
-        Title("region", "지도 개척자", "지도 대장", StampField.REGION, StampBook.inField(StampField.REGION).size),
         Title("trip", "주말 원정대", "주말 모험왕", StampField.TRIP, StampBook.inField(StampField.TRIP).size),
-        Title("veteran", "베테랑 탐험가", "베테랑 탐험가", null, 8),
-        Title("captain", "부릉 탐험대장", "부릉 탐험대장", null, StampBook.ACTIVE.size),
+        Title("commute", "프로 출근러", "출근 대장", null, COMMUTE_NEED, TitleKind.COMMUTE),
+        Title("island", "섬 탐험가", "섬 모험가", null, 1, TitleKind.ISLAND),
+        Title("seoul", "서울 마스터", "서울 대장", null, SEOUL_DISTRICTS, TitleKind.SEOUL),
     )
 
-    /** The picked title if still earned, else the hardest one earned; null before any. */
-    fun shown(picked: String, collected: Set<StampCode>): Title? =
-        ALL.firstOrNull { it.id == picked && it.earned(collected) }
-            ?: ALL.filter { it.earned(collected) }.maxByOrNull { it.need }
+    /** The picked title if still earned, else the last earned one in [ALL] (the later, the rarer). */
+    fun shown(picked: String, collected: Set<StampCode>, p: StampProgress = StampProgress()): Title? =
+        ALL.firstOrNull { it.id == picked && it.earned(collected, p) }
+            ?: ALL.lastOrNull { it.earned(collected, p) }
 
-    /** The locked title fewest stamps away (ties go to the earlier one in the list). */
-    fun next(collected: Set<StampCode>): Title? =
-        ALL.filter { !it.earned(collected) }.minByOrNull { it.need - it.progress(collected) }
+    /** The locked title nearest to done, by share of its need (ties go to the earlier one). */
+    fun next(collected: Set<StampCode>, p: StampProgress = StampProgress()): Title? =
+        ALL.filter { !it.earned(collected, p) }.maxByOrNull { it.progress(collected, p).toDouble() / it.need }
+
+    /** Ids of the titles earned. */
+    fun earnedIds(collected: Set<StampCode>, p: StampProgress): Set<String> =
+        ALL.filter { it.earned(collected, p) }.mapTo(HashSet()) { it.id }
 }
 
 /** This week's suggested stamps: picked on the first look of the week, kept until Monday. */

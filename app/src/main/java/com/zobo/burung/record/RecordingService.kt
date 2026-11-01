@@ -226,7 +226,7 @@ class RecordingService : Service() {
     private suspend fun awardMilestones(at: Long) {
         val have = repo.stampCodes()
         val atlas = withContext(Dispatchers.Default) { FogRuntime.regions?.atlas }
-        val reached = Milestones.reached(repo.stampProgress(atlas, at)).toMutableList()
+        val reached = Milestones.reached(repo.stampProgress(atlas, at, FogRuntime.navi.work.value)).toMutableList()
         val end = lastFix
         val origin = FogRuntime.navi.home.value?.let { it.lat to it.lng } ?: tripOrigin
         if (end != null && origin != null &&
@@ -246,6 +246,8 @@ class RecordingService : Service() {
     private var tripPassenger = false
     /** Stamp codes already collected when this trip started; null when the start wasn't seen. */
     private var stampsAtStart: Set<String>? = null
+    /** Titles held when this trip started; null when the start wasn't seen. */
+    private var titlesAtStart: Set<String>? = null
     /** Level when this trip started, for the arrival card's level-up; null when the start wasn't seen. */
     private var levelAtStart: Int? = null
 
@@ -316,6 +318,7 @@ class RecordingService : Service() {
                 levelAtStart = Progress.level(repo.xp())
                 tripPassenger = FogRuntime.vehicle.state.value.hasPassenger
                 stampsAtStart = repo.stampCodes().toSet()
+                titlesAtStart = titlesHeld(event.at)
                 FogRuntime.live.update { it.copy(lastTrip = null) }
                 note("새 주행 기록을 시작했어요")
             }
@@ -355,6 +358,14 @@ class RecordingService : Service() {
         }
     }
 
+    private suspend fun progressNow(at: Long) =
+        repo.stampProgress(withContext(Dispatchers.Default) { FogRuntime.regions?.atlas }, at, FogRuntime.navi.work.value)
+
+    private suspend fun titlesHeld(at: Long): Set<String> {
+        val have = repo.stampCodes().toSet()
+        return Titles.earnedIds(StampBook.ACTIVE.filterTo(HashSet()) { it.name in have }, progressNow(at))
+    }
+
     /** Summary card + a spoken wrap-up for a trip that went somewhere. */
     private suspend fun showSummary(endedAt: Long) {
         val s = recorder.stats
@@ -366,10 +377,11 @@ class RecordingService : Service() {
         fun codes(names: Set<String>) = StampBook.ACTIVE.filterTo(HashSet()) { it.name in names }
         // Only what this trip added: a stamp held already (주말 탐험가 again) is not news.
         val newStamps = tripStamps.distinct().filter { stampsBefore == null || it.name !in stampsBefore }
-        val newTitles = if (stampsBefore == null) emptyList() else {
-            val was = codes(stampsBefore)
-            val now = codes(have)
-            Titles.ALL.filter { it.earned(now) && !it.earned(was) }.map { it.id }
+        val titlesBefore = titlesAtStart
+        titlesAtStart = null
+        val newTitles = if (titlesBefore == null) emptyList() else {
+            val now = Titles.earnedIds(codes(have), progressNow(endedAt))
+            Titles.ALL.map { it.id }.filter { it in now && it !in titlesBefore }
         }
         val before = levelAtStart ?: 0
         levelAtStart = null

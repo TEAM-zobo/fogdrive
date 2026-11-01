@@ -3,6 +3,7 @@ package com.zobo.burung.data
 import androidx.room.withTransaction
 
 import com.zobo.burung.explore.CellLog
+import com.zobo.burung.explore.Islands
 import com.zobo.burung.explore.Milestones
 import com.zobo.burung.explore.StampProgress
 import com.zobo.burung.geo.RegionAtlas
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Calendar
 
 /**
  * Explored cells live in memory (fast lookups for the fog overlay and detour planner)
@@ -286,20 +288,36 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
      * Where the driver stands on the milestone stamps. 읍·면·동 and 시·도 count only places reached by
      * driving or getting off: the first-run seed around the navigation's places doesn't count.
      */
-    suspend fun stampProgress(atlas: RegionAtlas?, now: Long = System.currentTimeMillis()): StampProgress =
+    suspend fun stampProgress(
+        atlas: RegionAtlas?,
+        now: Long = System.currentTimeMillis(),
+        work: com.zobo.burung.car.Place? = null,
+    ): StampProgress =
         withContext(Dispatchers.IO) {
             val dao = db.dao()
             val (days, streak) = Milestones.weeks(dao.tripStarts(), now)
             val km = (dao.tripTotalsSince(0).distanceMeters / 1000).toInt()
             var dongs = 0
             var provinces = 0
+            var islands = 0
+            var seoul = 0
             if (atlas != null) {
                 val d = HashSet<Int>()
                 for (c in dao.drivenCells()) atlas.dongOf(c).takeIf { it >= 0 }?.let(d::add)
                 dongs = d.size
-                provinces = d.mapTo(HashSet()) { atlas.districts[atlas.dongs[it].district].province }.size
+                val districts = d.mapTo(HashSet()) { atlas.dongs[it].district }
+                provinces = districts.mapTo(HashSet()) { atlas.districts[it].province }.size
+                islands = districts.count { atlas.districts[it].name in Islands.DISTRICTS }
+                seoul = districts.count { atlas.provinces[atlas.districts[it].province].name.startsWith("서울") }
             }
-            StampProgress(days, streak, km, dongs, provinces)
+            // Weekday trips whose route ends near the navigation's 회사.
+            val commutes = if (work == null) 0 else dao.allTrips().count { t ->
+                val day = Calendar.getInstance().apply { timeInMillis = t.startedAt }.get(Calendar.DAY_OF_WEEK)
+                val e = tracks.ends(t.id)
+                day != Calendar.SATURDAY && day != Calendar.SUNDAY && e != null &&
+                    Tiles.distanceMeters(Tiles.yToLat(e[3]), Tiles.xToLng(e[2]), work.lat, work.lng) < COMMUTE_NEAR_M
+            }
+            StampProgress(days, streak, km, dongs, provinces, commutes, islands, seoul)
         }
 
     /** Total experience (see [Progress.xp]): every cell, every trip's distance, drop-off and stamp. */
@@ -376,6 +394,8 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
     }
 
     private companion object {
+        /** A trip ending this close to the 회사 bookmark counts as a commute. */
+        const val COMMUTE_NEAR_M = 400.0
         /** SQLite's default bound-parameter limit is 999. */
         const val SQL_IN_LIMIT = 900
         /** Room for a long history up front: growing a concurrent set step by step while loading

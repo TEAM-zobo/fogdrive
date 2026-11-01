@@ -333,7 +333,7 @@ class MainViewModel : ViewModel() {
         FogRuntime.regionsLoaded,
     ) { _, _, loaded ->
         // Without the atlas 동 and 시·도 would read 0: wait for it rather than show (and pick on) zeros.
-        if (loaded) repo.stampProgress(FogRuntime.regions?.atlas) else null
+        if (loaded) repo.stampProgress(FogRuntime.regions?.atlas, work = navi.work.value) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**

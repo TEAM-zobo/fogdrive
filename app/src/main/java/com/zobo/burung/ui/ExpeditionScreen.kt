@@ -46,6 +46,9 @@ import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.WbSunny
+import com.zobo.burung.explore.TitleKind
+import androidx.compose.material.icons.outlined.Sailing
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material.icons.outlined.Weekend
 import androidx.compose.material.icons.outlined.WorkOutline
@@ -96,8 +99,8 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
     val team by prefs.teamName.collectAsState()
     val counts = remember(stamps) { stamps.groupingBy { it.code }.eachCount() }
     val collected = remember(counts) { StampBook.ACTIVE.filter { (counts[it.name] ?: 0) > 0 }.toSet() }
-    val shown = Titles.shown(picked, collected)
-    val next = Titles.next(collected)
+    val shown = Titles.shown(picked, collected, progress)
+    val next = Titles.next(collected, progress)
     val k = { normal: String, kid: String -> if (kids) kid else normal }
 
     Column(
@@ -141,10 +144,9 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                         Text(t.name(kids), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = INK)
                         Icon(Icons.Outlined.Lock, contentDescription = null, tint = AMBER_INK, modifier = Modifier.size(26.dp))
                     }
-                    ProgressBar(t.progress(collected).toFloat() / t.need, color = AMBER, height = 16.dp)
-                    val left = t.need - t.progress(collected)
+                    ProgressBar(t.progress(collected, progress).toFloat() / t.need, color = AMBER, height = 16.dp)
                     Text(
-                        (t.field?.let { "${if (kids) it.kidsLabel else it.label} " } ?: "") + k("스탬프 ${left}개만 더!", "스탬프 ${left}개만 더 모아요!"),
+                        t.remaining(kids, collected, progress),
                         fontSize = 21.sp, fontWeight = FontWeight.Bold, color = AMBER_INK,
                     )
                 }
@@ -204,13 +206,13 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
         }
 
         // Every title: earned ones can be picked to show; locked ones say what opens them.
-        Heading(Icons.Outlined.EmojiEvents, TEAL, "칭호", "${Titles.ALL.count { it.earned(collected) }} / ${Titles.ALL.size} · " + k("눌러서 대표 칭호로", "눌러서 내 칭호로 고르기"))
+        Heading(Icons.Outlined.EmojiEvents, TEAL, "칭호", "${Titles.ALL.count { it.earned(collected, progress) }} / ${Titles.ALL.size} · " + k("눌러서 대표 칭호로", "눌러서 내 칭호로 고르기"))
         Section(padding = 36.dp) {
             Titles.ALL.chunked(TITLES_PER_ROW).forEachIndexed { r, row ->
                 if (r > 0) Spacer(Modifier.height(30.dp))
                 Row(Modifier.fillMaxWidth()) {
                     row.forEach { t ->
-                        val earned = t.earned(collected)
+                        val earned = t.earned(collected, progress)
                         val isShown = t == shown
                         Column(
                             Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
@@ -224,7 +226,8 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                                 when {
                                     isShown -> k("대표 칭호", "내 칭호")
                                     earned -> t.condition(kids)
-                                    else -> "${t.condition(kids)} · ${t.progress(collected)}/${t.need}"
+                                    t.kind == TitleKind.ISLAND -> t.condition(kids)
+                                    else -> "${t.condition(kids)} · ${t.progress(collected, progress)}/${t.need}"
                                 },
                                 fontSize = 18.sp, color = if (isShown) AMBER_INK else FogColors.TextSub, textAlign = TextAlign.Center,
                             )
@@ -248,7 +251,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                     Text("$got/${list.size}", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MINT)
                 }
                 Spacer(Modifier.height(20.dp))
-                val title = Titles.ALL.first { it.field == field }
+                val title = Titles.ALL.firstOrNull { it.field == field }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                     list.forEach { code ->
                         val got = code in collected
@@ -265,8 +268,8 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                             )
                         }
                     }
-                    // The shelf's title at the end of the row: what the four stamps add up to.
-                    Column(
+                    // The shelf's title at the end of the row (a shelf without one keeps the space).
+                    if (title == null) Spacer(Modifier.weight(1.2f)) else Column(
                         Modifier.weight(1.2f).padding(top = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -361,9 +364,10 @@ private fun pickTag(code: StampCode, kids: Boolean): String = when (code) {
 
 private fun titleIcon(t: Title): ImageVector = when (t.id) {
     "daily" -> Icons.Outlined.WbSunny
-    "region" -> Icons.Outlined.Map
     "trip" -> Icons.Outlined.Weekend
-    "veteran" -> Icons.Outlined.StarOutline
+    "commute" -> Icons.Outlined.Work
+    "island" -> Icons.Outlined.Sailing
+    "seoul" -> Icons.Outlined.LocationCity
     else -> Icons.Outlined.EmojiEvents
 }
 
