@@ -79,7 +79,7 @@ object DexShapes {
     private const val JEJU_SHIFT_DEG = 0.3
 
     /**
-     * 울릉도 and 독도 in an inset off the 강원 coast, as on the usual maps of Korea: drawn where they are,
+     * 울릉도 and 독도 drawn just off the 경북 coast they belong to (east of 울진·영덕): drawn where they are,
      * 독도 2° east of the mainland would make the whole country a third smaller. 울릉도 keeps its
      * shape and scale; 독도 sits nearer to it than it is.
      */
@@ -97,16 +97,16 @@ object DexShapes {
             mark(DOKDO.name, INSET_DOKDO_LAT, INSET_DOKDO_LNG, dot = true),
         )
         val box = floatArrayOf(
-            Tiles.lngToX(128.80).toFloat(), Tiles.latToY(38.62).toFloat(),
-            Tiles.lngToX(129.66).toFloat(), Tiles.latToY(37.98).toFloat(),
+            Tiles.lngToX(129.62).toFloat(), Tiles.latToY(37.12).toFloat(),
+            Tiles.lngToX(130.16).toFloat(), Tiles.latToY(36.80).toFloat(),
         )
         return DexShape(s.code, s.name, rings, s.labelX, s.labelY, s.outline, marks, box)
     }
 
-    private const val INSET_ULLEUNG_LAT = 38.42
-    private const val INSET_ULLEUNG_LNG = 129.04
-    private const val INSET_DOKDO_LAT = 38.20
-    private const val INSET_DOKDO_LNG = 129.48
+    private const val INSET_ULLEUNG_LAT = 37.00
+    private const val INSET_ULLEUNG_LNG = 129.78
+    private const val INSET_DOKDO_LAT = 36.97
+    private const val INSET_DOKDO_LNG = 130.10
 
     @Synchronized
     fun districts(atlas: RegionAtlas, provinceCode: String): List<DexShape> = cache.getOrPut(provinceCode) {
@@ -243,8 +243,7 @@ fun DexMap(
                         s.marks.forEach { m ->
                             val c = Offset(fit.px(m.x), fit.py(m.y))
                             if (m.dot) {
-                                drawCircle(fill(s), 6f * density, c)
-                                drawCircle(markEdge, 6f * density, c, style = Stroke(1.5f * density))
+                                drawCircle(fill(s), 4.5f * density, c)
                             }
                             val t = measurer.measure(m.name, TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = markEdge))
                             // Under a dot; under the island for a label-only mark.
