@@ -133,7 +133,7 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
                     color = if (shown == null) SUB else INK, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (shown == null) k("한 분야의 스탬프를 모두 모으면 첫 칭호가 생겨요", "스탬프를 한 줄 다 모으면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),
+                    if (shown == null) k("스탬프를 모으고 달리다 보면 첫 칭호가 생겨요", "스탬프를 모으고 달리면 칭호가 생겨요!") else k("나의 칭호", "내 칭호"),
                     fontSize = 22.sp, color = SUB,
                 )
             }

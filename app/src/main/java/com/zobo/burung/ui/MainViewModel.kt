@@ -331,9 +331,11 @@ class MainViewModel : ViewModel() {
         trips.map { list -> list.map { it.id to it.endedAt } }.distinctUntilChanged(),
         repo.stamps,
         FogRuntime.regionsLoaded,
-    ) { _, _, loaded ->
+        // 회사 comes with the bookmark list, which may answer after the first read (프로 출근러).
+        navi.work,
+    ) { _, _, loaded, work ->
         // Without the atlas 동 and 시·도 would read 0: wait for it rather than show (and pick on) zeros.
-        if (loaded) repo.stampProgress(FogRuntime.regions?.atlas, work = navi.work.value) else null
+        if (loaded) repo.stampProgress(FogRuntime.regions?.atlas, work = work) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
@@ -599,6 +601,11 @@ class MainViewModel : ViewModel() {
     /** Deletes one finished trip (the trip being recorded can't be). */
     fun deleteTrip(trip: TripEntity) {
         if (trip.endedAt == null) return
+        // Reloading the record ends the trip being recorded (as on reset): not while one is under way.
+        if (live.value.tripActive) {
+            FogRuntime.live.update { it.copy(lastEvent = "주행이 끝난 뒤에 지울 수 있어요", lastEventId = System.nanoTime()) }
+            return
+        }
         showTripJob?.cancel()
         shownTrip.value = null
         viewModelScope.launch {

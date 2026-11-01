@@ -311,8 +311,9 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
                 seoul = districts.count { atlas.provinces[atlas.districts[it].province].name.startsWith("서울") }
             }
             // Weekday trips whose route ends near the navigation's 회사.
+            val cal = Calendar.getInstance()
             val commutes = if (work == null) 0 else dao.allTrips().count { t ->
-                val day = Calendar.getInstance().apply { timeInMillis = t.startedAt }.get(Calendar.DAY_OF_WEEK)
+                val day = cal.apply { timeInMillis = t.startedAt }.get(Calendar.DAY_OF_WEEK)
                 val e = tracks.ends(t.id)
                 day != Calendar.SATURDAY && day != Calendar.SUNDAY && e != null &&
                     Tiles.distanceMeters(Tiles.yToLat(e[3]), Tiles.xToLng(e[2]), work.lat, work.lng) < COMMUTE_NEAR_M
@@ -344,7 +345,8 @@ class ExploreRepository(private val db: FogDb, private val scope: CoroutineScope
      * opened; then reloads the record (level, dex and stamps follow from what is left).
      */
     suspend fun deleteTrip(tripId: Long) {
-        if (tripId == currentTripId) return
+        // The last trip stays [currentTripId] after it ends: only the caller knows whether it is still
+        // being recorded (MainViewModel.deleteTrip refuses while one is).
         withContext(Dispatchers.IO) {
             db.withTransaction {
                 val dao = db.dao()
