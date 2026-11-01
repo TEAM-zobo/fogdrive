@@ -174,7 +174,9 @@ class FogOverlayView(context: Context) : View(context) {
             val line = tracks.latest()
             trailLine = line
             // Another trip (or everything reloaded): not just points added at the end.
-            if (tracks.epoch != trailEpoch || line == null || old == null || line.count < old.count || line.xs[0] != old.xs[0]) {
+            val sameTrip = line == null && old == null ||
+                line != null && old != null && line.count >= old.count && line.xs[0] == old.xs[0]
+            if (tracks.epoch != trailEpoch || !sameTrip) {
                 trailEpoch = tracks.epoch
                 reset = true
             }
