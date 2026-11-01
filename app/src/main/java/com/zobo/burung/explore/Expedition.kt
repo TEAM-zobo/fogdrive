@@ -163,7 +163,9 @@ data class Title(
     val need: Int,
     val kind: TitleKind = TitleKind.FIELD,
 ) {
-    fun name(kids: Boolean) = if (kids) kidsName else name
+    /** Titles read the same in kids mode (it only changes wording and voice, not what was earned). */
+    @Suppress("UNUSED_PARAMETER")
+    fun name(kids: Boolean) = name
 
     fun progress(collected: Set<StampCode>, p: StampProgress = StampProgress()): Int = when (kind) {
         TitleKind.FIELD -> collected.count { it in StampBook.ACTIVE && StampBook.field(it) == field }
@@ -174,24 +176,26 @@ data class Title(
 
     fun earned(collected: Set<StampCode>, p: StampProgress = StampProgress()) = progress(collected, p) >= need
 
-    private fun fieldLabel(kids: Boolean) = field?.let { if (kids) it.kidsLabel else it.label } ?: ""
+    private fun fieldLabel() = field?.label ?: ""
 
     /** How the title is opened, short (under its shield). */
+    @Suppress("UNUSED_PARAMETER")
     fun condition(kids: Boolean): String = when (kind) {
-        TitleKind.FIELD -> "${fieldLabel(kids)} 스탬프 모두"
-        TitleKind.COMMUTE -> if (kids) "회사에 ${need}번 출근" else "평일 회사 주행 ${need}회"
-        TitleKind.ISLAND -> if (kids) "섬에 놀러 가기" else "섬 지역 가 보기"
+        TitleKind.FIELD -> "${fieldLabel()} 스탬프 모두"
+        TitleKind.COMMUTE -> "평일 회사 주행 ${need}회"
+        TitleKind.ISLAND -> "섬 지역 가 보기"
         TitleKind.SEOUL -> "서울 ${need}개 구 모두"
     }
 
     /** What is left, for the "다음 칭호" box. */
     fun remaining(kids: Boolean, collected: Set<StampCode>, p: StampProgress): String {
         val left = need - progress(collected, p)
+        // The same in kids mode: titles don't change with it.
         return when (kind) {
-            TitleKind.FIELD -> "${fieldLabel(kids)} " + if (kids) "스탬프 ${left}개만 더 모아요!" else "스탬프 ${left}개만 더!"
-            TitleKind.COMMUTE -> if (kids) "출근 ${left}번만 더 해요!" else "회사 주행 ${left}회만 더!"
-            TitleKind.ISLAND -> if (kids) "섬에 놀러 가면 받아요!" else "섬 지역에 가 보면 받아요!"
-            TitleKind.SEOUL -> if (kids) "서울 동네 ${left}곳만 더 가 봐요!" else "서울 구 ${left}곳만 더!"
+            TitleKind.FIELD -> "${fieldLabel()} 스탬프 ${left}개만 더!"
+            TitleKind.COMMUTE -> "회사 주행 ${left}회만 더!"
+            TitleKind.ISLAND -> "섬 지역에 가 보면 받아요!"
+            TitleKind.SEOUL -> "서울 구 ${left}곳만 더!"
         }
     }
 }
@@ -204,10 +208,10 @@ object Titles {
 
     val ALL: List<Title> = listOf(
         Title("daily", "우리 동네 탐험가", "우리 동네 탐험가", StampField.DAILY, StampBook.inField(StampField.DAILY).size),
-        Title("trip", "주말 원정대", "주말 모험왕", StampField.TRIP, StampBook.inField(StampField.TRIP).size),
-        Title("commute", "프로 출근러", "출근 대장", null, COMMUTE_NEED, TitleKind.COMMUTE),
-        Title("island", "섬 탐험가", "섬 모험가", null, 1, TitleKind.ISLAND),
-        Title("seoul", "서울 마스터", "서울 대장", null, SEOUL_DISTRICTS, TitleKind.SEOUL),
+        Title("trip", "주말 원정대", "주말 원정대", StampField.TRIP, StampBook.inField(StampField.TRIP).size),
+        Title("commute", "프로 출근러", "프로 출근러", null, COMMUTE_NEED, TitleKind.COMMUTE),
+        Title("island", "섬 탐험가", "섬 탐험가", null, 1, TitleKind.ISLAND),
+        Title("seoul", "서울 마스터", "서울 마스터", null, SEOUL_DISTRICTS, TitleKind.SEOUL),
     )
 
     /** The picked title if still earned, else the last earned one in [ALL] (the later, the rarer). */
