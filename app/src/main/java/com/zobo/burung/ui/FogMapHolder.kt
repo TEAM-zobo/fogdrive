@@ -93,6 +93,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         val lp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         addView(mapView, lp)
         addView(this@FogMapHolder.overlay, lp) // plain `overlay` would resolve to View.getOverlay()
+        addView(this@FogMapHolder.overlay.trailHead, lp)
     }
     private val car = CarMarkerView(context).apply { visibility = View.GONE }
     /** Licence-required map credit, drawn above the fog (the engine's own sits under it). */
@@ -376,6 +377,8 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         // ~19 fps with 50-150 ms frames. As a hardware layer it is drawn once per change (a re-render
         // or new cells) and then only composited. Parked, the fog redraws on every camera move anyway.
         overlay.setLayerType(if (value) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE, null)
+        // The trail follows the car on its own layer (see [FogOverlayView.trailApart]).
+        overlay.trailApart = value
         if (value) {
             startTicking()
         } else {
@@ -614,6 +617,7 @@ class FogMapHolder(context: Context) : Choreographer.FrameCallback {
         if (driving && hasFix && camReady) {
             // frameMs and the fix times share the monotonic clock (uptimeMillis / System.nanoTime).
             replay(if (frameMs > 0) frameMs else SystemClock.uptimeMillis())
+            overlay.setTrailTip(shownLat, shownLng)
             val dx = ((Tiles.lngToX(shownLng) - camX) * pxPerX).toFloat()
             val dy = ((Tiles.latToY(shownLat) - camY) * pxPerY).toFloat()
             if (forceStep || abs(-dx - mapFrame.slideX) >= MIN_STEP_PX || abs(-dy - mapFrame.slideY) >= MIN_STEP_PX) {

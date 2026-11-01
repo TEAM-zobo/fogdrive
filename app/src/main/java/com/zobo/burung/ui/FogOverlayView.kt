@@ -117,6 +117,165 @@ class FogOverlayView(context: Context) : View(context) {
         return true
     }
 
+    /**
+     * While driving this layer is redrawn only when a new fog tile lands (a few hundred ms after new
+     * cells, and not at all on roads already explored) or the map re-renders around the car, so the
+     * gold trail drawn with it came in late and in chunks behind the car. Now it draws the trail only
+     * up to the car, and [trailHead], a plain view above it, draws the rest from there to the car on
+     * every frame: a few segments, against the whole trail in this oversized layer.
+     */
+    var trailApart = false
+        set(value) {
+            if (field == value) return
+            field = value
+            trailLine = null
+            trailVersion = -1
+            trailTipX = Double.NaN
+            trailHead.visibility = if (value) VISIBLE else GONE
+            invalidate()
+        }
+    val trailHead: View = object : View(context) {
+        override fun onDraw(canvas: Canvas) = drawTrailHead(canvas)
+    }.apply { visibility = GONE }
+
+    override fun invalidate() {
+        super.invalidate()
+        // Same frame: the head starts where this layer's trail ends, in its transform.
+        if (trailApart) trailHead.invalidate()
+    }
+
+    private var trailLine: Tracks.Line? = null
+    private var trailVersion = -1
+    private var trailEpoch = -1
+    // The car's shown position (tile units), NaN until the first one.
+    private var trailTipX = Double.NaN
+    private var trailTipY = Double.NaN
+    /** Last point of [trailLine] the car has passed (see [trailCut]). */
+    private var trailCut = -1
+    /** The car is on the trail's newest segments: the head ends at the car. */
+    private var trailHeadOn = false
+    /** Last point drawn in this layer, and the distance along the trail to it (px, for the dashes). */
+    private var trailDrawnTo = -1
+    private var trailAlong = 0.0
+    // What the head showed when last drawn, to tell when it has to be drawn again.
+    private var headDrawnX = Float.NaN
+    private var headDrawnY = Float.NaN
+    private var headDrawnOn = false
+    private var headDrawnCut = -1
+
+    /** The car is shown at ([lat], [lng]) this frame (driving): moves the head to it. */
+    fun setTrailTip(lat: Double, lng: Double) {
+        if (!trailApart) return
+        val v = tracks.version
+        var reset = false
+        if (v != trailVersion) {
+            trailVersion = v
+            val old = trailLine
+            val line = tracks.latest()
+            trailLine = line
+            // Another trip (or everything reloaded): not just points added at the end.
+            if (tracks.epoch != trailEpoch || line == null || old == null || line.count < old.count || line.xs[0] != old.xs[0]) {
+                trailEpoch = tracks.epoch
+                reset = true
+            }
+        }
+        trailTipX = Tiles.lngToX(lng)
+        trailTipY = Tiles.latToY(lat)
+        updateTrailCut()
+        // The head stays a handful of segments: past that (or on a new trip) the layer takes them over.
+        if (reset || trailCut - trailDrawnTo > TRAIL_HEAD_MAX || trailCut < trailDrawnTo) invalidate()
+        if (trailHeadOn != headDrawnOn || trailCut != headDrawnCut) {
+            trailHead.invalidate()
+        } else if (trailHeadOn && hasTransform && tx1 > tx0) {
+            val px = width / (tx1 - tx0)
+            val hx = ((trailTipX - tx0) * px).toFloat()
+            val hy = ((trailTipY - ty0) * px).toFloat()
+            if (abs(hx - headDrawnX) >= 0.25f || abs(hy - headDrawnY) >= 0.25f) trailHead.invalidate()
+        }
+    }
+
+    /**
+     * The segment nearest the car among the trail's newest: the car has passed its start (or its end
+     * once past it). Far from all of them (a gap, a jump, no car yet): the whole trail, no head.
+     */
+    private fun updateTrailCut() {
+        val line = trailLine
+        trailHeadOn = false
+        if (line == null) {
+            trailCut = -1
+            return
+        }
+        trailCut = line.count - 1
+        if (trailTipX.isNaN()) return
+        var bestD = TRAIL_SNAP_TILES * TRAIL_SNAP_TILES
+        for (j in line.count - 1 downTo max(1, line.count - TRAIL_SEARCH)) {
+            val ax = line.xs[j - 1]
+            val bx = line.xs[j]
+            if (ax.isNaN() || bx.isNaN()) continue
+            val ay = line.ys[j - 1]
+            val dx = bx - ax
+            val dy = line.ys[j] - ay
+            val len2 = dx * dx + dy * dy
+            val t = if (len2 > 0) ((trailTipX - ax) * dx + (trailTipY - ay) * dy) / len2 else 1.0
+            val k = t.coerceIn(0.0, 1.0)
+            val ex = ax + dx * k - trailTipX
+            val ey = ay + dy * k - trailTipY
+            val d = ex * ex + ey * ey
+            if (d < bestD) {
+                bestD = d
+                trailCut = if (t >= 1.0) j else j - 1
+                trailHeadOn = true
+            }
+        }
+    }
+
+    /** Draws the trail from the last point in this layer through the points passed since to the car. */
+    private fun drawTrailHead(c: Canvas) {
+        headDrawnX = Float.NaN
+        headDrawnOn = trailHeadOn
+        headDrawnCut = trailCut
+        if (!trailApart || !hasTransform || route != null || tx1 <= tx0) return
+        val line = trailLine ?: return
+        val from = trailDrawnTo
+        if (from < 0 || from >= line.count || line.xs[from].isNaN()) return
+        val px = width / (tx1 - tx0)
+        for (st in trailStrokes) st.clear()
+        var ax = ((line.xs[from] - tx0) * px).toFloat()
+        var ay = ((line.ys[from] - ty0) * px).toFloat()
+        var along = trailAlong
+        fun to(bx: Float, by: Float) {
+            for (st in trailStrokes) st.add(ax, ay, bx, by, along)
+            along += hypot((bx - ax).toDouble(), (by - ay).toDouble())
+            ax = bx
+            ay = by
+        }
+        var pen = true
+        for (i in from + 1..min(trailCut, line.count - 1)) {
+            // A gap: lift the pen, the next point starts a new stroke (as in [drawTrail]).
+            if (line.xs[i].isNaN()) {
+                pen = false
+                continue
+            }
+            val bx = ((line.xs[i] - tx0) * px).toFloat()
+            val by = ((line.ys[i] - ty0) * px).toFloat()
+            if (pen) {
+                to(bx, by)
+            } else {
+                ax = bx
+                ay = by
+                pen = true
+            }
+        }
+        if (trailHeadOn) {
+            val bx = ((trailTipX - tx0) * px).toFloat()
+            val by = ((trailTipY - ty0) * px).toFloat()
+            to(bx, by)
+            headDrawnX = bx
+            headDrawnY = by
+        }
+        for (st in trailStrokes) st.draw(c)
+    }
+
     private val maskPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val density = resources.displayMetrics.density
     private val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9900") }
@@ -266,7 +425,24 @@ class FogOverlayView(context: Context) : View(context) {
                 for ((lat, lng) in r.points) canvas.drawCircle(sx(lng), sy(lat), radius, routeDot)
             }
         }
-        if (route == null) drawTrail(canvas, tracks, x0, y0, pxPerCell)
+        if (route == null) {
+            if (!trailApart) {
+                tracks.latest()?.let { drawTrail(canvas, it, it.count - 1, x0, y0, pxPerCell) }
+            } else {
+                // Up to the car; the head draws on from here (see [trailApart]).
+                if (trailLine == null) {
+                    trailLine = tracks.latest()
+                    updateTrailCut()
+                }
+                trailDrawnTo = -1
+                trailLine?.let { line ->
+                    if (trailCut >= 0) {
+                        trailAlong = drawTrail(canvas, line, trailCut, x0, y0, pxPerCell)
+                        trailDrawnTo = trailCut
+                    }
+                }
+            }
+        }
         drawLandingPins(canvas, x0, y0, pxPerCell)
         home?.let { (lat, lng) -> toScreen(lat, lng).let { drawBaseCamp(canvas, it.x, it.y) } }
         destination?.let { (lat, lng) -> toScreen(lat, lng).let { drawFlag(canvas, it.x, it.y) } }
@@ -285,12 +461,12 @@ class FogOverlayView(context: Context) : View(context) {
      * [MIN_SEGMENT_PX] merged. Stroked paths (with a dash effect) were stroked on the CPU and
      * stencilled again on every redraw of the fog layer, the whole trip each time, so they cost more
      * the longer the drive; during the demo that was the largest part of each fog layer redraw.
+     * Only the newest trip's road is gold (the one being driven, or the one just ended): earlier trips
+     * stay as opened ground, so a course driven before does not show the road ahead in gold. Draws
+     * points 0..[upTo] and returns the distance along them (px).
      */
-    private fun drawTrail(c: Canvas, t: Tracks, x0: Double, y0: Double, px: Double) {
+    private fun drawTrail(c: Canvas, line: Tracks.Line, upTo: Int, x0: Double, y0: Double, px: Double): Double {
         for (st in trailStrokes) st.clear()
-        // Only the newest trip's road is gold (the one being driven, or the one just ended): earlier
-        // trips stay as opened ground, so a course driven before does not show the road ahead in gold.
-        val line = t.snapshot().latest ?: return
         val pad = 16f * density
         val right = width + pad
         val bottom = height + pad
@@ -298,7 +474,7 @@ class FogOverlayView(context: Context) : View(context) {
         var ax = 0f
         var ay = 0f
         var along = 0.0
-        val last = line.count - 1
+        val last = min(upTo, line.count - 1)
         for (i in 0..last) {
             val xv = line.xs[i]
             if (xv.isNaN()) {
@@ -325,6 +501,7 @@ class FogOverlayView(context: Context) : View(context) {
             ay = y
         }
         for (st in trailStrokes) st.draw(c)
+        return along
     }
 
     /**
@@ -840,6 +1017,12 @@ class FogOverlayView(context: Context) : View(context) {
         private const val MIN_SEGMENT_PX = 1.5f
         /** Boundary strokes this thin or thinner (screen px) are drawn as hairlines (see [Stroke]). */
         private const val HAIRLINE_PX = 1.5f
+        /** The car farther than this (zoom-20 tiles, ~45 m) from the trail's newest points: no head. */
+        private const val TRAIL_SNAP_TILES = 1.5
+        /** How many of the trail's newest segments are searched for the car. */
+        private const val TRAIL_SEARCH = 24
+        /** The head draws at most this many passed points before the layer is redrawn with them. */
+        private const val TRAIL_HEAD_MAX = 12
         const val MASK_DIV = 3
         /** Extra fog rendered on each side of the view, as a share of its size. */
         private const val TILE_MARGIN = 0.3
