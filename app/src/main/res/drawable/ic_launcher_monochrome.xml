@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon silhouette: the tent with its pennant and the road leading to it. -->
+<!-- Themed-icon silhouette: the car with its flag, the window and wheel hubs cut out, and the road. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M37,63L54,34L71,63ZM49,63L54,48L59,63Z" />
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:fillColor="#00000000"
-        android:pathData="M54,34L54,24" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M54,24L64,27.5L54,31Z" />
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"
-        android:fillColor="#00000000" android:pathData="M30,86C38,80 50,80 54,74C58,68 50,64 56,60" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M20,92Q54,78 90,88" />
+    <group android:translateX="27" android:translateY="49" android:rotation="-8" android:scaleX="0.9" android:scaleY="0.9">
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+            android:pathData="M6,26Q6,12 20,10L40,10Q50,10 54,22L58,26Q60,34 54,34L8,34Q4,34 6,26ZM16,13L38,13Q44,13 47,22L14,22Z" />
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+            android:pathData="M11.5,35a6.5,6.5 0,1 0,13 0a6.5,6.5 0,1 0,-13 0zM15.5,35a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0z" />
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+            android:pathData="M39.5,35a6.5,6.5 0,1 0,13 0a6.5,6.5 0,1 0,-13 0zM43.5,35a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0z" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.5" android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M40,10L44,-12" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M44,-12L60,-6L42,-2Z" />
+    </group>
 </vector>

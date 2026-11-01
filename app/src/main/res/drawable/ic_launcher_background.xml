@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 부릉탐험대: a soft daytime sky over a green hill. -->
+<!-- 부릉탐험대: a daytime sky with the sun, green hills and the gold road the car drives along. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
@@ -7,10 +7,15 @@
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="0" android:endY="108"
-                android:startColor="#FFBFEBDD" android:endColor="#FFFFF4D9" />
+                android:startColor="#FF7FD3F7" android:endColor="#FFCDEFFF" />
         </aapt:attr>
     </path>
-    <!-- Hill the expedition camps on. -->
-    <path android:fillColor="#FF8FD16B" android:pathData="M-4,78C20,62 46,60 62,66C80,72 96,66 112,58L112,112L-4,112Z" />
-    <path android:fillColor="#FF7CC35A" android:pathData="M-4,90C24,80 52,82 74,86C90,89 102,86 112,82L112,112L-4,112Z" />
+    <!-- Sun. -->
+    <path android:fillColor="#FFFFE07A" android:pathData="M72,30a8,8 0,1 0,16 0a8,8 0,1 0,-16 0z" />
+    <!-- Hills. -->
+    <path android:fillColor="#FF5FB35A" android:pathData="M-4,74Q36,52 70,66T112,60L112,112L-4,112Z" />
+    <path android:fillColor="#FF3E9A44" android:pathData="M-4,86Q40,70 112,82L112,112L-4,112Z" />
+    <!-- The gold road. -->
+    <path android:strokeColor="#FFFFD34D" android:strokeWidth="7" android:fillColor="#00000000"
+        android:pathData="M-4,96Q40,76 112,92" />
 </vector>
