@@ -26,6 +26,7 @@ import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 
 /**
  * Draws a veil over the ground not driven yet, in two strengths: darker over 읍·면·동 the driver has
@@ -831,7 +832,8 @@ class FogOverlayView(context: Context) : View(context) {
      */
     private fun drawBoundariesCached(c: Canvas, r: RegionLayer, px: Double, x0: Double, y0: Double, x1: Double, y1: Double) {
         val node = boundaryNode
-        if (node == null || freezeTransform || !c.isHardwareAccelerated) {
+        // A hardware layer from the start of a drive, before the first re-render sets freezeTransform.
+        if (node == null || freezeTransform || layerType != LAYER_TYPE_NONE || !c.isHardwareAccelerated) {
             if (nodeRegions != null) {
                 node?.discardDisplayList()
                 nodeRegions = null
@@ -849,11 +851,14 @@ class FogOverlayView(context: Context) : View(context) {
             for (st in strokes) st.draw(c)
             return
         }
-        val scale = px / nodePx
         val fits = nodeRegions === fogRegions && nodeRegions != null && !boundaryExact &&
-            x0 >= nodeX0 && y0 >= nodeY0 && x1 <= nodeX1 && y1 <= nodeY1 && scale in 1 / BOUNDARY_SCALE..BOUNDARY_SCALE
+            x0 >= nodeX0 && y0 >= nodeY0 && x1 <= nodeX1 && y1 <= nodeY1 && px / nodePx in 1 / BOUNDARY_SCALE..BOUNDARY_SCALE &&
+            // The same levels as the labels drawn at this zoom (see [buildBoundaries]).
+            (px >= DONG_LINES_PX) == (nodePx >= DONG_LINES_PX) && (px >= DISTRICT_LINES_PX) == (nodePx >= DISTRICT_LINES_PX)
         boundaryExact = false
         if (!fits) {
+            // Built at this scale: a settle rebuild still pending from earlier zoom frames is not needed.
+            removeCallbacks(rebuildBoundaries)
             val mx = (x1 - x0) * BOUNDARY_MARGIN
             val my = (y1 - y0) * BOUNDARY_MARGIN
             nodeX0 = x0 - mx
@@ -882,7 +887,9 @@ class FogOverlayView(context: Context) : View(context) {
             postDelayed(rebuildBoundaries, BOUNDARY_SETTLE_MS)
         }
         val save = c.save()
-        c.translate(((nodeX0 - x0) * px).toFloat(), ((nodeY0 - y0) * px).toFloat())
+        // Whole pixels: a layer drawn at a fractional offset is filtered, and its hairlines stay soft
+        // after a drag (no rebuild follows a plain drag).
+        c.translate(round((nodeX0 - x0) * px).toFloat(), round((nodeY0 - y0) * px).toFloat())
         c.scale(s.toFloat(), s.toFloat())
         c.drawRenderNode(node)
         c.restoreToCount(save)
