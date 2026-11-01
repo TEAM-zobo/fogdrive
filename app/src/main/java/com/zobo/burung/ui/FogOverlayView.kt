@@ -10,7 +10,9 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.RenderNode
 import android.graphics.Typeface
+import android.os.Build
 import android.view.View
 import com.zobo.burung.data.Tracks
 import com.zobo.burung.explore.CellLog
@@ -818,17 +820,102 @@ class FogOverlayView(context: Context) : View(context) {
      * on every fog redraw (~20 ms in dense areas such as Seoul, a late frame at every re-render
      * around the car); segments are cheap quads. They are rebuilt only when the view or the region
      * data changes: while driving that is once per re-render, not per new fog tile.
+     *
+     * With API 29+ they are drawn once into [boundaryNode], a compositing layer over the view plus a
+     * margin, which is then only moved (and scaled a little while zooming): the wide lines (halos,
+     * 시·도) still cost one GPU path per segment, about two thirds of each frame while the parked map
+     * was dragged (35 ms frames instead of 18). Rebuilt past the margin, past [BOUNDARY_SCALE], or
+     * just after a zoom ended away from the built scale (a scaled layer looks soft). Not while
+     * driving: this view is a hardware layer then, redrawn only per re-render or fog tile, and a
+     * second oversized layer inside it made those redraws slower (twice the late frames).
      */
     private fun drawBoundariesCached(c: Canvas, r: RegionLayer, px: Double, x0: Double, y0: Double, x1: Double, y1: Double) {
-        val key = BoundaryKey(x0, y0, px, fogRegions, width, height)
-        if (key != boundaryKey) {
+        val node = boundaryNode
+        if (node == null || freezeTransform || !c.isHardwareAccelerated) {
+            if (nodeRegions != null) {
+                node?.discardDisplayList()
+                nodeRegions = null
+            }
+            val key = BoundaryKey(x0, y0, px, fogRegions, width, height)
+            if (key != boundaryKey) {
+                boundaryKey = null
+                for (st in strokes) st.clear()
+                cullW = width.toFloat()
+                cullH = height.toFloat()
+                buildBoundaries(r, px, x0, y0, x1, y1)
+                boundaryKey = key
+            }
+            // Finer levels first, each halo under its line.
+            for (st in strokes) st.draw(c)
+            return
+        }
+        val scale = px / nodePx
+        val fits = nodeRegions === fogRegions && nodeRegions != null && !boundaryExact &&
+            x0 >= nodeX0 && y0 >= nodeY0 && x1 <= nodeX1 && y1 <= nodeY1 && scale in 1 / BOUNDARY_SCALE..BOUNDARY_SCALE
+        boundaryExact = false
+        if (!fits) {
+            val mx = (x1 - x0) * BOUNDARY_MARGIN
+            val my = (y1 - y0) * BOUNDARY_MARGIN
+            nodeX0 = x0 - mx
+            nodeY0 = y0 - my
+            nodeX1 = x1 + mx
+            nodeY1 = y1 + my
+            nodePx = px
+            nodeRegions = fogRegions
+            val w = ((nodeX1 - nodeX0) * px).toInt() + 1
+            val h = ((nodeY1 - nodeY0) * px).toInt() + 1
+            // The strokes are shared with the direct path above: its cached segments are gone now.
             boundaryKey = null
             for (st in strokes) st.clear()
-            buildBoundaries(r, px, x0, y0, x1, y1)
-            boundaryKey = key
+            cullW = w.toFloat()
+            cullH = h.toFloat()
+            buildBoundaries(r, px, nodeX0, nodeY0, nodeX1, nodeY1)
+            node.setPosition(0, 0, w, h)
+            val rc = node.beginRecording(w, h)
+            for (st in strokes) st.draw(rc)
+            node.endRecording()
         }
-        // Finer levels first, each halo under its line.
-        for (st in strokes) st.draw(c)
+        val s = px / nodePx
+        // Not for the rounding of a plain drag (the same zoom computed again from the projection).
+        if (abs(s - 1.0) > 1e-4) {
+            removeCallbacks(rebuildBoundaries)
+            postDelayed(rebuildBoundaries, BOUNDARY_SETTLE_MS)
+        }
+        val save = c.save()
+        c.translate(((nodeX0 - x0) * px).toFloat(), ((nodeY0 - y0) * px).toFloat())
+        c.scale(s.toFloat(), s.toFloat())
+        c.drawRenderNode(node)
+        c.restoreToCount(save)
+    }
+
+    private val boundaryNode: RenderNode? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        RenderNode("boundaries").apply { setUseCompositingLayer(true, null) }
+    } else {
+        null
+    }
+    // What [boundaryNode] holds: the area (tile units) at nodePx pixels per tile, for nodeRegions.
+    private var nodeX0 = 0.0
+    private var nodeY0 = 0.0
+    private var nodeX1 = 0.0
+    private var nodeY1 = 0.0
+    private var nodePx = 1.0
+    private var nodeRegions: RegionLayer? = null
+    /** Rebuild at the current scale on the next draw (a zoom ended with the layer scaled). */
+    private var boundaryExact = false
+    private val rebuildBoundaries = Runnable {
+        boundaryExact = true
+        invalidate()
+    }
+    // Area [strokeOutline] keeps segments in (px, from the built origin).
+    private var cullW = 0f
+    private var cullH = 0f
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        removeCallbacks(rebuildBoundaries)
+        // The layer is the size of the view and more: give it back while the map is off screen.
+        boundaryNode?.discardDisplayList()
+        nodeRegions = null
     }
 
     private fun buildBoundaries(r: RegionLayer, px: Double, x0: Double, y0: Double, x1: Double, y1: Double) {
@@ -865,8 +952,8 @@ class FogOverlayView(context: Context) : View(context) {
         val pad = 8f * density
         val left = -pad
         val top = -pad
-        val right = width + pad
-        val bottom = height + pad
+        val right = cullW + pad
+        val bottom = cullH + pad
         fun emit(ax: Float, ay: Float, bx: Float, by: Float, along: Double) {
             for (st in strokes) st.add(ax, ay, bx, by, along)
         }
@@ -1019,6 +1106,12 @@ class FogOverlayView(context: Context) : View(context) {
         private const val MIN_SEGMENT_PX = 1.5f
         /** Boundary strokes this thin or thinner (screen px) are drawn as hairlines (see [Stroke]). */
         private const val HAIRLINE_PX = 1.5f
+        /** Extra boundary lines built on each side of the view, as a share of its size. */
+        private const val BOUNDARY_MARGIN = 0.25
+        /** The boundary layer is scaled up to this much (either way) while zooming before a rebuild. */
+        private const val BOUNDARY_SCALE = 1.15
+        /** How long after the last scaled frame the boundary layer is rebuilt sharp. */
+        private const val BOUNDARY_SETTLE_MS = 150L
         /** The car farther than this (zoom-20 tiles, ~45 m) from the trail's newest points: no head. */
         private const val TRAIL_SNAP_TILES = 1.5
         /** How many of the trail's newest segments are searched for the car. */
