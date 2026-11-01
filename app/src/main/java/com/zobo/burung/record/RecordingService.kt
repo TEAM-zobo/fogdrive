@@ -249,7 +249,7 @@ class RecordingService : Service() {
     /** Level when this trip started, for the arrival card's level-up; null when the start wasn't seen. */
     private var levelAtStart: Int? = null
 
-    /** A 동 entered for the first time: say so, and look up its landmark line in the background. */
+    /** A 동 entered for the first time: say so, and keep it for the summary card. */
     private fun onNewDong(d: com.zobo.burung.geo.Dong, district: String) {
         val lat = Tiles.yToLat(d.outline.labelY + 0.5)
         val lng = Tiles.xToLng(d.outline.labelX + 0.5)
@@ -257,22 +257,6 @@ class RecordingService : Service() {
         FogRuntime.announcer.say(
             if (FogRuntime.mapPrefs.kids.value) "짜잔! 처음 와 보는 ${d.name}${copula(d.name)}!" else "처음 와 본 ${d.name}${copula(d.name)}",
         )
-        // Only the first few 동 carry a story on the summary card; a long drive needn't look up dozens.
-        if (!FogRuntime.mapPrefs.stories.value || tripNewDongs.size > MAX_TRIP_STORIES) return
-        FogRuntime.scope.launch {
-            val story = FogRuntime.stories.storyFor(d.code, lat, lng) ?: return@launch
-            withContext(Dispatchers.Main) {
-                // Neighbouring 동 can share their nearest landmark; tell it once per trip.
-                if (tripNewDongs.any { it.story?.title == story.title }) return@withContext
-                val i = tripNewDongs.indexOfFirst { it.code == d.code }
-                if (i >= 0) tripNewDongs[i] = tripNewDongs[i].copy(story = story)
-                // A summary already shown (short trip) gets the line too.
-                FogRuntime.live.update { lv ->
-                    val sum = lv.lastTrip ?: return@update lv
-                    lv.copy(lastTrip = sum.copy(newDongs = sum.newDongs.map { if (it.code == d.code) it.copy(story = story) else it }))
-                }
-            }
-        }
     }
 
     private var trackTrip = 0L
@@ -398,8 +382,8 @@ class RecordingService : Service() {
             newCells = s.newCells,
             newDistanceMeters = s.newDistanceMeters,
             newDongs = tripNewDongs.toList(),
-            stamps = tripStamps.distinct(),
-            withPassenger = withPassenger,
+            // As for the 함께 탐험 stamp: a drive that went somewhere, not a few metres in the car park.
+            withPassenger = withPassenger && s.distanceMeters >= MIN_SUMMARY_M,
             newStamps = newStamps,
             newTitles = newTitles,
             levelBefore = before,
@@ -559,7 +543,6 @@ class RecordingService : Service() {
         private const val MIN_SUMMARY_M = 300.0
 
         /** Shown with a story on the summary card (TripSummaryCard shows this many 동 in full). */
-        private const val MAX_TRIP_STORIES = 3
 
         /** "이에요" after a final consonant (신당동이에요), "예요" after a vowel (종로1가예요). */
         fun copula(word: String): String {

@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -261,23 +262,41 @@ fun DexMap(
                         }
                     }
                     home?.let { h ->
+                        // A home on a region drawn away from where it is (제주) moves with it.
+                        val hy = h.y + (shapes.firstOrNull { it.shiftY != 0f && it.outline.contains(h.x.toDouble(), h.y.toDouble()) }?.shiftY ?: 0f)
                         val t = measurer.measure("🏕️", TextStyle(fontSize = 22.sp))
-                        drawText(t, topLeft = Offset(fit.px(h.x) - t.size.width / 2f, fit.py(h.y) - t.size.height / 2f))
+                        drawText(t, topLeft = Offset(fit.px(h.x) - t.size.width / 2f, fit.py(hy) - t.size.height / 2f))
                     }
-                    shapes.forEach { s ->
-                        val l = label(s) ?: return@forEach
+                    val labels = shapes.mapNotNull { s -> label(s)?.let { s to it } }
+                    // A small 시·도 (서울) would be hidden under its own tag: its tag goes beside a dot on the
+                    // region, on whichever side is clear of the tags and dots placed so far (서울's left is
+                    // 인천). The big ones are placed first, on their label point.
+                    val pad = 10f * density
+                    val gap = 18f * density
+                    val placed = ArrayList<Rect>()
+                    val smallDots = labels.filter { (_, l) -> l.small }
+                        .map { (s, _) -> Rect(Offset(fit.px(s.labelX), fit.py(s.labelY)), 8f * density) }
+                    labels.sortedBy { (_, l) -> l.chip != null && l.small }.forEach { (s, l) ->
                         val x = fit.px(s.labelX)
                         val y = fit.py(s.labelY)
                         if (l.chip != null) {
                             val t = measurer.measure("${l.text}  ${l.chip}", TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = chipText))
-                            val pad = 10f * density
-                            // A small 시·도 (서울) would be hidden under its own tag: put the tag to its
-                            // left, with a dot on the region.
-                            val shift = if (l.small) t.size.width / 2f + pad + 18f * density else 0f
+                            val w = t.size.width + 2 * pad
+                            val h = t.size.height + pad
+                            fun at(c: Offset) = Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
+                            val box = if (!l.small) at(Offset(x, y)) else {
+                                val own = Offset(x, y)
+                                // Left first (as before), then right, above, below; the least covered wins.
+                                listOf(
+                                    Offset(x - gap - w / 2, y), Offset(x + gap + w / 2, y),
+                                    Offset(x, y - gap - h / 2), Offset(x, y + gap + h / 2),
+                                ).map(::at)
+                                    .minBy { r -> overlap(r, placed) + smallDots.count { d -> d.center != own && d.overlaps(r) } * w * h }
+                            }
+                            placed += box
                             if (l.small) drawCircle(chipBg, 5f * density, Offset(x, y))
-                            val tl = Offset(x - shift - t.size.width / 2f - pad, y - t.size.height / 2f - pad / 2)
-                            drawRoundRect(chipBg, tl, Size(t.size.width + 2 * pad, t.size.height + pad), CornerRadius(12f * density))
-                            drawText(t, topLeft = Offset(tl.x + pad, tl.y + pad / 2))
+                            drawRoundRect(chipBg, box.topLeft, box.size, CornerRadius(12f * density))
+                            drawText(t, topLeft = Offset(box.left + pad, box.top + pad / 2))
                         } else {
                             val t = measurer.measure(
                                 l.text,
@@ -290,6 +309,12 @@ fun DexMap(
             },
     )
 }
+
+/** Area of [r] covered by [others] (summed; overlaps among them counted twice, fine for picking a side). */
+private fun overlap(r: Rect, others: List<Rect>): Float = others.sumOf { o ->
+    val i = r.intersect(o)
+    if (i.width > 0 && i.height > 0) (i.width * i.height).toDouble() else 0.0
+}.toFloat()
 
 /** Tile units ↔ pixels for [shapes] centred in a w × h space with a margin. */
 private class Fit(val x0: Float, val y0: Float, val s: Float, val ox: Float, val oy: Float) {

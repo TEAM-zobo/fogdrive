@@ -356,7 +356,8 @@ class MainViewModel : ViewModel() {
         val codes = saved.mapNotNull { byName[it] }.takeIf { savedWeek == week && it.isNotEmpty() } ?: run {
             // Not before the dex stories are built either: picked without them no place reads as near,
             // and 새 도시 첫발 / 시·도 3곳 would be left out for the whole week.
-            if (stories.isEmpty()) return@combine emptyList()
+            // Nor before there is somewhere to measure from (집, else the car): until then no place reads as near.
+            if (stories.isEmpty() || (navi.home.value == null && FogRuntime.live.value.location == null)) return@combine emptyList()
             // A new week: count a weekend pick that went unearned, and rest it after two such weeks.
             if (savedWeek > 0) {
                 prefs.noteWeekendPick(savedWeek, picked = StampCode.WEEKEND.name in saved, earned = StampCode.WEEKEND in collected, week)

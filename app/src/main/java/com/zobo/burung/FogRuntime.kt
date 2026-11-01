@@ -12,7 +12,6 @@ import com.zobo.burung.data.FogDb
 import com.zobo.burung.demo.DemoPrefs
 import com.zobo.burung.explore.LocalStories
 import com.zobo.burung.explore.RegionTally
-import com.zobo.burung.explore.Story
 import com.zobo.burung.geo.RegionAtlas
 import com.zobo.burung.record.StampCode
 import com.zobo.burung.record.TripStats
@@ -46,8 +45,8 @@ data class LiveStatus(
     val lastTrip: TripSummary? = null,
 )
 
-/** A 읍·면·동 first entered on a trip, with its landmark line once looked up. */
-data class NewDong(val code: String, val name: String, val district: String, val lat: Double, val lng: Double, val story: Story? = null)
+/** A 읍·면·동 first entered on a trip. */
+data class NewDong(val code: String, val name: String, val district: String, val lat: Double, val lng: Double)
 
 /** What one finished trip achieved, for the summary card and the spoken wrap-up. */
 data class TripSummary(
@@ -56,7 +55,6 @@ data class TripSummary(
     val newCells: Int,
     val newDistanceMeters: Double,
     val newDongs: List<NewDong>,
-    val stamps: List<StampCode>,
     /** Someone rode along (front or rear seat). */
     val withPassenger: Boolean = false,
     /** Stamps collected for the first time on this trip, and the titles they completed (Title ids). */

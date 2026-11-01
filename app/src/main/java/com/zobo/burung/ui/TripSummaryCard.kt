@@ -87,7 +87,7 @@ fun TripSummaryCard(summary: TripSummary, onClose: () -> Unit, modifier: Modifie
         // The three things this trip added, in one form: an icon and a heading, then name tags.
         if (summary.newDongs.isNotEmpty()) {
             // A long drive opens dozens of 동: three are named, the rest open on "더 보기".
-            var all by remember(summary) { mutableStateOf(false) }
+            var all by remember(summary.endedAt) { mutableStateOf(false) }
             val more = summary.newDongs.size - MAX_DONGS
             SummarySection(Icons.Outlined.Place, FogColors.Blue, "처음 가 본 동네", "${summary.newDongs.size}곳") {
                 (if (all) summary.newDongs else summary.newDongs.take(MAX_DONGS)).forEach { Pill("${it.district} ${it.name}", FogColors.Blue) }
