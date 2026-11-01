@@ -165,7 +165,7 @@ fun MapScreen(viewModel: MainViewModel) {
                 if (!t.isTrack) {
                     Text(
                         if (t.points.isEmpty()) "이 주행은 경로 기록 기능 전이라 표시할 경로가 없어요."
-                        else "경로 기록 기능 전의 주행이라 이때 새로 밝힌 곳만 점으로 보여 줘요.",
+                        else "경로 기록 기능 전의 주행이라 이때 새로 탐험한 곳만 점으로 보여 줘요.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FogColors.TextSub,
                     )
@@ -244,7 +244,7 @@ fun MapScreen(viewModel: MainViewModel) {
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    "${destination!!.name} 가는 길 · 안개 ${Area.formatCells(visibleDetour.foggedCells, lat)} · 약 ${formatKm(visibleDetour.extraMeters)} 추가",
+                    "${destination!!.name} 가는 길 · 새 지역 ${Area.formatCells(visibleDetour.foggedCells, lat)} · 약 ${formatKm(visibleDetour.extraMeters)} 추가",
                     style = MaterialTheme.typography.bodyMedium,
                     color = FogColors.TextSub,
                 )

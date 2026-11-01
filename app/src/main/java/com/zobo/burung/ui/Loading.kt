@@ -86,7 +86,7 @@ fun LoadingOverlay() {
         val status = when {
             !atlas -> "지역 경계를 불러오는 중"
             !cells -> "내 탐험 기록을 불러오는 중"
-            else -> "안개 지도를 그리는 중"
+            else -> "탐험 지도를 그리는 중"
         }
         Box(
             Modifier
@@ -120,7 +120,7 @@ fun LoadingOverlay() {
                     color = FogColors.TextMain,
                 )
                 Spacer(Modifier.height(10.dp))
-                Text("달린 만큼 걷히는 나만의 지도", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
+                Text("달린 만큼 넓어지는 우리 탐험 지도", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
                 Spacer(Modifier.height(44.dp))
                 LinearProgressIndicator(
                     progress = { progress },

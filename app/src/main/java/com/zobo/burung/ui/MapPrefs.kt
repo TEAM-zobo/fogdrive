@@ -182,8 +182,8 @@ class MapPrefs(context: Context) {
         private const val KEY_TEAM = "team_name"
         private const val KEY_KIDS = "kids_mode"
         private const val KEY_TITLE = "title_id"
-        /** Monday-based week number (the earlier int key held a different week code). */
-        private const val KEY_PICKS_WEEK2 = "weekly_picks_week3"
+        /** Monday-based week number; a new key re-picks this week under the current rules. */
+        private const val KEY_PICKS_WEEK2 = "weekly_picks_week4"
         private const val KEY_WEEKEND_MISSES = "weekend_misses"
         private const val KEY_WEEKEND_MISS_WEEK = "weekend_miss_week"
         private const val KEY_WEEKEND_REST_UNTIL = "weekend_rest_until"

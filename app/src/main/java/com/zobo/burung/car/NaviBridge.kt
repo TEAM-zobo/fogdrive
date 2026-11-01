@@ -311,8 +311,8 @@ class NaviBridge(private val context: Context) : NaviHelperEventListener {
     }
 
     companion object {
-        /** Waypoint name of the fog detour; arriving at a waypoint with this name counts as an expedition. */
-        const val DETOUR_NAME = "안개 구역 탐험"
+        /** Waypoint name of the exploring detour; arriving at a waypoint with this name counts as an expedition. */
+        const val DETOUR_NAME = "새 동네 탐험"
         private const val TAG = "FogNavi"
         private const val TBT_INTERVAL_MS = 1_000L
 

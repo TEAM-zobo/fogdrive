@@ -68,14 +68,28 @@ class ExpeditionTest {
     @Test
     fun weeklyPicksPutTheTitleClosingStampFirst() {
         val got = setOf(StampCode.FIRST_DRIVE, StampCode.WEEK_THREE, StampCode.STREAK_4W)
-        val p = StampProgress(km = 300, dongs = 4, provinces = 1)
+        val p = StampProgress(km = 750, dongs = 4, provinces = 1)
         val picks = WeeklyPicks.pick(got, p, 1000L, placeNear = true, weekendPaused = false)
         assertEquals(3, picks.size)
-        assertEquals(StampCode.KM_1000, picks.first())  // the last 꾸준함 stamp
+        assertEquals(StampCode.KM_1000, picks.first())  // the last 꾸준함 stamp, 250 km to go
         assertFalse(StampCode.FIRST_DRIVE in picks)
-        assertFalse(StampCode.DONG_100 in picks)  // under half way
+        assertFalse(StampCode.DONG_100 in picks)  // 96 동 to go
+        assertFalse(StampCode.DONG_10 in picks)  // 6 동 to go: more than a week
         assertFalse(StampCode.PROVINCE_3 in picks)  // one 시·도 so far
         assertEquals(picks, WeeklyPicks.pick(got, p, 1000L, placeNear = true, weekendPaused = false))
+    }
+
+    @Test
+    fun weeklyPicksOnlySuggestWhatAWeekCanEarn() {
+        val got = setOf(StampCode.FIRST_DRIVE)
+        val far = StampProgress(streakWeeks = 1, km = 100, dongs = 30, provinces = 2)
+        val picks = WeeklyPicks.pick(got, far, 7L, placeNear = false, weekendPaused = false, provinceNear = false)
+        for (c in listOf(StampCode.STREAK_4W, StampCode.KM_1000, StampCode.DONG_100, StampCode.NEW_DISTRICT, StampCode.PROVINCE_3)) {
+            assertFalse(c in picks)
+        }
+        val close = StampProgress(streakWeeks = 3, km = 800, dongs = 96, provinces = 2)
+        val all = (0L until 20L).flatMap { WeeklyPicks.pick(got + StampCode.DONG_10, close, it, placeNear = true, weekendPaused = false) }.toSet()
+        assertTrue(StampCode.STREAK_4W in all && StampCode.KM_1000 in all && StampCode.DONG_100 in all)
     }
 
     @Test

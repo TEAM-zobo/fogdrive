@@ -114,7 +114,7 @@ def read_record(ctx):
         time.sleep(0.8)
         t = ctx.dev.texts()
     out = {
-        "area": area_m2(value_after(t, "밝힌 면적")),
+        "area": area_m2(value_after(t, "탐험한 면적")),
         "landings": number(value_after(t, "하차 지점")),
         "new_ratio": number(value_after(t, "새 길 비율")),
         "trips": sum(days.values()),
@@ -206,8 +206,8 @@ def tc_connect(ctx):
 
 @case("TC-02", "첫 실행 지도 채우기", "첫 실행 때 내비 최근 목적지·즐겨찾기 주변 안개가 걷힌다",
       "앱 데이터 초기화, 에뮬레이터 내비에 최근 목적지/즐겨찾기 존재",
-      ["앱 첫 실행", "지도 메시지와 최근 주행 패널의 밝힌 면적 확인", "내비에 최근 목적지·즐겨찾기가 없으면 지도 카드의 '내비 안내'로 하나 만든 뒤 다시 실행"],
-      ["'내비 최근 목적지·즐겨찾기 N곳 주변을 밝혔어요' 표시", "밝힌 면적 > 0, 주행 기록 0건"])
+      ["앱 첫 실행", "지도 메시지와 최근 주행 패널의 탐험한 면적 확인", "내비에 최근 목적지·즐겨찾기가 없으면 지도 카드의 '내비 안내'로 하나 만든 뒤 다시 실행"],
+      ["'내비 최근 목적지·즐겨찾기 N곳 주변을 지도에 열어 뒀어요' 표시", "탐험한 면적 > 0, 주행 기록 0건"])
 def tc_seed(ctx):
     def start_and_watch():
         # The message shows for 4 s a few seconds after the start: watched from the start, since
@@ -217,7 +217,7 @@ def tc_seed(ctx):
         ctx.dev.app_reset()
         ctx.dev.geo(*START)
         ctx.dev.app_start()
-        return ctx.dev.wait_text("주변을 밝혔어요", timeout=15)
+        return ctx.dev.wait_text("주변을 지도에 열어 뒀어요", timeout=15)
 
     ctx.dev.shell("logcat", "-c")
     seeded = start_and_watch()
@@ -234,14 +234,14 @@ def tc_seed(ctx):
     ctx.shot("map")
     r = read_record(ctx)
     ctx.log(f"기록: {r}")
-    ctx.check((r["area"] or 0) > 0, f"밝힌 면적 {(r['area'] or 0) / 1e6:.4f} km² > 0")
+    ctx.check((r["area"] or 0) > 0, f"탐험한 면적 {(r['area'] or 0) / 1e6:.4f} km² > 0")
     ctx.check(r["trips"] == 0, "주행 기록 없음")
 
 
 @case("TC-03", "자동 안개 걷기", "D단으로 주행하면 지나간 길의 안개가 걷히고 주행 기록이 생긴다",
       "앱 초기화, 차량 P단",
       ["기어 D", "실제 도로 경로 25개 지점 위치 주입", "최근 주행 패널 확인"],
-      ["밝힌 면적 증가(+0.04 km² 이상, 약 50칸)", "주행 기록 1건", "새 길 비율 90% 이상"])
+      ["탐험한 면적 증가(+0.04 km² 이상, 약 50칸)", "주행 기록 1건", "새 길 비율 90% 이상"])
 def tc_drive_reveal(ctx):
     fresh(ctx)
     before = read_record(ctx)
@@ -252,7 +252,7 @@ def tc_drive_reveal(ctx):
     ctx.shot("map_after_drive")
     after = read_record(ctx)
     ctx.log(f"전 {before} → 후 {after}")
-    ctx.check(after["area"] - before["area"] >= 40_000, f"밝힌 면적 +{(after['area'] - before['area']) / 1e6:.3f} km²")
+    ctx.check(after["area"] - before["area"] >= 40_000, f"탐험한 면적 +{(after['area'] - before['area']) / 1e6:.3f} km²")
     ctx.check(after["trips"] == 1, f"주행 기록 {after['trips']}건")
     ctx.check((after["new_ratio"] or 0) >= 90, f"새 길 비율 {after['new_ratio']}%")
 
@@ -260,21 +260,21 @@ def tc_drive_reveal(ctx):
 @case("TC-04", "자동 안개 걷기", "P단에서 위치가 바뀌어도 안개가 걷히지 않는다",
       "앱 초기화, 차량 P단",
       ["기어 P 유지", "다른 지역(여의도)으로 위치 3회 주입", "최근 주행 패널 확인"],
-      ["밝힌 면적 변화 없음", "주행 기록 0건"])
+      ["탐험한 면적 변화 없음", "주행 기록 0건"])
 def tc_parked_no_reveal(ctx):
     fresh(ctx)
     before = read_record(ctx)
     drive(ctx, FAR, delay=1.0)
     after = read_record(ctx)
     ctx.log(f"전 {before} → 후 {after}")
-    ctx.check(after["area"] == before["area"], "밝힌 면적 변화 없음")
+    ctx.check(after["area"] == before["area"], "탐험한 면적 변화 없음")
     ctx.check(after["trips"] == 0, "주행 기록 없음")
 
 
 @case("TC-05", "하차 지점", "주행 후 P단에서 도어를 열면 하차 지점이 기록된다",
       "앱 초기화",
       ["기어 D로 15개 지점 주행", "기어 P", "운전석 도어 열기"],
-      ["'하차 지점을 기록했어요' 표시", "하차 지점 1곳", "밝힌 면적 추가 증가(7×7칸 공개)"])
+      ["'하차 지점을 기록했어요' 표시", "하차 지점 1곳", "탐험한 면적 추가 증가(7×7칸 공개)"])
 def tc_landing(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -446,7 +446,7 @@ def tc_demo(ctx):
 @case("TC-14", "기록 관리", "기록 전체 삭제 후 모든 기록이 0으로 돌아간다",
       "앱 초기화 후 한 번 주행",
       ["기어 D로 10개 지점 주행 후 P", "설정 → 기록 전체 삭제 → 정말 삭제", "최근 주행 패널 확인"],
-      ["밝힌 면적 0, 하차 0곳, 주행 기록 0건"])
+      ["탐험한 면적 0, 하차 0곳, 주행 기록 0건"])
 def tc_reset(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")
@@ -507,7 +507,7 @@ def tc_tutorial(ctx):
 @case("TC-18", "주행 요약", "하차하면 지도에 이번 주행 요약 카드가 뜨고, 닫으면 사라진다",
       "앱 초기화",
       ["기어 D로 20개 지점 주행", "기어 P", "운전석 도어 열기", "요약 카드 확인 후 닫기"],
-      ["'이번 주행 요약' 카드와 밝힌 면적·거리 표시", "처음 가 본 동네 표시", "닫기 후 카드 사라짐"])
+      ["'이번 주행 요약' 카드와 탐험한 면적·거리 표시", "처음 가 본 동네 표시", "닫기 후 카드 사라짐"])
 def tc_trip_summary(ctx):
     fresh(ctx)
     ctx.vc.gear("Drive")

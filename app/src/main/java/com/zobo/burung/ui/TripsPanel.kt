@@ -133,7 +133,7 @@ fun TripsPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier: Modifier
                 Column(Modifier.padding(top = 16.dp, bottom = 24.dp, start = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("전체 기록", style = MaterialTheme.typography.titleSmall, color = FogColors.TextSub)
                     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                        Total("밝힌 면적", Area.format(summary.areaKm2 * 1_000_000))
+                        Total("탐험한 면적", Area.format(summary.areaKm2 * 1_000_000))
                         Total("하차 지점", "${summary.landings}곳")
                         Total("새 길 비율", formatPercent(summary.newRoadRatio))
                     }
@@ -208,7 +208,7 @@ private fun TripRow(
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 trip.endedAt?.let { end -> Detail("걸린 시간", "${((end - trip.startedAt) / 60_000).coerceAtLeast(1)}분", Modifier.weight(1f)) }
                 Detail("새로 개척한 길", formatPercent(ratio), Modifier.weight(1f))
-                Detail("밝힌 면적", "+${Area.formatCells(trip.newCells)}", Modifier.weight(1f))
+                Detail("탐험한 면적", "+${Area.formatCells(trip.newCells)}", Modifier.weight(1f))
             }
             if (stamps.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -218,7 +218,7 @@ private fun TripRow(
                 }
             }
             if (noRoute) {
-                Text("경로 기록 기능 전의 주행이라 이때 새로 밝힌 곳만 점으로 보여 줘요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
+                Text("경로 기록 기능 전의 주행이라 이때 새로 탐험한 곳만 점으로 보여 줘요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
             }
         }
     }

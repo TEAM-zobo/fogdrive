@@ -358,7 +358,10 @@ class MainViewModel : ViewModel() {
             if (savedWeek > 0) {
                 prefs.noteWeekendPick(savedWeek, picked = StampCode.WEEKEND.name in saved, earned = StampCode.WEEKEND in collected, week)
             }
-            WeeklyPicks.pick(collected, progress, week, placeNear = district != null, weekendPaused = prefs.weekendPaused(week))
+            WeeklyPicks.pick(
+                collected, progress, week,
+                placeNear = district != null, weekendPaused = prefs.weekendPaused(week), provinceNear = province != null,
+            )
                 .also { prefs.setWeeklyPicks(week, it.map { c -> c.name }) }
         }
         codes.map { c ->
@@ -498,7 +501,7 @@ class MainViewModel : ViewModel() {
         // A second tap while the history is still loading doesn't load it again.
         if (timelapseJob?.isActive == true) return
         timelapseJob = viewModelScope.launch(Dispatchers.Default) {
-            timelapse.value = Timelapse.of(repo.clearedSince(0)) ?: return@launch run { shareCardMessage.value = "아직 걷어낸 안개가 없어요." }
+            timelapse.value = Timelapse.of(repo.clearedSince(0)) ?: return@launch run { shareCardMessage.value = "아직 탐험한 곳이 없어요." }
         }
     }
 

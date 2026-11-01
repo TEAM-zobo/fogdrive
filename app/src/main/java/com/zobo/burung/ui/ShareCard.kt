@@ -93,10 +93,10 @@ object ShareCard {
             c.drawText(v, x, y + 58f, value)
             y += 120f
         }
-        row("밝힌 면적", Area.format(s.areaM2))
+        row("탐험한 면적", Area.format(s.areaM2))
         row("개척한 읍·면·동", "${s.dongs}곳 · 하차 ${s.landings}곳")
         row("모은 스탬프", "${s.stampKinds}종")
-        s.topDistrict?.let { c.drawText("가장 많이 밝힌 곳  $it ${formatRate(s.topRate)}", x, y + 10f, label) }
+        s.topDistrict?.let { c.drawText("가장 많이 탐험한 곳  $it ${formatRate(s.topRate)}", x, y + 10f, label) }
         c.drawText(SimpleDateFormat("yyyy.MM.dd", Locale.KOREA).format(Date()) + "  ·  #부릉탐험대", x, HEIGHT - 60f, title)
     }
 

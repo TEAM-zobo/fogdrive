@@ -179,15 +179,21 @@ object Titles {
 /** This week's suggested stamps: picked on the first look of the week, kept until Monday. */
 object WeeklyPicks {
     const val COUNT = 3
+    /** What an everyday driver adds in a week (commutes plus a weekend outing): ~300 km, a few new 동. */
+    const val WEEK_KM = 300
+    const val WEEK_DONGS = 5
 
     /**
-     * Up to three stamps not collected yet, the most motivating first:
+     * Up to three stamps not collected yet that an everyday week of driving can earn, the most
+     * motivating first:
      * 1. one that completes a field (its title is one stamp away),
      * 2. a progress stamp well on its way (60 % or more),
-     * 3. a place to go now: a new 시·군·구 when one is near ([placeNear]), the third 시·도 once two are in,
-     * 4. the rest that can be done in a week (a weekend drive unless [weekendPaused], a far trip, family).
-     * Never 첫 시동 (it comes with the first drive), and never what can't be reached soon (100 동 under
-     * half way, 3 시·도 with fewer than two). Ties are broken in an order fixed for the [week].
+     * 3. a place to go now: a new 시·군·구 when one is near ([placeNear]), the third 시·도 when one is
+     *    near ([provinceNear]) and two are in,
+     * 4. the rest (a weekend drive unless [weekendPaused], a far trip, family, a crew mission).
+     * Never 첫 시동 (it comes with the first drive), and never what a week can't reach: 4 weeks in a
+     * row before the third, more than [WEEK_KM] km or [WEEK_DONGS] 동 still to go, a place with
+     * none near. Ties are broken in an order fixed for the [week].
      */
     fun pick(
         collected: Set<StampCode>,
@@ -195,16 +201,24 @@ object WeeklyPicks {
         week: Long,
         placeNear: Boolean,
         weekendPaused: Boolean,
+        provinceNear: Boolean = placeNear,
     ): List<StampCode> {
         val open = StampBook.ACTIVE.filter { it !in collected && it != StampCode.FIRST_DRIVE }
         val closing = StampField.entries.filter { f -> StampBook.ACTIVE.count { StampBook.field(it) == f && it in collected } == 3 }.toSet()
         fun ratio(c: StampCode) = StampBook.progress(c, p)?.let { (n, t) -> n.toDouble() / t } ?: 0.0
+        fun left(c: StampCode) = StampBook.progress(c, p)?.let { (n, t) -> t - n } ?: 0
+        fun reachable(c: StampCode): Boolean = when (c) {
+            StampCode.STREAK_4W -> p.streakWeeks >= 3
+            StampCode.KM_1000 -> left(c) <= WEEK_KM
+            StampCode.DONG_10, StampCode.DONG_100 -> left(c) <= WEEK_DONGS
+            StampCode.NEW_DISTRICT -> placeNear
+            StampCode.PROVINCE_3 -> p.provinces >= 2 && provinceNear
+            StampCode.WEEKEND -> !weekendPaused
+            else -> true
+        }
         fun rank(c: StampCode): Int? = when {
-            c == StampCode.DONG_100 && ratio(c) < 0.5 -> null
-            c == StampCode.PROVINCE_3 && p.provinces < 2 -> null
-            c == StampCode.WEEKEND && weekendPaused -> null
+            !reachable(c) -> null
             StampBook.field(c) in closing -> 0
-            c == StampCode.NEW_DISTRICT && !placeNear -> 3
             ratio(c) >= 0.6 -> 1
             c == StampCode.NEW_DISTRICT || c == StampCode.PROVINCE_3 -> 2
             else -> 3

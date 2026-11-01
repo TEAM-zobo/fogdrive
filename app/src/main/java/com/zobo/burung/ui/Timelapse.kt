@@ -177,7 +177,7 @@ fun TimelapseDialog(lapse: Timelapse, onClose: () -> Unit) {
                 }
             }
             Text(
-                "${lapse.size}칸의 안개를 걷어낸 기록이에요.",
+                "${lapse.size}칸을 탐험한 기록이에요.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = FogColors.TextSub,
             )

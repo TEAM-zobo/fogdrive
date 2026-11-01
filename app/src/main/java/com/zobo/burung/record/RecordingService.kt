@@ -368,9 +368,9 @@ class RecordingService : Service() {
                 val what = when (event.kind) {
                     ArrivalKind.DESTINATION -> "목적지 도착"
                     ArrivalKind.WAYPOINT -> "경유지 도착"
-                    ArrivalKind.DETOUR -> "안개 구역 원정 성공"
+                    ArrivalKind.DETOUR -> "새 동네 원정 성공"
                 }
-                note("$what: ${event.name} 주변을 밝혔어요 (+${Area.formatCells(event.newCells)})")
+                note("$what: ${event.name} 주변을 탐험했어요 (+${Area.formatCells(event.newCells)})")
             }
             is RecorderEvent.Stamp -> {
                 // Only the stamps of the stamp book are kept; the recorder's other codes are dropped.
@@ -408,7 +408,7 @@ class RecordingService : Service() {
         FogRuntime.live.update { it.copy(lastTrip = summary) }
         if (summary.leveledUp) Sfx.play(Sound.LEVEL_UP, byControl = false)
         val parts = buildList {
-            if (s.newCells > 0) add("안개 ${spokenArea(Area.ofCells(s.newCells))}를 걷었어요")
+            if (s.newCells > 0) add("새로운 곳 ${spokenArea(Area.ofCells(s.newCells))}를 탐험했어요")
             else add("${"%.1f".format(s.distanceMeters / 1000)}킬로미터를 달렸어요")
             if (summary.newDongs.isNotEmpty()) add("처음 가 본 동네는 ${summary.newDongs.size}곳")
         }
@@ -462,7 +462,7 @@ class RecordingService : Service() {
             added += repo.reveal(Tiles.neighborhood(Tiles.cellOf(p.lat, p.lng), SEED_RADIUS), CellSource.SEED)
         }
         prefs.edit().putBoolean(KEY_SEEDED, true).apply()
-        note("내비 최근 목적지·즐겨찾기 ${places.size}곳 주변을 밝혔어요 (+${Area.formatCells(added)})")
+        note("내비 최근 목적지·즐겨찾기 ${places.size}곳 주변을 지도에 열어 뒀어요 (+${Area.formatCells(added)})")
     }
 
     private suspend fun answerOf(list: StateFlow<List<Place>?>): List<Place> =

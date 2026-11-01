@@ -12,7 +12,7 @@ data class CrewMission(val kind: Kind, val target: Int) {
 
     fun title(): String = when (kind) {
         Kind.NEW_DONGS -> "새 동 ${target}곳 지나기"
-        Kind.AREA -> "안개 ${Area.formatInt(target)} 걷기"
+        Kind.AREA -> "새로운 곳 ${Area.formatInt(target)} 탐험하기"
         Kind.NEW_ROAD_KM -> "새 길 ${target} km 달리기"
     }
 

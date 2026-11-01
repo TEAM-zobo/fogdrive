@@ -153,10 +153,10 @@ fun ExpeditionScreen(viewModel: MainViewModel, onShowOnMap: (RegionStat) -> Unit
         }
 
         // This week's three suggestions: stamps still to collect, with how and (for a place) where.
-        Heading(Icons.Outlined.Explore, MINT, k("이번 주 탐험 추천", "이번 주 모험 추천"), k("월요일마다 새로 골라요", "월요일마다 바뀌어요"))
+        Heading(Icons.Outlined.Explore, MINT, k("이번 주 탐험 추천", "이번 주 모험 추천"), k("월요일마다 초기화돼요", "월요일마다 바뀌어요"))
         Section {
             if (picks.isEmpty() && progressRead != null) Text(
-                // Picks can also run out while stamps are left (e.g. 100 동 still under half way).
+                // Picks can also run out while stamps are left (e.g. only far-off progress stamps left).
                 if (collected.size == StampBook.ACTIVE.size) k("스탬프를 모두 모았어요!", "스탬프를 다 모았어요! 최고예요!")
                 else k("이번 주는 추천할 스탬프가 없어요. 계속 달리면 열려요", "이번 주는 쉬어 가요. 계속 달리면 새 모험이 열려요!"),
                 fontSize = 24.sp, color = FogColors.TextSub, modifier = Modifier.padding(vertical = 20.dp),

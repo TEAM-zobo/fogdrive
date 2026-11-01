@@ -43,19 +43,19 @@ private class TutorialPage(val icon: ImageVector, val color: Color, val title: S
 private val pages: List<TutorialPage>
     @Composable get() = listOf(
         TutorialPage(
-            Icons.Outlined.DirectionsCar, FogColors.Accent, "시동만 걸면 안개가 걷혀요",
-            "달린 길과 길에서 보이는 만큼 지도의 안개가 걷혀요. 아직 안 가 본 동네는 짙은 안개, " +
-                "들어가 본 동네의 안 지난 곳은 옅은 안개로 남아요. 따로 누를 건 없어요.",
+            Icons.Outlined.DirectionsCar, FogColors.Accent, "시동만 걸면 탐험 시작",
+            "달린 길과 길에서 보이는 만큼 지도가 열려요. 아직 안 가 본 동네는 어둡게, " +
+                "들어가 본 동네의 안 지난 곳은 옅게 남아요. 따로 누를 건 없어요.",
         ),
         TutorialPage(
             Icons.Outlined.Flag, FogColors.Amber, "내린 곳에는 깃발",
-            "P단에서 문을 열고 내리면 그 주변을 걷고 깃발을 꽂아요. " +
-                "비 오는 날, 밤, 가족과 함께, 창문을 열고 달리면 상황 스탬프도 모여요.",
+            "P단에서 문을 열고 내리면 그 주변까지 탐험하고 깃발을 꽂아요. " +
+                "주말 나들이, 가족과 함께, 멀리 떠난 날에는 스탬프도 모여요.",
         ),
         TutorialPage(
-            Icons.Outlined.Explore, FogColors.Blue, "도감과 챌린지",
-            "시·도 → 시·군·구 → 읍·면·동 도감에서 지역별 달성률을 확인하고, " +
-                "오늘·이번 주·이번 달·시즌 챌린지에 도전해요. 처음 가 본 동네는 이야기 카드로 소개해요.",
+            Icons.Outlined.Explore, FogColors.Blue, "도감과 내 탐험",
+            "시·도 → 시·군·구 → 읍·면·동 도감에서 지역별 개척률을 확인하고, " +
+                "내 탐험에서 스탬프를 모아 칭호를 받아요. 매주 탐험 추천도 있어요.",
         ),
         TutorialPage(
             Icons.Outlined.RecordVoiceOver, FogColors.Accent, "주행 중에는 소리로",
