@@ -186,6 +186,19 @@ object Backup {
         return BackupData(cells, tripRows, landings, stamps, track, exportedAt)
     }
 
+    /**
+     * The driver's 집 and 회사 a demo record carries ("home" / "work": [lat, lng, name], JSON backups
+     * only), each null when absent: the made-up driver's places are not the emulator's navigation's.
+     */
+    fun savedPlacesOf(file: File): Pair<com.zobo.burung.car.Place?, com.zobo.burung.car.Place?> = runCatching {
+        if (file.inputStream().use { it.read() } != '{'.code) return null to null
+        val json = JSONObject(file.readText())
+        fun place(key: String, name: String) = json.optJSONArray(key)?.let { h ->
+            com.zobo.burung.car.Place(h.optString(2, name), h.getDouble(0), h.getDouble(1), "")
+        }
+        place("home", "집") to place("work", "회사")
+    }.getOrDefault(null to null)
+
     /** Format 1: one JSON object with a row array per table. */
     private fun readJson(input: InputStream): BackupData {
         val json = JSONObject(input.bufferedReader().readText())

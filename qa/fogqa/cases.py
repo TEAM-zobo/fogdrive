@@ -420,8 +420,8 @@ def tc_detour(ctx):
 
 @case("TC-13", "시연 모드", "시연 모드가 출발→주행→하차까지 끝까지 재생된다",
       "앱 초기화",
-      ["지도 → 시연 주행 → 시연 시작", "완료 메시지까지 대기(성수 코스 36 km, 기본 60 km/h·10배속으로 약 4분)", "기록·도감 확인", "시연 중지"],
-      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "함께 탐험 획득, 빗속 개척 없음"])
+      ["지도 → 시연 주행 → 시연 시작", "완료 메시지까지 대기(기본 코스 출근길 13 km, 60 km/h·10배속으로 약 1분 반)", "기록·내 탐험 확인", "시연 중지"],
+      ["'시연 주행 완료' 표시", "하차 지점 1곳, 주행 기록 1건", "첫 시동 획득, 빗속 개척 없음"])
 def tc_demo(ctx):
     fresh(ctx)
     # Started from the map's own demo panel: the drive ends back on the map, where the completion
@@ -435,7 +435,7 @@ def tc_demo(ctx):
     s = read_stamps(ctx)
     ctx.log(f"기록 {r} / 스탬프 {s}")
     ctx.check(r["landings"] == 1 and r["trips"] == 1, "하차 1곳, 주행 1건")
-    ctx.check(s.get("함께 탐험", 0) >= 1 and not s.get("빗속 개척"), "함께 탐험, 빗속 개척 없음")
+    ctx.check(s.get("첫 시동", 0) >= 1 and not s.get("빗속 개척"), "첫 시동, 빗속 개척 없음")
     # Stopped from the map's demo panel, which keeps "시연 중지" on screen after the drive ends.
     ctx.dev.tap_text("지도")
     ctx.dev.tap_text("시연 중지")

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Puts an emulator into the demo-video starting state: app reset, demo history imported, car parked at home.
+"""Puts an emulator into the demo starting state: app reset, the demo persona's record imported, car parked at home.
 
-    python3 tools/demo/make_demo_backup.py                 # once: builds tools/demo/out/fogdrive-backup.json
+    python3 tools/demo/persona/make_persona_backup.py      # builds tools/demo/out/persona-backup.json (dated today)
     python3 tools/demo/prepare_demo.py [--serial emulator-5556] [--apk app/build/outputs/apk/debug/app-debug.apk]
-    python3 tools/demo/prepare_demo.py --fresh             # part 1: a first-run app, not opened yet
+    python3 tools/demo/prepare_demo.py --fresh             # a first-run app, not opened yet
 
 Steps: (install) → Virtual Console reset (P, doors shut, no passengers, wipers/lights off) → app data
-cleared and permissions granted → location 향기5로 66 → demo history copied into the app's files folder
-→ app opened and 설정 → 불러오기 tapped → back on the map. The demo course stays 성수 주말 나들이.
+cleared and permissions granted → location: the persona's home (위례) → record copied into the
+app's files folder → app opened and 설정 → 불러오기 tapped → back on the map. The record brings the
+persona's 집 and 회사, which the app uses in place of the navigation's.
 Uses the QA tool (qa/fogqa) for adb and the Virtual Console.
 """
 import argparse
@@ -18,10 +19,11 @@ import time
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "qa"))
-from fogqa.device import HOME, PACKAGE, Device  # noqa: E402
+from fogqa.device import PACKAGE, Device  # noqa: E402
 from fogqa.vconsole import VConsole  # noqa: E402
 
-BACKUP = os.path.join(ROOT, "tools", "demo", "out", "fogdrive-backup.json")
+BACKUP = os.path.join(ROOT, "tools", "demo", "out", "persona-backup.json")
+HOME = tuple(__import__("json").load(open(os.path.join(ROOT, "tools", "demo", "persona", "routes.json"), encoding="utf-8"))["places"]["home"])
 X_CENTER = 1700  # middle of the app area on the 2560-px screen, for scrolling
 
 
@@ -42,7 +44,7 @@ def main():
     p.add_argument("--fresh", action="store_true", help="first run: no record, app left closed (tutorial on next open)")
     a = p.parse_args()
     if not a.fresh and not os.path.exists(BACKUP):
-        sys.exit("demo history missing: run python3 tools/demo/make_demo_backup.py first")
+        sys.exit("demo record missing: run python3 tools/demo/persona/make_persona_backup.py first")
 
     dev = Device(serial=a.serial)
     port = a.vc_port or (8088 if a.serial == "emulator-5554" else 18088)
@@ -58,7 +60,7 @@ def main():
         dev.app_reset()
         dev.geo(*HOME)
         if a.fresh:
-            print("ready: first run, parked at 향기5로 66, app closed")
+            print("ready: first run, parked at home (위례), app closed")
             return
         user = dev.shell("am", "get-current-user").strip()
         # The driver profile's external app folder is closed to adb; run-as writes the internal one,
@@ -92,7 +94,7 @@ def main():
         time.sleep(2)
         dev.tap_text("지도")
         time.sleep(2)
-        print("ready: parked at 향기5로 66, demo history loaded, 지도 tab open")
+        print("ready: parked at home (위례), persona record loaded, 지도 tab open")
     finally:
         vc.stop()
 

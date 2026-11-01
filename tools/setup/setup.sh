@@ -21,8 +21,8 @@ QA_AVD_NAME="Pleos_Connect_QA"            # name fixed by qa/fogqa/device.py
 SCREEN_SERIAL="emulator-5554"
 QA_SERIAL="emulator-5556"
 IMAGE_PKG_DIR="system-images/android-34/pleos_car_emulator"
-HOME_LNG=126.89592                        # 고양시 향동 향기5로 66, start of every demo course
-HOME_LAT=37.60852
+HOME_LNG=127.13960                        # 송파 위례 (송파꿈에그린 위례24단지): the demo persona's home, start of every demo course
+HOME_LAT=37.47588
 PACKAGE="com.zobo.burung"
 CMDLINE_TOOLS_BUILD=11076708
 
@@ -296,7 +296,7 @@ cmd_boot() {
   [ $record = 1 ] && "$ADB" -s "$serial" shell settings put global auto_time 0 && ok "시계: $("$ADB" -s "$serial" shell date | tr -d '\r') (녹화용, 자동 시간 끔)"
   "$ADB" -s "$serial" emu geo fix "$HOME_LNG" "$HOME_LAT" >/dev/null
   "$ADB" -s "$serial" forward "tcp:$vc" tcp:8088 >/dev/null
-  ok "위치: 향기5로 66 · Virtual Console: http://127.0.0.1:$vc/"
+  ok "위치: 위례(시연 페르소나의 집) · Virtual Console: http://127.0.0.1:$vc/"
 }
 
 cmd_stop() {

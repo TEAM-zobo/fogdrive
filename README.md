@@ -135,7 +135,7 @@ powershell -ExecutionPolicy Bypass -File tools\setup\setup.ps1 all
 
 스크립트 대신 Android Studio로 직접 셋팅하려면 [Pleos Connect Emulator 설치 및 실행](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator) 문서를 따릅니다(요약은 [docs/SETUP.md](docs/SETUP.md#android-studio로-직접-셋팅-macoswindows-공통-스크립트-대신)). AVD는 Cold boot, RAM 4GB로 설정합니다. 지도 타일을 받으려면 에뮬레이터에 인터넷 연결이 필요합니다.
 
-앱의 기본 위치(위치가 없을 때의 지도 시작점)는 고양시 향동 향기5로 66입니다. 셋팅 스크립트의 `boot` 단계가 에뮬레이터 위치를 여기로 맞춥니다. 따로 맞추려면 macOS는 `tools/emulator/set_home.sh`, Windows는 `adb emu geo fix 126.89592 37.60852`를 실행합니다.
+앱의 기본 위치(위치가 없을 때의 지도 시작점)는 시연 페르소나의 집인 위례(송파꿈에그린 위례24단지)입니다. 셋팅 스크립트의 `boot` 단계가 에뮬레이터 위치를 여기로 맞춥니다. 따로 맞추려면 macOS는 `tools/emulator/set_home.sh`, Windows는 `adb emu geo fix 127.13960 37.47588`를 실행합니다.
 
 ## 실행 방법
 
@@ -164,7 +164,7 @@ Release 서명 정보는 저장소 밖의 `keystore.properties`(gitignore)에서
 
 ### 1. 시연 모드 (권장)
 
-앱의 **설정 → 시연 모드**에서 코스를 고르고 **시연 시작**을 누른 뒤 **지도** 탭으로 이동합니다. 모든 코스는 향기5로 66(고양 향동)에서 출발해 실제 도로 경로(OSRM)를 달립니다. 지도·주행 화면의 시연 제어 패널에서 속도 조절과 중지를 할 수 있습니다.
+앱의 **설정 → 시연 모드**에서 코스를 고르고 **시연 시작**을 누른 뒤 **지도** 탭으로 이동합니다. 모든 코스는 시연 페르소나의 집(위례)에서 출발해 실제 도로 경로(OSRM)를 달립니다: 출근길(양재 현대자동차 본사), 토요일 코스트코 양재점, 주말 근교 6곳, 분기 1회 강릉. 페르소나의 10주치 기록은 `tools/demo/persona/make_persona_backup.py`로 만들고 `tools/demo/prepare_demo.py`로 넣습니다. 지도·주행 화면의 시연 제어 패널에서 속도 조절과 중지를 할 수 있습니다.
 
 - 차량 속도: 20~200km/h(기본 60km/h), 주행 중에도 바로 반영됩니다. 시연 시간은 실제의 10배속으로 흐릅니다.
 - 같은 길로 돌아오기: 도착해 하차한 뒤 출발지까지 같은 길로 왕복합니다.

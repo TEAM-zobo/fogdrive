@@ -26,8 +26,8 @@ $Abi = "x86_64"                          # Windows uses the Intel/AMD image
 $ImageXml = "crp-sys-img.xml"
 $ImageRepo = "https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x"
 $ImagePkgDir = "system-images\android-34\pleos_car_emulator"
-$HomeLng = "126.89592"                   # 고양시 향동 향기5로 66, start of every demo course
-$HomeLat = "37.60852"
+$HomeLng = "127.13960"                   # 송파 위례 (송파꿈에그린 위례24단지): the demo persona's home, start of every demo course
+$HomeLat = "37.47588"
 $Package = "com.zobo.burung"
 $CmdlineToolsBuild = "11076708"
 
@@ -353,7 +353,7 @@ function Cmd-Boot {
   if ($Record) { Invoke-Adb -s $serial shell settings put global auto_time 0 | Out-Null; Ok "시계: $(Invoke-Adb -s $serial shell date) (녹화용, 자동 시간 끔)" }
   Invoke-Adb -s $serial emu geo fix $HomeLng $HomeLat | Out-Null
   Invoke-Adb -s $serial forward "tcp:$vc" tcp:8088 | Out-Null
-  Ok "위치: 향기5로 66 · Virtual Console: http://127.0.0.1:$vc/"
+  Ok "위치: 위례(시연 페르소나의 집) · Virtual Console: http://127.0.0.1:$vc/"
 }
 
 function Cmd-Stop {

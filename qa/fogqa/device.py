@@ -277,8 +277,6 @@ def shutdown(dev):
 
 
 def demo_route():
-    """Road path of the default demo course (single source: DemoCourses.kt, SEONGSU_ROUTE)."""
-    src = os.path.join(ROOT, "app/src/main/java/com/zobo/burung/demo/DemoCourses.kt")
-    with open(src, encoding="utf-8") as f:
-        body = f.read().split("val SEONGSU_ROUTE", 1)[1].split("\n    )", 1)[0]
-    return [(float(a), float(b)) for a, b in re.findall(r"(\d+\.\d+) to (\d+\.\d+)", body)]
+    """QA's test drive (qa/fogqa/route.py): the app's demo courses follow the demo persona instead."""
+    from .route import ROUTE
+    return list(ROUTE)
