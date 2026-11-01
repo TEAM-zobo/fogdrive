@@ -224,12 +224,14 @@ def main():
         end_ms = start_ms + int(meters / 1000 / speed * 3_600_000)
         driven = swath(route, DRIVE_RADIUS)
         new_cells = 0
+        opened = []  # cells first opened on this trip, in order
         for x, y in driven:
             c = pack(x, y)
             if c in cells:
                 cells[c][3] += 1
             else:
                 cells[c] = [start_ms, tid, SOURCE_DRIVE, 1]
+                opened.append(c)
                 new_cells += 1
         end = route[-1]
         if outbound:
@@ -240,6 +242,7 @@ def main():
                     c = pack(ex + dx, ey + dy)
                     if c not in cells:
                         cells[c] = [end_ms, tid, SOURCE_LANDING, 1]
+                        opened.append(c)
                         new_cells += 1
         new_ratio = min(1.0, new_cells / max(1, len(driven)))
         trips.append([tid, start_ms, end_ms, new_cells, round(meters, 1), round(meters * new_ratio, 1)])
@@ -255,9 +258,7 @@ def main():
             seen_sggs.add(atlas.dong[k][2])
             seen_sidos.add(atlas.sgg[atlas.dong[k][2]][2])
         new_district = None
-        for c, v in cells.items():
-            if v[1] != tid:
-                continue
+        for c in opened:
             k = atlas.dong_at(c >> 32, c & 0xFFFFFFFF)
             if k is None or k in seen_dongs:
                 continue

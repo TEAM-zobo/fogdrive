@@ -199,7 +199,10 @@ fun DexMap(
                     val fit = Fit.of(shapes, size.width.toFloat(), size.height.toFloat()) ?: return@detectTapGestures
                     val x = fit.toX(p.x).toDouble()
                     val y = fit.toY(p.y).toDouble()
-                    shapes.firstOrNull { it.outline.contains(x, y) }?.let(tap)
+                    // An inset (울릉도·독도) is drawn away from its outline: a tap inside its box picks its region.
+                    (shapes.firstOrNull { it.outline.contains(x, y) }
+                        ?: shapes.firstOrNull { s -> s.inset?.let { b -> x in b[0]..b[2] && y in b[1]..b[3] } == true })
+                        ?.let(tap)
                 }
             }
             .drawWithCache {
