@@ -120,7 +120,7 @@ fun LoadingOverlay() {
                     color = FogColors.TextMain,
                 )
                 Spacer(Modifier.height(10.dp))
-                Text("달린 만큼 넓어지는 우리 탐험 지도", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
+                Text("시동을 걸면 시작되는 나만의 탐험 지도", style = MaterialTheme.typography.bodyLarge, color = FogColors.TextSub)
                 Spacer(Modifier.height(44.dp))
                 LinearProgressIndicator(
                     progress = { progress },
