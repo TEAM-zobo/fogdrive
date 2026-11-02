@@ -34,22 +34,9 @@
 녹화하지 않고 지금 영상을 다시 렌더링하거나 자막·음악만 고칠 때는 Release의 소재를 받습니다.
 
 ```bash
-# 녹화용 QA 에뮬레이터: 창 없음, 소리 켬, 시계를 오늘 오전 11시(KST)로 → 지도가 주간 모드
-tools/setup/setup.sh boot --record          # Windows: setup.ps1 boot -record
-
-# 앱 빌드
-./gradlew :app:assembleDebug
-
-# 1부 "첫 시동": 앱 데이터 초기화, 앱은 닫아 둔 채로 → 첫 실행부터 녹화
-python3 tools/demo/prepare_demo.py --fresh --apk app/build/outputs/apk/debug/app-debug.apk
-python3 tools/demo/record_segments.py part1
-
-# 2부 "쌓인 기록": 시연 페르소나(40대 아빠 A씨)의 4주 기록(docs/submission/persona.md)을 불러온 뒤 녹화
-python3 tools/demo/persona/make_persona_backup.py
-python3 tools/demo/prepare_demo.py
-python3 tools/demo/record_segments.py part2
-
-tools/setup/setup.sh stop --record
+gh release download burung-media-v1 -R TEAM-zobo/fogdrive -p 'burung-*-assets.zip' -D /tmp/burung-media
+unzip -o /tmp/burung-media/burung-demo-assets.zip  -d tools/demo/burung-demo     # assets/... 경로 그대로
+unzip -o /tmp/burung-media/burung-short-assets.zip -d tools/demo/burung-short
 ```
 
 - 효과음(`assets/sfx/`)은 Pixabay 라이선스상 따로 재배포할 수 없어 묶음에 없습니다. `video` 단계로 설치한 media-use 스킬 라이브러리의 효과음을 `assets/sfx/`에 복사해 씁니다.
@@ -71,43 +58,7 @@ ffmpeg -i renders/burung-demo.mp4 -c:v copy -af "volume=3.6dB,alimiter=limit=0.8
 - 시나리오(접수양식 4. 주요 사용 시나리오, 40대 아빠 A씨): 키즈모드 ON → 유치원 등원(하차 깃발·함께 탐험) → 20번째 출근(「프로 출근러」) → 토요일 도감·추천 → 올림픽공원 나들이(처음 가는 동네 음성·주말 드라이브) → 내 탐험.
 - 화면 오른쪽은 에뮬레이터 실동작 녹화, 왼쪽은 장면 설명·사용 데이터(Pleos SDK)·앱 음성 자막입니다.
 
-| 파일 | 역할 |
-| --- | --- |
-| `build.py` | **편집은 여기서.** 장면 목록(`SCENES`): 쓰는 클립, 카메라(`cam`: 원본 좌표와 배율), 자막(`cap`), 제목(`title`), 숫자 카드(`stat`). 색·글꼴·전환(0.6초 크로스페이드)·음악 볼륨 곡선·효과음 목록(`SFX`)도 여기 있습니다 |
-| `prepare_assets.sh` | 녹화본의 어느 구간을 어떤 클립으로 자를지(숏폼에만 쓰는 `share` 포함). 우회 제안 카드 0.35배속, 음성 문장 한 줄(+22dB, 앞뒤 페이드) |
-| `vector2svg.py` | 앱 런처 아이콘(Android vector XML) → `assets/icon.svg` |
-| `SPEC.md`, `STORYLINES.md` | 장면별 기획, 대안 스토리라인 2개 |
-| `index.html`, `compositions/` | `build.py`가 만드는 결과(직접 고치지 않음) |
-
-자주 하는 수정:
-
-- **카피:** `build.py`의 `cap=dict(h="제목", s="부제")`와 `title=dict(lines=[...])`를 고칩니다. 브랜드·챕터·엔딩 문구는 `brand_scene`, `claim_scene`, `end_scene` 안에 있습니다.
-- **확대:** `cam=[(시각, (원본 x, 원본 y, 배율), 이동 시간)]`를 고칩니다. 원본 좌표는 2560×1440 녹화 기준입니다. `APP = (1760, 690, 1.2)`가 앱 지도 화면 전체를 꽉 채우는 기본 구도입니다.
-- **장면 순서·길이:** `scene("id", 시작 초, 길이, ...)`를 고칩니다. 장면은 2초 단위로 맞추고, 다음 장면과 0.6초 겹치며 크로스페이드됩니다.
-- **임팩트:** 제목 착지는 `slam_words()`, 파랑 플러드는 `brand_scene`·`stat` 카드·`claim_scene`, 몽타주 휩은 `whip=True` 장면입니다.
-- **효과음:** `SFX = [(파일, 시작 초, 볼륨, ...)]`에 한 줄씩. 파일은 `assets/sfx/`에 있고 `prepare_assets.sh`가 media-use 스킬 라이브러리에서 복사합니다. 효과음을 늘리면 렌더 뒤 피크가 -1 dBFS를 넘지 않는지 봅니다.
-- **다시 녹화했다면:** 새 녹화본은 화면 타이밍이 조금씩 달라서 `prepare_assets.sh`의 자르는 구간과 `build.py`의 카메라를 다시 맞춰야 합니다. 확정되면 `shasum -a 256 assets/shots/*.mp4 assets/music/fretless.mp3 assets/fonts/Pretendard-*.woff2 assets/sfx/*.mp3 > assets.sha256`으로 체크섬을 갱신하고, 클립·음악·글꼴을 zip으로 묶어 새 Release(`demo-assets-v2`)로 올린 뒤 스크립트의 `BUNDLE`을 바꿉니다.
-- **음악:** 다른 곡을 쓰려면 `assets/music/`에 넣고 `index_html()`의 `src`와 볼륨 곡선(`duck`)을 바꿉니다. 곡마다 기본 음량이 달라서 렌더 뒤 전체 음량을 확인합니다(-16~-18 LUFS). 엔딩 화면의 출처 표기도 같이 바꿉니다.
-
-## 4. 라이선스와 표기
-
-엔딩 화면 아래쪽에 음악·지도 출처를 이미 넣어 두었습니다.
-
-| 소재 | 라이선스 | 표기 |
-| --- | --- | --- |
-| 배경음악 "Fretless" (Kevin MacLeod, incompetech.com) | CC BY 4.0 | 엔딩 화면 하단 |
-| 글꼴 Pretendard | SIL OFL 1.1 | 필요 없음 |
-| 효과음 (media-use 스킬 라이브러리, Pixabay) | Pixabay Content License | 필요 없음. 파일만 따로 재배포할 수 없어 Release 묶음에는 넣지 않음 |
-| 지도 타일 | OpenStreetMap contributors (ODbL), OpenFreeMap | 엔딩 화면 하단 + 앱 화면 자체 표기 |
-| HyperFrames | Apache-2.0 | 필요 없음 |
-
-## 5. 숏폼
-
-접수양식 02-8 숏폼(선택)은 세로 영상입니다. 제출 조건과 장면은 [submission/shortform.md](submission/shortform.md)에 있습니다.
-
-**부릉탐험대 캐릭터 숏폼 (제출용):** `tools/demo/burung-toon`. 애니메이션 캐릭터가 앱을 소개하는 버전으로, 만드는 법·장면·소재는 [submission/shortform.md](submission/shortform.md)에 있고 앱 화면은 git에 있는 `docs/images/burung/`을 써서 어느 컴퓨터에서나 만들 수 있습니다.
-
-**이전 버전:** `tools/demo/burung-short` (40.6초). 에뮬레이터 앱 화면 캡처와 주행 클립(`assets/`, git 제외)을 소재로 쓰고, 편집은 `build.py`만 고칩니다.
+**숏폼**
 
 ```bash
 cd tools/demo/burung-short
