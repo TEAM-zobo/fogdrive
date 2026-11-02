@@ -2,7 +2,7 @@
 
 Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compose, Gradle 8.10.2, AGP 8.8.2, JDK 17, compileSdk 35.
 기능·구조는 `README.md`, 테스트 환경은 `docs/SETUP.md`, 에뮬레이터 QA는 `qa/README.md`, 공모전 제출물은 `docs/submission/`에 있습니다.
-접수양식 02는 `docs/submission/burung/02-app-introduction.md`를 고친 뒤 `python3 tools/submission/build_form_burung.py`로 `docs/submission/burung/application-form-burung.docx`(공개본)와 `private/zobo_부릉탐험대_접수양식.docx`(제출본)를 다시 만듭니다. 예전 앱 안개지도의 `docs/submission/02-app-introduction.md`·`build_form.py`는 보관용입니다. 02와 제출 링크에는 성명·연락처·이메일·소속·계정 ID를 쓰지 않습니다.
+접수양식은 `docs/submission/application-form.docx` 하나입니다(비공개 저장소라 01 참가 정보까지 채워 커밋). 2026-11-02본은 Word에서 직접 고쳐 02 원고 `docs/submission/02-app-introduction.md`보다 새롭습니다. `python3 tools/submission/build_form.py`는 원고로 양식을 다시 만들면서 Word 수정을 덮어쓰므로, 원고를 docx에 맞추기 전에는 실행하지 않습니다. 02 본문과 제출 링크에는 성명·연락처·이메일·소속·계정 ID를 쓰지 않습니다.
 
 ## 테스트 환경 셋팅과 실행
 

@@ -10,7 +10,7 @@
 
 ## 담을 장면 (접수양식 02 시나리오 기준)
 
-시연 페르소나(위례 → 양재 출퇴근, 4주 기록, [`burung/persona.md`](burung/persona.md)) 위에서, 접수양식 02의 시나리오 두 개를 그대로 보여 줍니다.
+시연 페르소나(위례 → 양재 출퇴근, 4주 기록, [`persona.md`](persona.md)) 위에서, 접수양식 02의 시나리오 두 개를 그대로 보여 줍니다.
 
 | 순서 | 화면 | 보여 줄 것 |
 | --- | --- | --- |
@@ -30,4 +30,4 @@
 - [ ] 배경음악을 쓰면 영상 설명란에 출처를 적는다(예: Music: "Fretless" Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License)
 - [ ] YouTube **일부 공개**(링크가 있는 사람만)로 올리고, 실명이 보이지 않는 팀 zobo 채널을 쓴다
 - [ ] 링크를 로그인하지 않은 브라우저에서 재생해 봤다
-- [ ] 링크를 [`burung/02-app-introduction.md`](burung/02-app-introduction.md)의 【기입 필요: 부릉탐험대 시연 영상 링크】와 [`email.md`](email.md), `private/email.txt`에 넣고 `python3 tools/submission/build_form_burung.py`로 양식을 다시 만들었다
+- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)의 【기입 필요: 부릉탐험대 시연 영상 링크】와 [`email.md`](email.md), `private/email.txt`에 넣고 `python3 tools/submission/build_form.py`로 양식을 다시 만들었다

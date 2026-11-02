@@ -42,7 +42,7 @@ tools/setup/setup.sh boot --record          # Windows: setup.ps1 boot -record
 python3 tools/demo/prepare_demo.py --fresh --apk app/build/outputs/apk/debug/app-debug.apk
 python3 tools/demo/record_segments.py part1
 
-# 2부 "쌓인 기록": 시연 페르소나 4주 기록(docs/submission/burung/persona.md)을 불러온 뒤 녹화
+# 2부 "쌓인 기록": 시연 페르소나 4주 기록(docs/submission/persona.md)을 불러온 뒤 녹화
 python3 tools/demo/persona/make_persona_backup.py
 python3 tools/demo/prepare_demo.py
 python3 tools/demo/record_segments.py part2

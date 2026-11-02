@@ -7,7 +7,7 @@ weekends, and once a quarter to 강릉. Four weeks are on record; 강릉 is left
     python3 tools/demo/persona/make_persona_backup.py [--today 2026-11-01]
         -> tools/demo/out/persona-backup.json  (설정 → 데이터 동기화 → 불러오기)
 
-Why these numbers (see docs/submission/burung/persona.md): a car in Korea runs ~38 km a day
+Why these numbers (see docs/submission/persona.md): a car in Korea runs ~38 km a day
 (한국교통안전공단, 2024: 38.7 km); 집 ↔ 회사 is ~12 km each way; a week here is ~270 km.
 
 Stamps follow the app's rules (explore/Expedition.kt, record/RecordingService.kt): 동 and 시·도 are

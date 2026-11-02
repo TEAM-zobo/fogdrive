@@ -5,19 +5,19 @@
 - 접수 마감: **2026-11-15(일) 23:59**, 우리 목표 제출일 11/12(목)
 - 제출 방법: 이메일(`appdevchallenge@hyundai-partners.com`) 한 통에 접수양식 첨부 + 링크
 - 일정·심사 기준·근거 링크: [공모전 준비 가이드](../index.html), [공모전 사이트](https://appdevchallenge.auto-hmg.io/guide/submission)
-- 예전 앱 **안개지도**의 기획서(`02-app-introduction.md`, `application-form.docx`)는 보관용입니다. 제출하지 않습니다.
+- 이 폴더의 파일은 모두 부릉탐험대 기준 최신본입니다(2026-11-02, 예전 안개지도 기획서와 `burung/` 폴더를 정리해 합침).
 
 ## 무엇을 내나 (2026-11-02 기준)
 
 | 제출물 | 구분 | 이 폴더의 파일 | 상태 | 남은 일 |
 | --- | --- | --- | --- | --- |
-| 접수양식(기획서) | **필수** | [`burung/application-form-burung.docx`](burung/application-form-burung.docx) (개인정보 없는 공개본)<br>`private/zobo_부릉탐험대_접수양식.docx` (제출본, git 제외) | 02 작성, 저장소·APK 칸까지 채움. 제출본은 01·04 이름·이메일까지 채움 | 02의 【기입 필요】 6곳, 01 휴대폰·역할·작성일, 04 동의·서명(팀원 전원), PDF 내보내기 |
-| 접수양식 02 원고 | (양식 원본 글) | [`burung/02-app-introduction.md`](burung/02-app-introduction.md) | 작성 | 고치면 양식 다시 생성 |
+| 접수양식(기획서) | **필수** | [`application-form.docx`](application-form.docx) (제출본, Word에서 직접 수정, 2026-11-02) | 01 참가 정보(대표자·구성원 2명)와 02 작성 | 02의 【기입 필요】 6곳, 01 휴대폰·역할·작성일, 04 동의·서명(팀원 전원), PDF 내보내기 |
+| 접수양식 02 원고 | (양식 원본 글) | [`02-app-introduction.md`](02-app-introduction.md) | 작성, docx(11/02 Word 수정본)보다 이전 내용 | docx에 맞춰 갱신하거나, docx만 최신으로 유지 |
 | 제출 이메일 | **필수** | [`email.md`](email.md) (양식)<br>`private/email.txt` (실제 값을 넣은 메일, git 제외) | 부릉탐험대로 갱신 | 영상 링크 넣어서 발송 |
 | GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | `main` = 부릉탐험대, `apk/zobo_Burung_release.apk`, README 갱신 | 심사용 계정 읽기 권한 초대(공지 대기), 제출 직전 APK 재빌드 |
 | 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | **미제작** (예전 안개지도 영상은 쓰지 않음) | 녹화·편집 후 일부 공개로 업로드 |
 | 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 프로젝트 완성(40.6초), 렌더 전 | 렌더 → 확인 → 팀 계정으로 게시, 안 하면 02-8에 "없음" |
-| 시연 페르소나 | (참고) | [`burung/persona.md`](burung/persona.md) | 작성 | - |
+| 시연 페르소나 | (참고) | [`persona.md`](persona.md) | 작성 | - |
 | 양식 원본 | - | [`original/contest-application-consent.docx`](original/contest-application-consent.docx) | 공식 배포본과 바이트까지 같음(SHA-1 `73fad63f`, 2026-10-25 확인) | 수정하지 않음. 채운 양식과 비교할 때 씀 |
 
 앱 화면 이미지는 [`../images/burung/`](../images/burung/)에 있고, 접수양식 02-7에 11장이 들어 있습니다.
@@ -35,27 +35,29 @@
 
 ## 접수양식 채우는 법
 
-양식은 두 가지로 만들어집니다.
+> **2026-11-02부터 `application-form.docx` 하나를 Word에서 직접 고칩니다.** 저장소가 비공개라 01 참가 정보까지 채운 채 커밋합니다. 02 내용은 원고 `02-app-introduction.md`보다 새로우므로, 아래 스크립트는 원고를 docx에 맞춘 뒤에만 씁니다(실행하면 Word 수정이 사라짐).
 
-- `burung/application-form-burung.docx`: 저장소에 올라가는 **공개본**. 심사위원이 여는 GitHub 저장소에 들어 있으므로 성명·연락처를 넣지 않습니다.
-- `private/zobo_부릉탐험대_접수양식.docx`: 실제로 **제출하는 파일**. 공개본에 `private/team.json`의 팀 정보(참가 단위, 대표자, 구성원 성명·이메일, 04 성명)를 더 채운 것입니다. `private/` 폴더는 `.gitignore`로 저장소에 올라가지 않습니다. 다른 컴퓨터에서는 [`team.example.json`](team.example.json)을 `private/team.json`으로 복사해 채웁니다.
+스크립트로 만들 때는 두 가지가 나옵니다.
 
-| 영역 | 공개본에 채운 것 | 제출본에 더 채운 것 | 직접 채울 것 |
+- `application-form.docx`: 02와 앱명·팀명·부문만 채운 양식.
+- `private/zobo_부릉탐험대_접수양식.docx`: 위 양식에 `private/team.json`의 팀 정보(참가 단위, 대표자, 구성원 성명·이메일, 04 성명)를 더 채운 것입니다. `private/` 폴더는 `.gitignore`로 저장소에 올라가지 않습니다. 다른 컴퓨터에서는 [`team.example.json`](team.example.json)을 `private/team.json`으로 복사해 채웁니다.
+
+| 영역 | 스크립트가 채우는 것 | team.json으로 더 채우는 것 | 직접 채울 것 |
 | --- | --- | --- | --- |
 | 01-A 참가 기본정보 | 참가 부문 일반, 팀명 zobo, 앱명 부릉탐험대 | 참가 단위 팀, 대표자 성명·이메일, 참가 인원 2명 | 대표자 역할·휴대폰, 소속(선택), 작성일 |
 | 01-B 참가 구성원 | - | 2명의 성명·이메일 | 각자 소속·휴대폰·역할 |
-| 02 앱 소개 1–8 | 전부(원고 = `burung/02-app-introduction.md`), GitHub 주소·APK 경로 포함 | - | 노란 형광 【기입 필요】 6곳 |
+| 02 앱 소개 1–8 | 전부(원고 = `02-app-introduction.md`), GitHub 주소·APK 경로 포함 | - | 노란 형광 【기입 필요】 6곳 |
 | 03 개인정보 동의 | - | - | 내용 확인 |
 | 04 동의·서명 | 앱명, 팀명 | 대표자·팀원 성명 | 각자 동의 체크, 서명, 서명일자 |
 
 휴대폰·역할·소속은 `private/team.json`에 넣고 다시 만들면 양식에도 들어갑니다. 동의 체크·서명·날짜는 본인이 해야 하므로 스크립트가 채우지 않습니다.
 
-1. 02 내용을 고칠 때는 `burung/02-app-introduction.md`를, 팀 정보를 고칠 때는 `private/team.json`을 고친 뒤 `python3 tools/submission/build_form_burung.py`를 실행합니다(Windows `python`). 공개본과 제출본이 함께 다시 만들어집니다.
+1. 02 내용을 고칠 때는 `02-app-introduction.md`를, 팀 정보를 고칠 때는 `private/team.json`을 고친 뒤 `python3 tools/submission/build_form.py`를 실행합니다(Windows `python`). 두 파일이 함께 다시 만들어집니다.
 2. 서명은 제출본(`private/zobo_부릉탐험대_접수양식.docx`)을 Word로 열어 서명 이미지를 넣거나, 인쇄 → 서명 → 스캔합니다. 팀원은 각자 서명합니다.
 3. 서명한 파일을 PDF로도 내보내(`zobo_부릉탐험대_접수양식.pdf`) DOCX와 함께 첨부합니다.
 4. 채운 양식이 이상해 보이면 `original/`의 공식 원본과 나란히 열어 비교합니다.
 
-> `build_form_burung.py`를 다시 실행하면 Word에서 직접 입력·서명한 내용은 사라집니다. 내용을 모두 확정한 뒤에 서명하세요.
+> `build_form.py`를 다시 실행하면 Word에서 직접 입력·서명한 내용은 사라집니다. 내용을 모두 확정한 뒤에 서명하세요.
 
 ## 공모전 공지 확인 (2026-11-02)
 

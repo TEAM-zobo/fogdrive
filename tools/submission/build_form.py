@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fills the contest application form (접수양식 DOCX) from docs/submission/02-app-introduction.md.
+"""Fills the contest application form (접수양식 DOCX) for 부릉탐험대 from docs/submission/02-app-introduction.md.
 
     python3 tools/submission/build_form.py
 
@@ -8,12 +8,14 @@ Reads   docs/submission/original/contest-application-consent.docx  (the official
 Writes  docs/submission/application-form.docx
 
 Only non-personal fields are filled there: section 02 (1-8), the app name lines, the team name and
-the category. That file is committed, and the repository is a link the judges open, so it must not
-carry names or contact details.
+the category.
+
+Running this overwrites application-form.docx, including anything typed into it in Word (the
+2026-11-02 copy was edited in Word: its 02 text is newer than 02-app-introduction.md).
 
 If docs/submission/private/team.json exists (git-ignored, see team.example.json), the team's entries
 in 01 and the names in 04 are also filled into a second copy:
-        docs/submission/private/zobo_안개지도_접수양식.docx
+        docs/submission/private/zobo_부릉탐험대_접수양식.docx
 Consent boxes, signatures and dates are never filled: each member does those.
 Standard library only.
 """
@@ -31,9 +33,9 @@ SOURCE = os.path.join(SUB, "02-app-introduction.md")
 OUT = os.path.join(SUB, "application-form.docx")
 PRIVATE = os.path.join(SUB, "private")
 TEAM_JSON = os.path.join(PRIVATE, "team.json")
-PRIVATE_OUT = os.path.join(PRIVATE, "zobo_안개지도_접수양식.docx")
+PRIVATE_OUT = os.path.join(PRIVATE, "zobo_부릉탐험대_접수양식.docx")
 
-APP_NAME = "안개지도(FogDrive)"
+APP_NAME = "부릉탐험대"
 TEAM = "zobo"
 # The input boxes of section 02, in order 1..8 (the tags are the form's own content-control tags).
 TAGS = ["app_summary", "planning_background", "vehicle_scenario", "key_features",

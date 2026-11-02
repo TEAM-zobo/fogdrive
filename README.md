@@ -129,5 +129,5 @@ qa/         에뮬레이터 자동 테스트·웹 대시보드
 ## 문서
 
 - [테스트 환경 셋팅](docs/SETUP.md): macOS·Windows별 설치, 빌드·실행, 문제 해결
-- [접수양식 02 원고](docs/submission/burung/02-app-introduction.md): 기획 배경, 기능, 시나리오, 개발 계획
+- [접수양식 02 원고](docs/submission/02-app-introduction.md): 기획 배경, 기능, 시나리오, 개발 계획
 - [QA](qa/README.md): 에뮬레이터 자동 테스트(TC 18개)
