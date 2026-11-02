@@ -51,5 +51,6 @@
 python3 tools/demo/persona/fetch_routes.py         # 장소를 바꿀 때만: 실제 도로 경로 → routes.json
 python3 tools/demo/persona/gen_courses.py          # 앱의 시연 코스(DemoCourses.kt)
 python3 tools/demo/persona/make_persona_backup.py  # 4주 기록 (오늘 기준) → tools/demo/out/persona-backup.json
+# 홍보 숏폼 화면만: --weeks 6 (칭호 「우리 동네 탐험가」·「프로 출근러」를 이미 받은 상태). 찍은 뒤 기본(4주)으로 되돌립니다.
 python3 tools/demo/prepare_demo.py --serial emulator-5554   # 앱 초기화 → 기록 불러오기
 ```
