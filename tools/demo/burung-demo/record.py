@@ -3,7 +3,7 @@
 
     python3 record.py list                  # 장면 목록
     python3 record.py part1                 # 앱 구동·지도·시연 모드 사용법·평일 아침
-    python3 record.py part2                 # 기록·도감·내 탐험·추천 경로·토요일·강원 여행·설정
+    python3 record.py part2                 # 기록·도감·내 탐험·추천 경로·토요일(시계를 토요일로)·다음 목표·설정
     python3 record.py s_dex s_exp           # 장면 하나씩 다시
 
 녹화는 에뮬레이터가 호스트에서 하는 `adb emu screenrecord`(2560×1440, 30 fps, 앱 음성 포함)로 합니다. 결과는
@@ -210,21 +210,21 @@ def s_suggest():
 
 
 def s_olympic():
-    """14–15 토요일 가족 나들이(키즈 음성) → 결과 카드, 끝에 시연 중지."""
+    """14–15 토요일 가족 나들이(키즈 음성) → 결과 카드('주말 드라이브': 에뮬레이터 시계가 토요일이어야 함), 끝에 시연 중지."""
     demo_panel("토요일 가족 나들이: 올림픽공원", 70)
     xy = start_xy()
     record("s_olympic", 70, [(1.0, lambda: tap(xy)), (66.0, lambda: tap_label("시연 중지"))])
 
 
 def s_gangneung():
-    """16–17 강원도 가족 여행(200 km/h, 약 6분 30초) → 결과 카드(「주말 원정대」). 편집에서 빨리 감음."""
+    """(선택) 강원도 가족 여행(200 km/h, 약 6분 30초) → 결과 카드(「주말 원정대」). 기본 장면 구성에는 없음."""
     demo_panel("강원도 가족 여행: 강릉 경포대 (분기 1회)", 200)
     xy = start_xy()
     record("s_gangneung", 420, [(1.0, lambda: tap(xy))], bitrate=12_000_000)
 
 
 def s_after():
-    """18–19 도감(강원 색칠) → 내 탐험(칭호 2/5, 다음 목표)."""
+    """16 다음 목표: 도감(넓어진 지도) → 내 탐험(「주말 원정대」 2/3, '멀리 떠난 날' → 강원도 가족 여행)."""
     d.tap_text("시연 중지")
     time.sleep(2)
     to_map()
@@ -232,7 +232,7 @@ def s_after():
 
 
 def s_settings():
-    """20 설정: 탐험대·키즈모드, 연결 상태(SDK), 시연 모드, 지도 표시·안내, 데이터 동기화, 기록과 개인정보."""
+    """17 설정: 탐험대·키즈모드, 연결 상태(SDK), 시연 모드, 지도 표시·안내, 데이터 동기화, 기록과 개인정보."""
     to_map()
     record("s_settings", 18, [(0.5, lambda: tap(TAB["설정"])), (5.0, lambda: swipe(1250, 450, 900)),
                               (9.5, lambda: swipe(1250, 450, 900)), (14.0, lambda: swipe(1250, 450, 900))])
@@ -240,7 +240,7 @@ def s_settings():
 
 PARTS = {
     "part1": [s_boot, s_map, s_demo_howto, s_kids, s_kinder, s_office],
-    "part2": [s_trips, s_dex, s_exp, s_suggest, s_olympic, s_gangneung, s_after, s_settings],
+    "part2": [s_trips, s_dex, s_exp, s_suggest, s_olympic, s_after, s_settings],
 }
 
 if __name__ == "__main__":

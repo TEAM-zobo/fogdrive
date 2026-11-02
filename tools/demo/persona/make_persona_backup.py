@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Builds the demo record of the persona (docs/submission/persona.md): A씨, a father in his early 40s living in
-위례 (송파꿈에그린 위례24단지). On weekdays he takes his child (rear seat) to kindergarten in 거여2동 and drives on
-to 현대자동차 본사 (서초구 양재); on Saturdays the family goes out nearby; once a quarter there is a family trip to
-강원도. The record holds his last 19 working days (about four weeks), so the commute on the demo day is the 20th
-(「프로 출근러」); 올림픽공원 and the 강원도 trip (강릉) are left for the live demo.
+"""Builds the demo record of the persona (docs/submission/persona.md, 기획서 4장): A씨, a father in his early 40s
+living in 위례 (송파꿈에그린 위례24단지) who drives to 현대자동차 본사 (서초구 양재). He started using the app about
+four weeks ago and has only driven to work and back alone since; this week he starts taking his child to
+kindergarten (거여2동), and this Saturday is the family's first outing with the app. So the record holds his last 19
+working days of commuting, and on the demo the first drop-off earns '함께 탐험', the 20th commute 「프로 출근러」 and
+the Saturday outing '주말 드라이브', as in the 기획서 scenario.
 
     python3 tools/demo/persona/fetch_routes.py          # once: road paths -> routes.json
     python3 tools/demo/persona/make_persona_backup.py [--today 2026-11-02] [--commutes 19]
@@ -36,10 +37,9 @@ LANDING_RADIUS = 3    # TripRecorder.LANDING_RADIUS
 TRACK_STEP_M = 20.0
 SOURCE_DRIVE, SOURCE_LANDING = 0, 1
 COMMUTE_DAYS = 19   # working days on record: the demo day's commute is the 20th (Titles.COMMUTE_NEED)
+# Weekdays: 집 → 회사 and back, alone. No kindergarten run and no weekend drives yet (both start in the demo).
 # Weekday holidays: no kindergarten, no work (추석 9/24·9/25, 개천절 대체 10/5, 한글날 10/9).
 HOLIDAYS = {date(2026, 9, 24), date(2026, 9, 25), date(2026, 10, 5), date(2026, 10, 9)}
-# Saturday family outings nearby, in turn (wife in front, child behind). 올림픽공원 is kept for the demo.
-SATURDAY = ["namhansan", "everland", "suwon", "starfield", "hwadam"]
 WORK_ROUTES = {"kinder", "kinder-hq", "hq"}
 
 # ---- region atlas (format of tools/regions/build_regions.py) ----
@@ -158,25 +158,17 @@ def length_m(pts):
 
 def plan(today, commutes=COMMUTE_DAYS):
     """(start datetime, route, outbound, passenger) per one-way trip, oldest first: the last [commutes] working
-    days before [today] and the Saturdays among them."""
+    days before [today], 집 → 회사 in the morning and back in the evening, alone."""
     days, d = [], today - timedelta(days=1)
     while len(days) < commutes:
         if d.weekday() < 5 and d not in HOLIDAYS:
             days.append(d)
         d -= timedelta(days=1)
-    trips, sat_i, d = [], 0, min(days)
-    while d < today:
+    trips = []
+    for d in sorted(days):
         at = lambda h, m: datetime(d.year, d.month, d.day, h, m, tzinfo=KST)
         jitter = (d.toordinal() * 7) % 9
-        if d.weekday() < 5 and d not in HOLIDAYS:
-            trips += [(at(8, 5 + jitter), "kinder", True, True),          # child in the rear seat
-                      (at(8, 25 + jitter), "kinder-hq", True, False),
-                      (at(18, 35 + jitter), "hq", False, False)]
-        elif d.weekday() == 5:
-            p = SATURDAY[sat_i % len(SATURDAY)]
-            sat_i += 1
-            trips += [(at(10, 30), p, True, True), (at(16, 40), p, False, True)]
-        d += timedelta(days=1)
+        trips += [(at(7, 50 + jitter), "hq", True, False), (at(18, 35 + jitter), "hq", False, False)]
     return trips
 
 
