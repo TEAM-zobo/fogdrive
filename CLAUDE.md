@@ -1,8 +1,8 @@
-# FogDrive (안개지도)
+# 부릉탐험대 (저장소 fogdrive)
 
 Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compose, Gradle 8.10.2, AGP 8.8.2, JDK 17, compileSdk 35.
 기능·구조는 `README.md`, 테스트 환경은 `docs/SETUP.md`, 에뮬레이터 QA는 `qa/README.md`, 공모전 제출물은 `docs/submission/`에 있습니다.
-접수양식 02는 `docs/submission/02-app-introduction.md`를 고친 뒤 `python3 tools/submission/build_form.py`로 `application-form.docx`를 다시 만듭니다. 02와 제출 링크에는 성명·연락처·이메일·소속·계정 ID를 쓰지 않습니다.
+접수양식 02는 `docs/submission/burung/02-app-introduction.md`를 고친 뒤 `python3 tools/submission/build_form_burung.py`로 `docs/submission/burung/application-form-burung.docx`(공개본)와 `private/zobo_부릉탐험대_접수양식.docx`(제출본)를 다시 만듭니다. 예전 앱 안개지도의 `docs/submission/02-app-introduction.md`·`build_form.py`는 보관용입니다. 02와 제출 링크에는 성명·연락처·이메일·소속·계정 ID를 쓰지 않습니다.
 
 ## 테스트 환경 셋팅과 실행
 
@@ -28,7 +28,8 @@ Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compo
 
 "영상 만들어줘", "홍보 영상 수정해줘" 같은 요청은 `docs/VIDEO.md`를 따릅니다. HyperFrames 스킬(`/hyperframes`)이 없으면 먼저 `tools/setup/setup.sh video`로 설치하고 Claude Code를 다시 열라고 안내합니다.
 
-- 카피·장면·카메라·음악 수정은 `tools/demo/promo/build.py`만 고치고 `python3 build.py` → `npx hyperframes@0.8.196 check` → `snapshot`으로 프레임을 직접 본 뒤 `render`합니다. `index.html`과 `compositions/`는 생성물이라 직접 고치지 않습니다. 세로 숏폼은 `tools/demo/shortform/build.py`로 같은 방법으로 만들고, 글자는 화면 위 168–1330 px 안에 둡니다.
+- 제출 앱은 부릉탐험대입니다. 부릉탐험대 영상(지금은 숏폼 `tools/demo/burung-short`)을 먼저 고치고, `promo`·`shortform`은 예전 앱 안개지도 영상이라 사용자가 콕 집어 말할 때만 고칩니다. `burung-short/assets`는 git에도 `demo-assets-v1` Release에도 없어서 그 소재가 있는 컴퓨터에서만 렌더할 수 있습니다.
+- 카피·장면·카메라·음악 수정은 해당 영상의 `build.py`만 고치고 `python3 build.py` → `npx hyperframes@0.8.196 check` → `snapshot`으로 프레임을 직접 본 뒤 `render`합니다. `index.html`과 `compositions/`는 생성물이라 직접 고치지 않습니다. 세로 숏폼은 `tools/demo/burung-short/build.py`(부릉탐험대, 제출용)로 같은 방법으로 만들고, 글자는 화면 위 168–1330 px 안에 둡니다. `promo`·`shortform`은 예전 앱 안개지도 영상입니다.
 - 녹화본(`tools/demo/out/raw`)은 git에 없습니다. 영상만 다시 렌더링할 때는 녹화하지 말고 `prepare_assets.sh`로 GitHub Release `demo-assets-v1` 소재를 받습니다(`gh` 로그인 필요, 끝에 `assets.sha256` 일치 확인).
 - 녹화는 `boot --record`로 띄운 QA 에뮬레이터에서만 하고, 그동안 다른 에뮬레이터는 끕니다(같은 GPU를 써서 끊김).
 - 소리는 들을 수 없으니 `ffmpeg -af ebur128`로 측정해 보고(-16~-18 LUFS), 들어 보지 않았다고 말합니다.

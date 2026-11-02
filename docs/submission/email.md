@@ -50,17 +50,17 @@ appdevchallenge@hyundai-partners.com
 
 ■ 참가 정보
 - 팀명: zobo
-- 앱명: 안개지도(FogDrive)
+- 앱명: 부릉탐험대
 - 참가 부문: 일반(스타트업 포함)
 - 참가 단위: {참가 단위}
 
 ■ 첨부 파일
-1. zobo_안개지도_접수양식.pdf — 01 참가신청서, 02 앱 소개/심사 자료, 03 개인정보 동의, 04 서명
-2. zobo_안개지도_접수양식.docx — 같은 내용의 Word 원본
+1. zobo_부릉탐험대_접수양식.pdf — 01 참가신청서, 02 앱 소개/심사 자료, 03 개인정보 동의, 04 서명
+2. zobo_부릉탐험대_접수양식.docx — 같은 내용의 Word 원본
 
 ■ 참고자료 (선택 · 가산점)
 - GitHub 저장소: https://github.com/TEAM-zobo/fogdrive
-  · 소스 코드, release APK(apk/zobo_FogDrive_release.apk), README(실행 방법·테스트 환경)
+  · 소스 코드, release APK(apk/zobo_Burung_release.apk), README(실행 방법·테스트 환경)
   · 비공개 저장소이며, 공지된 심사용 계정을 읽기 권한 협업자로 초대해 두었습니다.
 - 시연 영상: {시연 영상 링크}
 
@@ -109,8 +109,8 @@ appdevchallenge@hyundai-partners.com
 - {예: release APK 갱신(버전 0.1.1)}
 
 ■ 첨부 파일 (전체 다시 첨부)
-1. zobo_안개지도_접수양식.pdf — 01~04 전체, 서명 포함
-2. zobo_안개지도_접수양식.docx — Word 원본
+1. zobo_부릉탐험대_접수양식.pdf — 01~04 전체, 서명 포함
+2. zobo_부릉탐험대_접수양식.docx — Word 원본
 
 ■ 참고자료
 - GitHub 저장소: https://github.com/TEAM-zobo/fogdrive

@@ -1,6 +1,6 @@
 # 테스트 환경 셋팅
 
-빈 PC에서 Pleos Connect 에뮬레이터를 깔고, 안개지도를 빌드·설치·실행하기까지의 절차입니다. macOS와 Windows를 나눠 설명합니다.
+빈 PC에서 Pleos Connect 에뮬레이터를 깔고, 부릉탐험대를 빌드·설치·실행하기까지의 절차입니다. macOS와 Windows를 나눠 설명합니다.
 
 모든 단계는 스크립트 하나로 자동화되어 있습니다. 여러 번 실행해도 이미 된 단계는 건너뛰므로, 중간에 실패하면 원인을 고친 뒤 같은 명령을 다시 실행하면 됩니다.
 
@@ -164,7 +164,7 @@ adb exec-out screencap -p > screen.png         # 화면 캡처
 curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 ```
 
-- 화면 왼쪽은 Pleos 차량 패널, 오른쪽에 안개지도 앱이 뜹니다. 지도 위 레벨 카드와 짙은 안개가 보이면 정상입니다.
+- 화면 왼쪽은 Pleos 차량 패널, 오른쪽에 부릉탐험대 앱이 뜹니다. 지도 위 레벨 카드와 최근 주행 버튼이 보이면 정상입니다(처음 실행이면 튜토리얼이 먼저 뜹니다).
 - 앱 화면이 검게 가려져 있으면 기어가 P가 아닌 것입니다. 에뮬레이터는 P단이 아니면(차속 0이어도) 앱 화면을 막습니다. Virtual Console에서 P로 바꾸세요.
 - 지도 타일은 인터넷(OpenFreeMap)에서 받으므로 에뮬레이터에 네트워크가 있어야 합니다.
 
@@ -174,7 +174,7 @@ curl -s http://127.0.0.1:8088/vehicle/state    # Virtual Console 응답(JSON)
 2. **Virtual Console**: 브라우저에서 `http://127.0.0.1:8088/`을 열고 기어·도어·창문·와이퍼·좌석을 바꿔 봅니다.
 3. **위치 옮기기**: `adb emu geo fix <경도> <위도>` (예: `adb emu geo fix 127.0559 37.5446`). 집 위치로 되돌리기는 macOS `tools/emulator/set_home.sh`, Windows `adb emu geo fix 127.13960 37.47588`.
 4. **단위 테스트**: `setup.sh test` / `setup.ps1 test`.
-5. **QA 자동 테스트(TC 20개, 약 20분)**:
+5. **QA 자동 테스트(TC 18개, 약 20분)**:
    ```bash
    cd qa
    python3 -m fogqa list                         # Windows: python -m fogqa list

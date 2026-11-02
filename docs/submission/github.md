@@ -6,9 +6,9 @@
 
 | 요건 | 이 저장소 | 상태 |
 | --- | --- | --- |
-| 소스 코드 업로드 | `main` 브랜치 전체 | 완료 |
-| release APK를 `apk/` 폴더에 | `apk/zobo_FogDrive_release.apk` (약 36MB, 100MB 제한 이내) | 완료, 제출 직전에 다시 빌드 |
-| 파일명 규칙 `팀명_앱이름_release.apk` | `zobo_FogDrive_release.apk` | 완료 |
+| 소스 코드 업로드 | `main` 브랜치 전체(부릉탐험대, 2026-11-02 `design/pioneer-trail`을 합침) | 완료 |
+| release APK를 `apk/` 폴더에 | `apk/zobo_Burung_release.apk` (약 40MB, 100MB 제한 이내) | 완료, 제출 직전에 다시 빌드 |
+| 파일명 규칙 `팀명_앱이름_release.apk` | `zobo_Burung_release.apk` (앱 이름 부릉탐험대를 영문으로, Windows 경로 문제를 피하려고) | 완료 |
 | README: 앱 이름·한 줄 소개 | [`README.md`](../../README.md) 첫 줄 | 완료 |
 | README: 실행 방법 | README 「실행 방법」, 「시연 방법」 | 완료 |
 | README: 테스트 환경·필요 설정 | README 「테스트 환경」, [`docs/SETUP.md`](../SETUP.md) (macOS·Windows) | 완료 |
@@ -17,6 +17,8 @@
 | 초대 후 접근 확인 | 마감 전 심사용 계정에서 저장소·APK가 보이는지 | 공지 대기 |
 | 계정정보 노출 금지 | 저장소 주소·README는 팀명 `zobo`만 사용 | 완료 |
 | 저장소 주소의 계정 ID | `https://github.com/TEAM-zobo/fogdrive` (팀 조직 TEAM-zobo) | 완료 |
+
+심사용 계정은 2026-11-02에 공모전 사이트(공지사항 3건, FAQ, 참가 가이드)를 다시 확인했을 때도 공지되지 않았습니다. 마감 전까지 공지가 없으면 운영사무국(`appdevchallenge@hyundai-partners.com`)에 문의합니다.
 
 ## 저장소 위치: TEAM-zobo 조직
 
@@ -40,10 +42,10 @@
 git pull
 ./gradlew :app:testDebugUnitTest            # 단위 테스트
 ./gradlew :app:assembleRelease              # keystore.properties가 있으면 release 키로 서명
-cp app/build/outputs/apk/release/app-release.apk apk/zobo_FogDrive_release.apk
-git add apk/zobo_FogDrive_release.apk && git commit -m "release APK 갱신" && git push
+cp app/build/outputs/apk/release/app-release.apk apk/zobo_Burung_release.apk
+git add apk/zobo_Burung_release.apk && git commit -m "release APK 갱신" && git push
 ```
 
-- 새 APK를 에뮬레이터에 설치해 실행되는지 확인합니다: `adb install -r -g apk/zobo_FogDrive_release.apk`
+- 새 APK를 에뮬레이터에 설치해 실행되는지 확인합니다: `adb install -r -g apk/zobo_Burung_release.apk`
 - 심사용 계정은 반드시 **Read**로 초대합니다. 무료 조직의 비공개 저장소는 브랜치 보호가 없어서, Write로 초대하면 `main`에 바로 푸시할 수 있습니다.
 - 제출한 상태를 태그로 남겨 둡니다: `git tag submission-1st && git push origin submission-1st`. 마감 뒤 바뀐 내용과 심사본을 구분할 수 있습니다.

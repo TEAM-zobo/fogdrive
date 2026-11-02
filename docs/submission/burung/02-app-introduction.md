@@ -1,8 +1,8 @@
 # 02 앱 프로젝트 소개 / 심사 자료 원고 — 부릉탐험대
 
-접수양식 「02 앱 프로젝트 소개 / 심사 자료」 1–8번 칸에 들어갈 원고입니다. 기존 안개지도 기획서(`../02-app-introduction.md`)와 별도의 문서이며, `design/pioneer-trail` 브랜치의 부릉탐험대 앱을 기준으로 씁니다. 고친 뒤 `python3 tools/submission/build_form_burung.py`로 `application-form-burung.docx`를 다시 만듭니다.
+접수양식 「02 앱 프로젝트 소개 / 심사 자료」 1–8번 칸에 들어갈 원고입니다. 제출 저장소 `main` 브랜치의 부릉탐험대 앱을 기준으로 씁니다(예전 안개지도 기획서 `../02-app-introduction.md`는 보관용). 고친 뒤 `python3 tools/submission/build_form_burung.py`로 `application-form-burung.docx`를 다시 만듭니다.
 
-- 기준일: 2026-11-01 (브랜치 `design/pioneer-trail`, 패키지 `com.zobo.burung`)
+- 기준일: 2026-11-02 (브랜치 `main`, 패키지 `com.zobo.burung`)
 - 화면은 시연 페르소나(위례에서 양재 현대자동차 본사로 출퇴근하는 30대 직장인, 4주 기록) 기준입니다: `persona.md`
 - 작성 규칙: 성명·연락처·이메일·소속·계정정보·개발자 실명을 쓰지 않습니다(양식 02 안내). 팀은 팀명 **zobo**로만 표기합니다.
 - `【기입 필요: …】` 표시는 제출 전에 채워야 하는 곳입니다.
@@ -222,8 +222,8 @@ MAU = 국내 Pleos 탑재 누적 차량(V) × 앱 설치율(I) × 월간 활성�
 
 ## 7. 참고자료
 
-- GitHub 저장소: 【기입 필요: 부릉탐험대 소스를 제출할 저장소 주소 — 지금은 비공개 저장소의 `design/pioneer-trail` 브랜치에만 있고 원격에 올리지 않음】
-- Release APK: 【기입 필요: 부릉탐험대 release APK 파일명과 위치 (규칙: 팀명_앱이름_release.apk)】
+- GitHub 저장소: https://github.com/TEAM-zobo/fogdrive (`main` 브랜치, 비공개 저장소이며 공지된 심사용 계정을 읽기 권한 협업자로 초대합니다)
+- Release APK: 저장소 `apk/zobo_Burung_release.apk` (v0.1.0, minSdk 28, arm64-v8a·x86_64)
 - 시연 영상: 【기입 필요: 부릉탐험대 시연 영상 링크】
 - 실행 방법: 저장소 `README.md`, 테스트 환경 셋팅 `docs/SETUP.md` (Pleos Connect Emulator v2.1.0)
 - 앱 화면

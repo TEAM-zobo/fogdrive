@@ -9,6 +9,8 @@
 
 > Claude Code에 맡길 때: "docs/VIDEO.md대로 홍보 영상 다시 만들어줘". 카피나 장면만 바꿀 때는 `tools/demo/promo/build.py`를 고치라고 하면 됩니다.
 
+> **앱 이름이 바뀌었습니다.** 지금 `promo`·`shortform` 영상은 예전 앱 **안개지도** 화면이라 제출하지 않습니다. 부릉탐험대 시연 영상은 이 절차(녹화 → HyperFrames 편집 → 렌더)로 새로 만들고, 담을 장면은 [submission/demo-video.md](submission/demo-video.md)에 있습니다. 부릉탐험대 숏폼은 [5. 숏폼](#5-숏폼)의 `tools/demo/burung-short`입니다.
+
 ## 1. 준비 (한 번)
 
 테스트 환경([SETUP.md](SETUP.md))이 먼저 있어야 합니다. 녹화는 화면 없는 QA 에뮬레이터를 쓰므로 그 AVD도 만듭니다.
@@ -122,7 +124,19 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 
 ## 5. 숏폼
 
-접수양식 02-8 숏폼(선택)은 같은 녹화본으로 만드는 세로 영상입니다. 제출 조건과 장면은 [submission/shortform.md](submission/shortform.md)에 있습니다.
+접수양식 02-8 숏폼(선택)은 세로 영상입니다. 제출 조건과 장면은 [submission/shortform.md](submission/shortform.md)에 있습니다.
+
+**부릉탐험대 숏폼 (제출용):** `tools/demo/burung-short` (40.6초). 에뮬레이터 앱 화면 캡처와 주행 클립(`assets/`, git 제외)을 소재로 쓰고, 편집은 `build.py`만 고칩니다.
+
+```bash
+cd tools/demo/burung-short
+python3 build.py
+npx hyperframes@0.8.196 check
+npx hyperframes@0.8.196 snapshot --at 1,4.5,8,12,16.5,21,25.5,30,34,38
+npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o renders/burung-shortform.mp4
+```
+
+**안개지도 숏폼 (예전 앱, 참고):** 아래는 홍보 영상 녹화본으로 만든 예전 숏폼입니다.
 
 - 결과물: `tools/demo/shortform/renders/fogdrive-shortform.mp4` (1080×1920, 30fps, 47초, git 제외)
 - 소재: 홍보 영상의 `assets/`(장면 클립, 글꼴, 음악, 효과음, 아이콘)를 그대로 씁니다. `build.py`가 `tools/demo/shortform/assets`를 `../promo/assets`로 연결합니다(심볼릭 링크를 만들 수 없는 Windows에서는 복사).
