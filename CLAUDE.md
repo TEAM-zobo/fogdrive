@@ -1,7 +1,7 @@
 # 부릉탐험대 (저장소 fogdrive)
 
 Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compose, Gradle 8.10.2, AGP 8.8.2, JDK 17, compileSdk 35.
-기능·구조는 `README.md`, 테스트 환경은 `docs/SETUP.md`, 에뮬레이터 QA는 `qa/README.md`, 공모전 제출물은 `docs/submission/`에 있습니다.
+기능은 `README.md`(심사자용), 코드 구조는 `app/src/main/java/com/zobo/burung/` 패키지, 테스트 환경은 `docs/SETUP.md`, 에뮬레이터 QA는 `qa/README.md`, 공모전 제출물은 `docs/submission/`에 있습니다.
 접수양식은 `docs/submission/application-form.docx` 하나입니다(비공개 저장소라 01 참가 정보까지 채워 커밋). 2026-11-02본은 Word에서 직접 고쳤고, 02 원고 `docs/submission/02-app-introduction.md`는 그 내용에 맞춰 두었습니다. 내용을 고치면 docx와 원고를 함께 고칩니다. `python3 tools/submission/build_form.py`는 원고로 양식을 다시 만들면서 Word의 서식·01 참가 정보를 덮어쓰므로 사용자가 요청할 때만 실행합니다. 02 본문과 제출 링크에는 성명·연락처·이메일·소속·계정 ID를 쓰지 않습니다.
 
 ## 테스트 환경 셋팅과 실행
