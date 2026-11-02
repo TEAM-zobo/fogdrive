@@ -12,7 +12,7 @@
 | 제출물 | 구분 | 이 폴더의 파일 | 상태 | 남은 일 |
 | --- | --- | --- | --- | --- |
 | 접수양식(기획서) | **필수** | [`application-form.docx`](application-form.docx) (제출본, Word에서 직접 수정, 2026-11-02) | 01 참가 정보(대표자·구성원 2명)와 02 작성 | 02의 【기입 필요】 6곳, 01 휴대폰·역할·작성일, 04 동의·서명(팀원 전원), PDF 내보내기 |
-| 접수양식 02 원고 | (양식 원본 글) | [`02-app-introduction.md`](02-app-introduction.md) | 작성, docx(11/02 Word 수정본)보다 이전 내용 | docx에 맞춰 갱신하거나, docx만 최신으로 유지 |
+| 접수양식 02 원고 | (양식 원본 글) | [`02-app-introduction.md`](02-app-introduction.md) | docx(11/02 Word 수정본)와 같은 내용 | 고칠 때 docx와 함께 고침 |
 | 제출 이메일 | **필수** | [`email.md`](email.md) (양식)<br>`private/email.txt` (실제 값을 넣은 메일, git 제외) | 부릉탐험대로 갱신 | 영상 링크 넣어서 발송 |
 | GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | `main` = 부릉탐험대, `apk/zobo_Burung_release.apk`, README 갱신 | 심사용 계정 읽기 권한 초대(공지 대기), 제출 직전 APK 재빌드 |
 | 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | **미제작** (예전 안개지도 영상은 쓰지 않음) | 녹화·편집 후 일부 공개로 업로드 |
@@ -35,7 +35,7 @@
 
 ## 접수양식 채우는 법
 
-> **2026-11-02부터 `application-form.docx` 하나를 Word에서 직접 고칩니다.** 저장소가 비공개라 01 참가 정보까지 채운 채 커밋합니다. 02 내용은 원고 `02-app-introduction.md`보다 새로우므로, 아래 스크립트는 원고를 docx에 맞춘 뒤에만 씁니다(실행하면 Word 수정이 사라짐).
+> **2026-11-02부터 `application-form.docx` 하나를 Word에서 직접 고칩니다.** 저장소가 비공개라 01 참가 정보까지 채운 채 커밋합니다. 원고 `02-app-introduction.md`는 docx의 02 내용에 맞춰 두었으니, 내용을 고칠 때는 둘을 함께 고칩니다. 아래 스크립트는 Word의 서식(상자·형광펜·화면 표)과 01 참가 정보를 덮어쓰므로 새로 만들 때만 씁니다.
 
 스크립트로 만들 때는 두 가지가 나옵니다.
 

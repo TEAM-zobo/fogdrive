@@ -11,7 +11,8 @@ Only non-personal fields are filled there: section 02 (1-8), the app name lines,
 the category.
 
 Running this overwrites application-form.docx, including anything typed into it in Word (the
-2026-11-02 copy was edited in Word: its 02 text is newer than 02-app-introduction.md).
+2026-11-02 copy was edited in Word; 02-app-introduction.md carries the same text, but not its layout
+or the 01 entries). Images may be JPEG or PNG.
 
 If docs/submission/private/team.json exists (git-ignored, see team.example.json), the team's entries
 in 01 and the names in 04 are also filled into a second copy:
@@ -121,10 +122,13 @@ class Images:
     def add(self, path):
         with open(path, "rb") as f:
             data = f.read()
-        w, h = jpeg_size(data)
+        if data[1:4] == b"PNG":
+            ext, (w, h) = "png", struct.unpack(">II", data[16:24])
+        else:
+            ext, (w, h) = "jpg", jpeg_size(data)
         idx = len(self.items) + 1
         rid = f"rIdFog{idx}"
-        name = f"media/fogdrive{idx}.jpg"
+        name = f"media/fogdrive{idx}.{ext}"
         self.items.append((rid, name, data))
         cx = int(IMAGE_WIDTH_IN * EMU_PER_IN)
         cy = int(cx * h / w)
@@ -135,7 +139,7 @@ class Images:
                 f'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
                 f'<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
                 f'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
-                f'<pic:nvPicPr><pic:cNvPr id="{pid}" name="fogdrive{idx}.jpg"/><pic:cNvPicPr/></pic:nvPicPr>'
+                f'<pic:nvPicPr><pic:cNvPr id="{pid}" name="fogdrive{idx}.{ext}"/><pic:cNvPicPr/></pic:nvPicPr>'
                 f'<pic:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
                 f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
                 f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
@@ -308,10 +312,11 @@ def main():
                     for rid, name, _ in images.items)
     files["word/_rels/document.xml.rels"] = rels.replace("</Relationships>", extra + "</Relationships>").encode("utf-8")
     ct = files["[Content_Types].xml"].decode("utf-8")
-    if 'Extension="jpg"' not in ct:
-        ct = ct.replace("</Types>", '<Default Extension="jpg" ContentType="image/jpeg"/></Types>', 1)
-        if 'Extension="jpg"' not in ct:
-            raise SystemExit("could not register the jpg content type")
+    for ext, mime in (("jpg", "image/jpeg"), ("png", "image/png")):
+        if f'Extension="{ext}"' not in ct:
+            ct = ct.replace("</Types>", f'<Default Extension="{ext}" ContentType="{mime}"/></Types>', 1)
+            if f'Extension="{ext}"' not in ct:
+                raise SystemExit(f"could not register the {ext} content type")
     files["[Content_Types].xml"] = ct.encode("utf-8")
     for _, name, data in images.items:
         files["word/" + name] = data
