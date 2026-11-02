@@ -1,0 +1,35 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; background:#F6F3EC; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.07) 2px, transparent 2.5px); background-size:36px 36px; }
+.bubble { position:absolute; left:56px; right:56px; top:200px; }
+.bub { display:inline-block; max-width:960px; background:#FFFFFF; border-radius:44px 44px 44px 12px; padding:34px 44px;
+  font-size:62px; font-weight:800; letter-spacing:-0.045em; line-height:1.2; word-break:keep-all; box-shadow:0 18px 40px rgba(21,25,42,0.14); }
+.frame { position:absolute; left:40px; top:470px; width:1000px; height:620px; overflow:hidden; border-radius:44px;
+  background:#E9EDF2; border:6px solid #15192A; box-shadow:12px 14px 0 #15192A; }
+.shot { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.sticker { position:absolute; left:70px; right:70px; top:1120px; text-align:center; }
+.st1 { display:inline-block; background:#FFD43B; color:#15192A; border:5px solid #15192A; border-radius:22px; padding:14px 30px;
+  font-size:54px; font-weight:800; letter-spacing:-0.04em; box-shadow:7px 8px 0 #15192A; }
+.st2 { display:inline-block; margin-top:14px; background:#15192A; color:#FFFFFF; border-radius:18px; padding:10px 26px;
+  font-size:40px; font-weight:700; letter-spacing:-0.03em; }
+.foot { position:absolute; left:0; right:0; top:1430px; height:490px;
+  background:linear-gradient(180deg, rgba(18,184,134,0) 0%, rgba(18,184,134,0.18) 100%); }
+
+#ask-bg { position:absolute; inset:0; background:#FFD43B; }
+#ask-q { position:absolute; left:70px; right:70px; top:470px; font-size:118px; font-weight:800; letter-spacing:-0.055em; line-height:1.14; }
+#ask-q .u { background:linear-gradient(transparent 62%, #FFFFFF 62%); }
+</style>
+  <div id="root" data-composition-id="ask" data-width="1080" data-height="1920" data-start="0" data-duration="3.8">
+    <div id="ask-bg"></div>
+    <div id="ask-q"><div class="w">이걸 전부</div><div class="w"><span class="u">기록</span>으로</div><div class="w">남길 순 없을까?</div></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#ask-bg",{scaleY:0,transformOrigin:"50% 0%",duration:0.4,ease:"expo.out"},0);
+    tl.from("#ask-q .w",{y:70,opacity:0,duration:0.45,ease:"back.out(1.8)",stagger:0.18},0.25);
+    tl.to("#ask-q",{scale:1.06,duration:2.4,ease:"sine.inOut"},0.9);
+    tl.to("#ask-q",{opacity:0,duration:0.25},3.5);
+    window.__timelines["ask"] = tl;
+  </script>
+</template>
