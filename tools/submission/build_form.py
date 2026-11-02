@@ -185,6 +185,10 @@ def render(lines, images):
         elif m := re.match(r"(\d+)\. (.*)", line):
             out.append(para(f"{m.group(1)}. {m.group(2)}", indent=340, hanging=340, after=60))
             i += 1
+        elif m := re.match(r"### (.*)", line):
+            # Group heading (e.g. 주행 / 도감/내 탐험 / 설정) above the bold item headings.
+            out.append(para(f"**{m.group(1)}**", before=240, after=60, size=24, color="16324F", keep_next=True))
+            i += 1
         elif re.fullmatch(r"\*\*[^*]+\*\*", line):
             out.append(para(line, before=140, after=60, color="16324F", keep_next=True))
             i += 1
