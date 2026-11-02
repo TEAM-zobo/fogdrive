@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Writes the app's demo courses (DemoCourses.kt, object DemoCourses) from the persona's routes.json:
-every course leaves the persona's home in 위례 (송파꿈에그린 위례24단지).
+"""Writes the app's demo courses (DemoCourses.kt, object DemoCourses) from the persona's routes.json: the week of
+A씨 (40대 아이 아빠, docs/submission/persona.md). Courses leave his home in 위례 (송파꿈에그린 위례24단지), except
+the one from the kindergarten to work.
 
     python3 tools/demo/persona/gen_courses.py
 """
@@ -11,37 +12,40 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 KT = os.path.join(ROOT, "app", "src", "main", "java", "com", "zobo", "burung", "demo", "DemoCourses.kt")
 
-# id, route key, title, summary, destination (name, address), options
+# id, route key, title, summary, destination (name, address), options.
+# The demo persona (docs/submission/persona.md): A씨, a father in his early 40s in 위례. Weekdays he takes his child
+# (rear seat) to kindergarten and drives on to work; Saturdays the family (wife in front, child behind) goes out
+# nearby; once a quarter a family trip to 강원도. In the order of his week.
+FAMILY = {"frontPassenger": True, "rearPassenger": True}
 COURSES = [
-    ("commute", "hq", "출근길", "위례 집 → 헌릉로 → 양재 현대자동차 본사(회사). 평일 아침마다 달리는 길이에요.",
-     ("현대자동차 본사", "서울 서초구 헌릉로 12"), {"speedLimit": 60}),
-    # Demo video (40대 아빠 A씨): 아이를 유치원에 내려 주고 출근, 토요일엔 가족과 올림픽공원.
-    ("kinder", "kinder", "등원길: 집 → 유치원", "위례 → 거여2동 유치원. 아이(뒷좌석)와 함께 가는 평일 아침이에요.",
+    ("kinder", "kinder", "평일 등원길: 집 → 유치원", "위례 집 → 거여2동 유치원. 뒷좌석의 아이를 내려 주는 평일 아침이에요.",
      ("유치원", "서울 송파구 거여2동"), {"speedLimit": 50, "rearPassenger": True}),
-    ("kinder-hq", "kinder-hq", "출근길: 유치원 → 회사", "거여2동 유치원 → 헌릉로 → 양재 현대자동차 본사(회사). 아이를 내려 주고 출근해요.",
+    ("kinder-hq", "kinder-hq", "평일 출근길: 유치원 → 회사", "거여2동 유치원 → 헌릉로 → 양재 현대자동차 본사(회사). 아이를 내려 주고 출근해요.",
      ("현대자동차 본사", "서울 서초구 헌릉로 12"), {"speedLimit": 60}),
-    ("olympic", "olympic", "토요일 올림픽공원 나들이", "위례 → 송파대로 → 올림픽공원 평화의문. 가족과 함께 가는 주말 나들이예요.",
-     ("올림픽공원 평화의문", "서울 송파구 올림픽로 424"), {"speedLimit": 60, "frontPassenger": True, "rearPassenger": True}),
-    ("costco", "costco", "토요일 코스트코 장보기", "위례 → 양재 코스트코. 토요일 아침, 배우자와 함께 장 보러 가요.",
-     ("코스트코 양재점", "서울 서초구 양재대로 159"), {"speedLimit": 60, "frontPassenger": True}),
-    ("namhansan", "namhansan", "남한산성 드라이브", "위례 → 남한산성. 토요일 오후 가까운 산성길로 가요.",
-     ("남한산성 행궁", "경기 광주시 남한산성면 남한산성로 784-29"), {"speedLimit": 60, "frontPassenger": True}),
-    ("everland", "everland", "용인 에버랜드 나들이", "위례 → 분당 → 용인 포곡. 토요일 오후 나들이예요.",
-     ("에버랜드", "경기 용인시 처인구 포곡읍 에버랜드로 199"), {"speedLimit": 80, "frontPassenger": True}),
-    ("suwon", "suwon", "수원 화성 나들이", "위례 → 수원 화성행궁. 토요일 오후 성곽길을 걸으러 가요.",
-     ("화성행궁", "경기 수원시 팔달구 정조로 825"), {"speedLimit": 60, "frontPassenger": True}),
-    ("starfield", "starfield", "하남 스타필드 나들이", "위례 → 하남. 토요일 오후 쇼핑하러 가요.",
-     ("스타필드 하남", "경기 하남시 미사대로 750"), {"speedLimit": 60, "frontPassenger": True}),
-    ("dumulmeori", "dumulmeori", "양평 두물머리 드라이브", "위례 → 하남 → 양평. 일요일 강변 드라이브예요.",
-     ("두물머리", "경기 양평군 양서면 양수리"), {"speedLimit": 80, "frontPassenger": True}),
-    ("hwadam", "hwadam", "광주 화담숲 산책", "위례 → 경기 광주 곤지암. 일요일 숲길 산책이에요.",
-     ("화담숲", "경기 광주시 도척면 도척윗로 278-1"), {"speedLimit": 80, "frontPassenger": True}),
-    ("mulgarden", "mulgarden", "남양주 물의정원 산책", "위례 → 하남 → 남양주 조안. 일요일 강변 산책이에요.",
-     ("물의정원", "경기 남양주시 조안면 북한강로 398"), {"speedLimit": 80, "frontPassenger": True}),
-    ("songdo", "songdo", "인천 송도 바닷바람", "위례 → 인천 송도. 일요일 서해 쪽으로 가요.",
-     ("송도 센트럴파크", "인천 연수구 컨벤시아대로 160"), {"speedLimit": 100, "frontPassenger": True}),
-    ("gangneung", "gangneung", "강릉 경포대 여행 (분기 1회)", "위례 → 영동고속도로 → 강릉 경포. 분기에 한 번 떠나는 동해 여행이에요.",
-     ("경포해변", "강원 강릉시 창해로 514"), {"speedLimit": 100, "frontPassenger": True}),
+    ("commute", "hq", "출근길: 집 → 회사", "위례 집 → 헌릉로 → 양재 현대자동차 본사(회사). 등원이 없는 날 바로 출근해요.",
+     ("현대자동차 본사", "서울 서초구 헌릉로 12"), {"speedLimit": 60}),
+    ("olympic", "olympic", "토요일 가족 나들이: 올림픽공원", "위례 → 송파대로 → 올림픽공원 평화의문. 아직 안 가 본 동네를 지나는 가족 나들이예요.",
+     ("올림픽공원 평화의문", "서울 송파구 올림픽로 424"), {"speedLimit": 60, **FAMILY}),
+    ("namhansan", "namhansan", "토요일 가족 나들이: 남한산성", "위례 → 남한산성 행궁. 가까운 산성길로 가족 나들이를 가요.",
+     ("남한산성 행궁", "경기 광주시 남한산성면 남한산성로 784-29"), {"speedLimit": 60, **FAMILY}),
+    ("everland", "everland", "토요일 가족 나들이: 용인 에버랜드", "위례 → 분당 → 용인 포곡. 아이가 기다리던 놀이공원이에요.",
+     ("에버랜드", "경기 용인시 처인구 포곡읍 에버랜드로 199"), {"speedLimit": 80, **FAMILY}),
+    ("suwon", "suwon", "토요일 가족 나들이: 수원 화성", "위례 → 수원 화성행궁. 가족과 성곽길을 걸으러 가요.",
+     ("화성행궁", "경기 수원시 팔달구 정조로 825"), {"speedLimit": 60, **FAMILY}),
+    ("starfield", "starfield", "토요일 가족 나들이: 하남 스타필드", "위례 → 하남. 비 오는 토요일 실내 나들이예요.",
+     ("스타필드 하남", "경기 하남시 미사대로 750"), {"speedLimit": 60, **FAMILY}),
+    ("hwadam", "hwadam", "토요일 가족 나들이: 광주 화담숲", "위례 → 경기 광주 곤지암. 가족과 숲길을 걸어요.",
+     ("화담숲", "경기 광주시 도척면 도척윗로 278-1"), {"speedLimit": 80, **FAMILY}),
+    ("dumulmeori", "dumulmeori", "토요일 가족 나들이: 양평 두물머리", "위례 → 하남 → 양평. 강변으로 가족 드라이브를 가요.",
+     ("두물머리", "경기 양평군 양서면 양수리"), {"speedLimit": 80, **FAMILY}),
+    ("mulgarden", "mulgarden", "토요일 가족 나들이: 남양주 물의정원", "위례 → 하남 → 남양주 조안. 강변 산책을 가요.",
+     ("물의정원", "경기 남양주시 조안면 북한강로 398"), {"speedLimit": 80, **FAMILY}),
+    ("costco", "costco", "토요일 가족 장보기: 코스트코 양재", "위례 → 양재 코스트코. 나들이 전에 가족과 장을 봐요.",
+     ("코스트코 양재점", "서울 서초구 양재대로 159"), {"speedLimit": 60, **FAMILY}),
+    ("songdo", "songdo", "가족 나들이: 인천 송도", "위례 → 인천 송도. 서해 바다를 보러 가는 조금 먼 나들이예요.",
+     ("송도 센트럴파크", "인천 연수구 컨벤시아대로 160"), {"speedLimit": 100, **FAMILY}),
+    ("gangneung", "gangneung", "강원도 가족 여행: 강릉 경포대 (분기 1회)", "위례 → 영동고속도로 → 강릉 경포. 분기에 한 번 떠나는 1박 2일 가족 여행이에요.",
+     ("경포해변", "강원 강릉시 창해로 514"), {"speedLimit": 100, **FAMILY}),
 ]
 
 
@@ -61,8 +65,8 @@ def main():
  * would overflow one class initializer's 64 KB limit. ([all] still touches every holder, so all
  * routes are built together the first time [DemoCourses] is used.)
  *
- * Generated by tools/demo/persona/gen_courses.py from the demo persona's routes (a driver living in
- * 위례 who commutes to 현대자동차 본사); edit that script, not this object.
+ * Generated by tools/demo/persona/gen_courses.py from the demo persona's routes (A씨, a father living in
+ * 위례 who drops his child at kindergarten and commutes to 현대자동차 본사); edit that script, not this object.
  */
 object DemoCourses {
 ''')

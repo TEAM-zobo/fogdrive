@@ -12,7 +12,8 @@
 시나리오(기획서 4. 주요 사용 시나리오, 40대 아빠 A씨): ① 평일 아침 키즈모드 ON → 유치원 등원(하차 깃발·함께 탐험)
 → 출근(20번째 출근, 「프로 출근러」) ② 토요일 도감·추천으로 목적지 → 올림픽공원 나들이(처음 가는 동네 음성,
 '주말 드라이브') → 내 탐험. 화면은 Pleos Connect 에뮬레이터에서 앱을 실제로 돌려 녹화한 것이고, 지난 4주 기록은
-시연용 데이터입니다(make_persona_backup.py --today 2026-11-02 --weeks 6 --commute-only --commutes 19).
+시연용 데이터입니다. v1 녹화는 페르소나 통일 전의 기록(출퇴근만 한 4주, 출근 19번)으로 찍었습니다. 다시 찍을 때는
+docs/submission/persona.md 4장(A씨 통일 시나리오)과 기본 기록(make_persona_backup.py)을 씁니다.
 편집은 이 파일만 고칩니다. index.html과 compositions/는 생성물입니다.
 """
 import json
