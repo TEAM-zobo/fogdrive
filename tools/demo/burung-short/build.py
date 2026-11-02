@@ -6,9 +6,11 @@
     npx hyperframes@0.8.196 snapshot --at 1,4.5,8,12,16.5,21,25.5,30,34,38
     npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o renders/burung-shortform.mp4
 
-이야기: 운전은 일상(출퇴근·근교·여행) → 기록으로 남길 수 없을까? → 부릉탐험대 → 시동 걸면 자동 기록 →
-출퇴근만 해도 「프로 출근러」 → 내 기록으로 새 목적지 추천 → 키즈모드 '도현 탐험대' → 도감으로 다음 여행지 →
-도착하면 레벨업·칭호 → 앱 아이콘.
+이야기: 매일 달리는데 남는 건 0 → 기록으로 남길 수 없을까? → 부릉탐험대 → 시동 ON = 기록 시작 →
+출퇴근만 했는데 「프로 출근러」 → 주말 어디 가지? 안 가 본 곳 추천 → 키즈모드 '도현 탐험대' 출동 →
+도감에 빈칸 → 다음 여행지 → 도착하면 레벨 업 + 「주말 원정대」 → 너의 칭호는?
+숏폼 문법: 첫 1초 안에 큰 글자 훅, 소리 없이도 읽히는 자막 위주, 장면 4–5초, 밈 말투, 마지막에 댓글 유도 질문.
+화면은 시연 페르소나 6주 기록(--weeks 6, 칭호를 이미 받은 상태)에서 찍었습니다.
 
 소재(assets/shots)는 에뮬레이터에서 찍은 앱 화면(앱 영역만, 1705×1210)과 주행 연속 캡처 클립입니다.
 글자는 화면 위 168–1330 px 안에만 둡니다(그 아래는 플랫폼 UI). 편집은 이 파일만 고칩니다.
@@ -34,23 +36,23 @@ FONTS = "".join(
 # Story scenes: a chat-bubble question on top, the app below (one or more shots with camera moves),
 # a sticker with the punchline on the picture. Camera keys: (time, (cx, cy, scale), move seconds).
 SCENES = [
-    dict(id="commute", start=14.0, dur=5.0, bubble="매일 출퇴근하나요?",
+    dict(id="commute", start=14.0, dur=5.0, bubble="출퇴근만 했을 뿐인데…",
          shots=[("trips.jpg", 0, [(0, (410, 420, 1.55), 0), (0.3, (410, 900, 1.55), 1.8)]),
-                ("exp-titles.jpg", 2.3, [(0, (897, 640, 1.2), 0), (0.1, (897, 640, 2.0), 1.4)])],
-         sticker="출퇴근만 해도 칭호 GET!", sticker2="프로 출근러 15/20"),
-    dict(id="suggest", start=18.6, dur=4.8, bubble="주말에 가족이랑 색다른 곳, 어디 없을까?",
+                ("exp-top.jpg", 2.3, [(0, (850, 605, 0.62), 0), (0.1, (520, 190, 1.7), 1.2)])],
+         sticker="「프로 출근러」 칭호 획득", sticker2="출근 20번이면 칭호 해금"),
+    dict(id="suggest", start=18.6, dur=4.8, bubble="맨날 가던 길만 가는 사람 손?",
          shots=[("map-suggest.jpg", 0, [(0, (850, 600, 0.62), 0), (0.6, (470, 1100, 1.5), 1.6)])],
-         sticker="내 주행 기록으로 새 목적지 추천", sticker2="누르면 바로 내비 안내"),
-    dict(id="kids", start=23.0, dur=5.0, bubble="등원길, 아이에겐 지루한 시간? NO!",
+         sticker="안 가 본 동네, 앱이 골라 줌", sticker2="터치 한 번이면 내비 출발"),
+    dict(id="kids", start=23.0, dur=5.0, bubble="등원길 지루하다는 아이, 여기 있나요?",
          shots=[("settings-kids-on.jpg", 0, [(0, (520, 280, 1.4), 0), (0.4, (1330, 330, 1.4), 1.4)]),
                 ("exp-kids.jpg", 2.4, [(0, (900, 170, 0.7), 0), (0.1, (560, 170, 1.7), 1.3)])],
-         sticker="키즈모드 ON", sticker2="도현 탐험대, 오늘도 탐험 시작!"),
-    dict(id="dex", start=27.6, dur=4.8, bubble="어? 강원도는 가 봤는데 충청도는 한 번도 안 가 봤네",
+         sticker="키즈모드 ON", sticker2="도현 탐험대, 출동!"),
+    dict(id="dex", start=27.6, dur=4.8, bubble="지역 도감 열었다가 깨달음",
          shots=[("dex-country.jpg", 0, [(0, (560, 640, 1.1), 0), (0.3, (540, 640, 1.6), 2.2)])],
-         sticker="우리 가족 다음 여행지는", sticker2="충청도로 고고!"),
-    dict(id="payoff", start=32.0, dur=4.6, bubble="도착하면?",
-         shots=[("gn-arrival.jpg", 0, [(0, (850, 605, 0.62), 0), (0.4, (462, 920, 1.5), 1.4)])],
-         sticker="레벨 업 · 새 칭호 · 새 스탬프", sticker2="오늘도 탐험 완료"),
+         sticker="충청도 아직 0번 실화?", sticker2="다음 여행지, 정해졌다"),
+    dict(id="payoff", start=32.0, dur=4.6, bubble="그리고 도착하면?",
+         shots=[("gn-arrival.jpg", 0, [(0, (850, 605, 0.62), 0), (0.4, (463, 950, 1.5), 1.4)])],
+         sticker="레벨 업 + 「주말 원정대」", sticker2="오늘 탐험, 클리어"),
 ]
 END_START, END_DUR = 36.2, 4.4
 TOTAL = round(END_START + END_DUR, 2)
@@ -154,7 +156,7 @@ def hook_html():
     <div id="hook-t1" class="tag"><b>출퇴근</b>,</div>
     <div id="hook-t2" class="tag"><b>근교 드라이브</b>,</div>
     <div id="hook-t3" class="tag"><b>여행</b>…</div>
-    <div id="hook-line">운전은<br><span>우리의 일상</span></div>
+    <div id="hook-line">매일 달리는데<br><span>남는 건 0</span></div>
   </div>
   <script>
     const tl = gsap.timeline({{ paused: true }});
@@ -180,7 +182,7 @@ def ask_html():
   <style>{css}</style>
   <div id="root" data-composition-id="ask" data-width="{W}" data-height="{H}" data-start="0" data-duration="{dur}">
     <div id="ask-bg"></div>
-    <div id="ask-q"><div class="w">이걸 전부</div><div class="w"><span class="u">기록</span>으로</div><div class="w">남길 순 없을까?</div></div>
+    <div id="ask-q"><div class="w"><span class="u">기록</span>으로</div><div class="w">남길 수</div><div class="w">없을까?</div></div>
   </div>
   <script>
     const tl = gsap.timeline({{ paused: true }});
@@ -215,7 +217,7 @@ def intro_html():
       <img id="intro-icon" src="assets/shots/icon.png" alt="">
       <div id="intro-name">부릉탐험대</div>
       <div id="intro-sub"><b>주행</b>이 기록이 되고,<br><b>기록</b>이 탐험이 되는 차량 앱</div>
-      <div id="intro-chip">시동만 걸면 자동 기록</div>
+      <div id="intro-chip">시동 ON = 기록 시작</div>
     </div>
   </div>
   <script>
@@ -243,7 +245,7 @@ def drive_html():
   <style>{css}</style>
   <div id="root" data-composition-id="drive" data-width="{W}" data-height="{H}" data-start="0" data-duration="{dur}">
     <video id="drive-vid" class="clip" data-start="0" data-duration="{dur}" data-media-start="3" src="assets/shots/drive.mp4" muted playsinline></video>
-    <div id="drive-cap"><div id="drive-st" class="st1">앱 안 열어도, 달린 길이 열려요</div></div>
+    <div id="drive-cap"><div id="drive-st" class="st1">앱 안 켜도 OK, 달리면 열림</div></div>
   </div>
   <script>
     const tl = gsap.timeline({{ paused: true }});
@@ -262,7 +264,8 @@ def end_html():
 #end-icon {{ width:300px; height:300px; border-radius:72px; }}
 #end-name {{ font-size:150px; font-weight:800; letter-spacing:-0.05em; margin-top:40px; }}
 #end-sub {{ font-size:52px; font-weight:700; margin-top:16px; letter-spacing:-0.03em; color:{YELLOW}; }}
-#end-chip {{ display:inline-block; margin-top:50px; padding:16px 36px; border-radius:40px; border:3px solid rgba(255,255,255,0.6);
+#end-ask {{ font-size:46px; font-weight:800; margin-top:44px; letter-spacing:-0.035em; color:#FFFFFF; }}
+#end-chip {{ display:inline-block; margin-top:34px; padding:16px 36px; border-radius:40px; border:3px solid rgba(255,255,255,0.6);
   font-size:38px; font-weight:700; }}
 #end-credit {{ position:absolute; left:60px; right:60px; top:1220px; text-align:center; font-size:28px; line-height:1.4; color:rgba(255,255,255,0.78); }}
 """
@@ -274,9 +277,10 @@ def end_html():
       <img id="end-icon" src="assets/shots/icon.png" alt="">
       <div id="end-name">부릉탐험대</div>
       <div id="end-sub">시동을 걸면 시작되는 나만의 탐험 지도</div>
+      <div id="end-ask">나는 프로 출근러. 너의 칭호는?</div>
       <div id="end-chip">Pleos Connect 차량 앱</div>
     </div>
-    <div id="end-credit">Music "Fretless" Kevin MacLeod (incompetech.com), CC BY 4.0<br>지도 © OpenStreetMap, OpenFreeMap · 화면은 에뮬레이터 시연</div>
+    <div id="end-credit">Music "Think About You" Square a Saw (Jamendo), CC BY 3.0<br>지도 © OpenStreetMap, OpenFreeMap · 화면은 에뮬레이터 시연</div>
   </div>
   <script>
     const tl = gsap.timeline({{ paused: true }});
@@ -284,7 +288,8 @@ def end_html():
     tl.from("#end-icon",{{scale:0.4,opacity:0,rotation:-12,duration:0.6,ease:"back.out(2)"}},0.2);
     tl.from("#end-name",{{y:60,opacity:0,duration:0.45,ease:"expo.out"}},0.45);
     tl.from("#end-sub",{{y:30,opacity:0,duration:0.45,ease:"power3.out"}},0.7);
-    tl.from("#end-chip",{{scale:0.8,opacity:0,duration:0.4,ease:"back.out(2)"}},0.95);
+    tl.from("#end-ask",{{scale:0.7,opacity:0,duration:0.4,ease:"back.out(2.4)"}},1.2);
+    tl.from("#end-chip",{{scale:0.8,opacity:0,duration:0.4,ease:"back.out(2)"}},1.5);
     window.__timelines["end"] = tl;
   </script>
 </template>
@@ -304,8 +309,8 @@ def index_html():
             f'data-start="{st}" data-duration="{du}" data-track-index="{1 + i % 2}" data-track-kind="graphics" '
             f'data-width="{W}" data-height="{H}" style="z-index:{i + 1}"></div>')
     audio = [f'      <audio id="music" class="clip" data-start="0" data-duration="{TOTAL}" data-track-index="9" data-volume="1" '
-             f"""data-automation='{{"version": 1, "lanes": [{{"target": "volume", "points": [{{"t": 0, "v": 0.7}}, {{"t": {TOTAL - 2.0}, "v": 0.7}}, {{"t": {TOTAL - 0.1}, "v": 0.0}}]}}]}}' """
-             f'src="assets/music/fretless.mp3"></audio>']
+             f"""data-automation='{{"version": 1, "lanes": [{{"target": "volume", "points": [{{"t": 0, "v": 0.36}}, {{"t": {TOTAL - 2.0}, "v": 0.36}}, {{"t": {TOTAL - 0.1}, "v": 0.0}}]}}]}}' """
+             f'data-media-start="20" src="assets/music/think-about-you.mp3"></audio>']
     for i, (f, t, v) in enumerate(SFX):
         audio.append(f'      <audio id="sfx{i}" class="clip" data-start="{t}" data-duration="{SFX_LEN[f]}" data-track-index="{10 + i % 3}" '
                      f'data-volume="{v}" src="assets/sfx/{f}"></audio>')

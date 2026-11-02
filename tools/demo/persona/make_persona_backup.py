@@ -193,9 +193,12 @@ def plan(today):
 
 
 def main():
+    global WEEKS
     ap = argparse.ArgumentParser()
     ap.add_argument("--today", help="demo day (the 강릉 trip), YYYY-MM-DD; default: today")
+    ap.add_argument("--weeks", type=int, default=WEEKS, help="weeks on record (default 4; the promo short uses 6 so titles are already earned)")
     a = ap.parse_args()
+    WEEKS = a.weeks
     today = date.fromisoformat(a.today) if a.today else datetime.now(KST).date()
     data = json.load(open(ROUTES, encoding="utf-8"))
     home = tuple(data["places"]["home"])

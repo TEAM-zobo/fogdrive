@@ -21,7 +21,8 @@
 #end-icon { width:300px; height:300px; border-radius:72px; }
 #end-name { font-size:150px; font-weight:800; letter-spacing:-0.05em; margin-top:40px; }
 #end-sub { font-size:52px; font-weight:700; margin-top:16px; letter-spacing:-0.03em; color:#FFD43B; }
-#end-chip { display:inline-block; margin-top:50px; padding:16px 36px; border-radius:40px; border:3px solid rgba(255,255,255,0.6);
+#end-ask { font-size:46px; font-weight:800; margin-top:44px; letter-spacing:-0.035em; color:#FFFFFF; }
+#end-chip { display:inline-block; margin-top:34px; padding:16px 36px; border-radius:40px; border:3px solid rgba(255,255,255,0.6);
   font-size:38px; font-weight:700; }
 #end-credit { position:absolute; left:60px; right:60px; top:1220px; text-align:center; font-size:28px; line-height:1.4; color:rgba(255,255,255,0.78); }
 </style>
@@ -31,9 +32,10 @@
       <img id="end-icon" src="assets/shots/icon.png" alt="">
       <div id="end-name">부릉탐험대</div>
       <div id="end-sub">시동을 걸면 시작되는 나만의 탐험 지도</div>
+      <div id="end-ask">나는 프로 출근러. 너의 칭호는?</div>
       <div id="end-chip">Pleos Connect 차량 앱</div>
     </div>
-    <div id="end-credit">Music "Fretless" Kevin MacLeod (incompetech.com), CC BY 4.0<br>지도 © OpenStreetMap, OpenFreeMap · 화면은 에뮬레이터 시연</div>
+    <div id="end-credit">Music "Think About You" Square a Saw (Jamendo), CC BY 3.0<br>지도 © OpenStreetMap, OpenFreeMap · 화면은 에뮬레이터 시연</div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
@@ -41,7 +43,8 @@
     tl.from("#end-icon",{scale:0.4,opacity:0,rotation:-12,duration:0.6,ease:"back.out(2)"},0.2);
     tl.from("#end-name",{y:60,opacity:0,duration:0.45,ease:"expo.out"},0.45);
     tl.from("#end-sub",{y:30,opacity:0,duration:0.45,ease:"power3.out"},0.7);
-    tl.from("#end-chip",{scale:0.8,opacity:0,duration:0.4,ease:"back.out(2)"},0.95);
+    tl.from("#end-ask",{scale:0.7,opacity:0,duration:0.4,ease:"back.out(2.4)"},1.2);
+    tl.from("#end-chip",{scale:0.8,opacity:0,duration:0.4,ease:"back.out(2)"},1.5);
     window.__timelines["end"] = tl;
   </script>
 </template>

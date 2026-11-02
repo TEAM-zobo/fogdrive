@@ -18,16 +18,16 @@
 </style>
   <div id="root" data-composition-id="payoff" data-width="1080" data-height="1920" data-start="0" data-duration="4.6">
     <div class="dots"></div><div class="foot"></div>
-    <div class="bubble"><div id="payoff-bub" class="bub">도착하면?</div></div>
+    <div class="bubble"><div id="payoff-bub" class="bub">그리고 도착하면?</div></div>
     <div id="payoff-frame" class="frame" data-layout-allow-overflow><img id="payoff-shot0" class="shot" src="assets/shots/gn-arrival.jpg" alt=""></div>
-    <div id="payoff-sticker" class="sticker"><div id="payoff-st1" class="st1">레벨 업 · 새 칭호 · 새 스탬프</div><br><div id="payoff-st2" class="st2">오늘도 탐험 완료</div></div>
+    <div id="payoff-sticker" class="sticker"><div id="payoff-st1" class="st1">레벨 업 + 「주말 원정대」</div><br><div id="payoff-st2" class="st2">오늘 탐험, 클리어</div></div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
     tl.from("#payoff-bub",{scale:0.4,opacity:0,transformOrigin:"0% 100%",duration:0.45,ease:"back.out(2.2)"},0.05);
     tl.from("#payoff-frame",{y:90,rotation:-3,opacity:0,duration:0.55,ease:"back.out(1.4)"},0.2);
     tl.set("#payoff-shot0",{x:-27.0,y:-65.1,scale:0.62},0);
-    tl.to("#payoff-shot0",{x:-193.0,y:-1070.0,scale:1.5,duration:1.4,ease:"power3.inOut"},0.4);
+    tl.to("#payoff-shot0",{x:-194.5,y:-1115.0,scale:1.5,duration:1.4,ease:"power3.inOut"},0.4);
     tl.from("#payoff-st1",{scale:0,rotation:-14,duration:0.45,ease:"back.out(2.6)"},1.6);
     tl.from("#payoff-st2",{y:30,opacity:0,duration:0.35,ease:"power3.out"},1.9000000000000001);
     tl.to("#payoff-st1",{rotation:-3,duration:0.3,ease:"power2.out"},2.0500000000000003);
