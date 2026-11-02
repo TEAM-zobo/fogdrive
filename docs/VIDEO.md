@@ -126,7 +126,9 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 
 접수양식 02-8 숏폼(선택)은 세로 영상입니다. 제출 조건과 장면은 [submission/shortform.md](submission/shortform.md)에 있습니다.
 
-**부릉탐험대 숏폼 (제출용):** `tools/demo/burung-short` (40.6초). 에뮬레이터 앱 화면 캡처와 주행 클립(`assets/`, git 제외)을 소재로 쓰고, 편집은 `build.py`만 고칩니다.
+**부릉탐험대 캐릭터 숏폼 (제출용):** `tools/demo/burung-toon`. 애니메이션 캐릭터가 앱을 소개하는 버전으로, 만드는 법·장면·소재는 [submission/shortform.md](submission/shortform.md)에 있고 앱 화면은 git에 있는 `docs/images/burung/`을 써서 어느 컴퓨터에서나 만들 수 있습니다.
+
+**이전 버전:** `tools/demo/burung-short` (40.6초). 에뮬레이터 앱 화면 캡처와 주행 클립(`assets/`, git 제외)을 소재로 쓰고, 편집은 `build.py`만 고칩니다.
 
 ```bash
 cd tools/demo/burung-short

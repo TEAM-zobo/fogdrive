@@ -16,7 +16,7 @@
 | 제출 이메일 | **필수** | [`email.md`](email.md) (양식)<br>`private/email.txt` (실제 값을 넣은 메일, git 제외) | 부릉탐험대로 갱신 | 영상 링크 넣어서 발송 |
 | GitHub 저장소 + APK | 선택 · 가산점 | [`github.md`](github.md) | `main` = 부릉탐험대, `apk/zobo_Burung_release.apk`, README 갱신 | 심사용 계정 읽기 권한 초대(공지 대기), 제출 직전 APK 재빌드 |
 | 시연 영상 | 선택 · 가산점 | [`demo-video.md`](demo-video.md) | **미제작** (예전 안개지도 영상은 쓰지 않음) | 녹화·편집 후 일부 공개로 업로드 |
-| 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 프로젝트 완성(40.6초), 렌더 전 | 렌더 → 확인 → 팀 계정으로 게시, 안 하면 02-8에 "없음" |
+| 숏폼 | 선택 · 가산점 없음 | [`shortform.md`](shortform.md) | 캐릭터 숏폼 제작 가이드 작성(`tools/demo/burung-toon`, 다른 PC에서 제작). 앱 화면만 쓴 이전 버전 `burung-short`(40.6초)는 렌더 전 | 제작 → 확인 → 팀 계정으로 게시, 안 하면 02-8에 "없음" |
 | 시연 페르소나 | (참고) | [`persona.md`](persona.md) | 작성 | - |
 | 양식 원본 | - | [`original/contest-application-consent.docx`](original/contest-application-consent.docx) | 공식 배포본과 바이트까지 같음(SHA-1 `73fad63f`, 2026-10-25 확인) | 수정하지 않음. 채운 양식과 비교할 때 씀 |
 
