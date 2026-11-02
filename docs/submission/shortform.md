@@ -42,4 +42,4 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 - [ ] 휴대폰에서 업로드 화면으로 미리 보고, 자막이 플랫폼 버튼·설명에 가리지 않는지 본다
 - [ ] 게시글 본문에 해시태그 3개(`#HMG차량용앱개발공모전 #PleosAppMarket #HMG앱공모전`)와 음악 출처를 적는다: Music: "Fretless" Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License
 - [ ] 화면·파일 이름·계정 이름에 성명·이메일·개인 계정 ID가 없다. 키즈모드 장면의 탐험대 이름('도현 탐험대')이 실제 가족 이름이면 다른 이름으로 바꾼다
-- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)의 【기입 필요: 숏폼 링크】와 [`email.md`](email.md), `private/email.txt`에 넣고 `python3 tools/submission/build_form.py`로 양식을 다시 만든다
+- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)의 【기입 필요: 숏폼 링크】와 `application-form.docx`, [제출 이메일](../index.html#email)에 넣는다

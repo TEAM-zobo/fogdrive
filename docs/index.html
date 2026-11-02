@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>부릉탐험대 공모전 준비</title>
+<title>부릉탐험대 제출 관리</title>
 <style>
   :root {
     --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef1f5; --text: #151a21; --sub: #5b6676;
@@ -82,274 +82,256 @@
 <main>
   <header class="hero">
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
-    <p class="sub">팀 zobo · 일반(스타트업 포함) 부문 · 작성 2026-10-24 (링크 검증일 동일) · 갱신 2026-10-25 · 머리말 2026-11-02</p>
-    <h1>부릉탐험대 공모전 준비 가이드</h1>
-    <p>현대자동차그룹 차량용 앱 개발 공모전에 제출하기 위해 알아야 할 일정, 제출물, 양식 작성법, 일자별 계획을 한 곳에 모았습니다. 모든 항목에 공식 근거 링크를 달았습니다.</p>
-    <div class="callout warn"><b>2026-11-02: 제출 앱은 부릉탐험대입니다.</b> 일정·제출 방법·심사 기준·유의사항은 그대로 유효합니다. 기능·화면·개발 현황·지표 예시처럼 예전 앱 안개지도를 기준으로 쓴 부분은 참고용이고, 지금 앱은 <a href="submission/02-app-introduction.md">접수양식 02 원고</a>, 제출 현황은 <a href="submission/README.md">제출물 안내</a>를 따릅니다. 심사용 GitHub 계정은 아직 공지되지 않았습니다.</div>
+    <p class="sub">팀 zobo · 일반(스타트업 포함) 부문 · 갱신 2026-11-02 · 이 문서 하나로 제출 준비를 관리합니다</p>
+    <h1>부릉탐험대 제출 관리</h1>
+    <p>현대자동차그룹 차량용 앱 개발 공모전 제출 현황, 남은 일, 제출 이메일, 일정, 요건과 근거를 한 곳에 모았습니다. 영상 제작 방법은 <a href="VIDEO.md">VIDEO.md</a>, 시연 영상·숏폼 장면은 <a href="submission/demo-video.md">demo-video.md</a>·<a href="submission/shortform.md">shortform.md</a>, 시연 데이터는 <a href="submission/persona.md">persona.md</a>에 있습니다.</p>
     <nav class="toc">
-      <a href="#deadline">마감·일정</a><a href="#submit">제출물</a><a href="#form">접수양식 작성</a>
-      <a href="#github">GitHub 제출</a><a href="#judging">심사 기준</a><a href="#business">사업성 근거</a><a href="#plan">일자별 계획</a>
-      <a href="#status">개발 현황</a><a href="#qa">QA·테스트</a><a href="#decide">확인·결정 필요</a><a href="#rules">유의사항</a><a href="#sources">근거 링크</a>
+      <a href="#status">제출 현황</a><a href="#todo">남은 일</a><a href="#email">제출 이메일</a><a href="#schedule">일정</a>
+      <a href="#form">접수양식</a><a href="#github">GitHub</a><a href="#video">영상·숏폼</a><a href="#check">최종 점검</a>
+      <a href="#judging">심사 기준</a><a href="#rules">유의사항</a><a href="#business">사업성 근거</a><a href="#sources">근거 링크</a>
     </nav>
   </header>
 
-  <section id="deadline">
-    <h2>마감과 핵심 일정</h2>
+  <section id="status">
+    <h2>제출 현황</h2>
     <div class="grid">
-      <div class="card kpi"><div class="label">접수 마감</div><div class="value warn">11/15(일) 23:59</div><div class="note">우리 목표 제출일: 11/12(목)</div></div>
-      <div class="card kpi"><div class="label">온라인 설명회</div><div class="value">10/28(수) 오후</div><div class="note">접속 방법은 공지사항으로 안내 예정</div></div>
-      <div class="card kpi"><div class="label">1차 서류 결과</div><div class="value">11/23(월)</div><div class="note">2차 진출 20팀</div></div>
-      <div class="card kpi"><div class="label">2차 PT (오프라인)</div><div class="value">12/3(목)–4(금)</div><div class="note">실제 동작하는 앱 시연 필수</div></div>
+      <div class="card kpi"><div class="label">접수 마감</div><div class="value warn">11/15(일) 23:59</div><div class="note" id="dday">우리 목표 제출일 11/12(목)</div></div>
+      <div class="card kpi"><div class="label">필수 제출물</div><div class="value">접수양식 1건</div><div class="note">이메일 한 통에 docx·pdf 첨부</div></div>
+      <div class="card kpi"><div class="label">가산점 제출물</div><div class="value accent">2건 준비</div><div class="note">GitHub 저장소(완료) · 시연 영상(업로드 남음)</div></div>
+      <div class="card kpi"><div class="label">심사용 GitHub 계정</div><div class="value warn">공지 대기</div><div class="note">미공지, 운영사무국에 문의함(11/2)</div></div>
     </div>
     <div class="table-wrap" style="margin-top:12px">
       <table>
-        <thead><tr><th>날짜</th><th>일정</th><th>비고</th></tr></thead>
+        <thead><tr><th>제출물</th><th>구분</th><th>파일·위치</th><th>상태</th><th>남은 일</th></tr></thead>
         <tbody>
-          <tr><td class="date">2026.10.21(수)</td><td>공고·접수 시작</td><td>숏폼 챌린지 참여 시작</td></tr>
-          <tr><td class="date">2026.10.28(수)</td><td>온라인 설명회</td><td>라이브 1회, 다시보기 제공 예정</td></tr>
-          <tr class="milestone"><td class="date">2026.11.15(일)</td><td><b>접수 마감</b></td><td>접수양식 기준 23:59까지. 마감 후 제출은 인정 안 됨</td></tr>
-          <tr><td class="date">2026.11.23(월)</td><td>1차 서류심사 결과 발표</td><td>합격팀은 공지사항으로 안내</td></tr>
-          <tr class="milestone"><td class="date">2026.12.03–04</td><td><b>2차 최종 PT 심사</b></td><td>현대자동차 강남대로사옥 1층 UX스튜디오 서울(강남구 강남대로 350)</td></tr>
-          <tr><td class="date">2026.12.18(금)</td><td>최종 선정 결과 발표</td><td>10팀 선정</td></tr>
-          <tr><td class="date">2026.12.19–2027.01</td><td>수상팀 전시 준비</td><td>추가 개발 기간 아님. 영상·APK 구동 테스트</td></tr>
-          <tr><td class="date">2027.02</td><td>현대자동차그룹 행사 전시·시상식</td><td>최종 순위 발표, 현장 시연·참석 의무</td></tr>
+          <tr><td>접수양식(기획서)</td><td><span class="tag req">필수</span></td><td><a href="submission/application-form.docx"><code>submission/application-form.docx</code></a> (11/02 Word 수정본, 01 참가 정보 포함)</td><td><span class="tag key">진행</span></td><td>02 【기입 필요】 4곳, 03 확인, 04 동의·서명(2명), PDF 내보내기</td></tr>
+          <tr><td>GitHub 저장소 + APK</td><td><span class="tag opt">선택 · 가산점</span></td><td><a href="https://github.com/TEAM-zobo/fogdrive">TEAM-zobo/fogdrive</a> <code>main</code>, <code>apk/zobo_Burung_release.apk</code>, <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.0">Release v0.1.0</a></td><td><span class="tag done">완료</span></td><td>심사용 계정 읽기 권한 초대(공지 후)</td></tr>
+          <tr><td>시연 영상</td><td><span class="tag opt">선택 · 가산점</span></td><td>1분 14초 완성본: Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/burung-demo-raw-v1"><code>burung-demo-raw-v1</code></a>의 <code>burung-demo.mp4</code></td><td><span class="tag key">제작 완료</span></td><td>YouTube 일부 공개 업로드, 링크를 02-7과 메일에 기입</td></tr>
+          <tr><td>숏폼</td><td><span class="tag opt">선택 · 가산점 없음</span></td><td>40.6초 완성본: Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/burung-media-v1"><code>burung-media-v1</code></a>의 <code>burung-shortform.mp4</code></td><td><span class="tag key">제작 완료</span></td><td>팀 계정에 게시(해시태그 3개), 링크를 02-8에 기입. 안 하면 "없음"</td></tr>
+          <tr><td>제출 이메일</td><td><span class="tag req">필수</span></td><td><a href="#email">아래 「제출 이메일」</a></td><td><span class="tag done">초안 완료</span></td><td>영상 링크 넣고 대표자 주소에서 발송</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/schedule">일정·설명회</a> · <a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000005">온라인 설명회 안내</a> · <a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항(2차 20팀, 시연 필수)</a> · <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">접수양식 DOCX(23:59 표기)</a></p>
   </section>
 
-  <section id="submit">
-    <h2>제출물과 제출 방법</h2>
+  <section id="todo">
+    <h2>남은 일</h2>
+    <ul class="check">
+      <li class="done">앱 이름 부릉탐험대로 확정, <code>main</code> 브랜치에 병합 (11/2)</li>
+      <li class="done">README 심사자용 정리: 소개·APK 위치·테스트 환경·실행 방법·시연 방법 (11/2)</li>
+      <li class="done">release APK <code>apk/zobo_Burung_release.apk</code> 갱신, GitHub Release v0.1.0 등록 (11/2, 두 파일 SHA-256 동일)</li>
+      <li class="done">GitHub About(설명·토픽) 갱신 (11/2)</li>
+      <li class="done">접수양식 01 참가 정보(대표자·구성원 2명) 기입 (11/2 Word 수정본)</li>
+      <li class="done">접수양식 02-7 저장소 주소·APK 경로·Release 링크 기입 (11/2)</li>
+      <li class="done">시연 영상 제작: 40대 아빠 A씨 시나리오, 1분 14초 (11/2)</li>
+      <li class="done">숏폼 제작: 40.6초, 카피·BGM 교체 (11/2)</li>
+      <li class="done">심사용 GitHub 계정 운영사무국에 문의 (11/2)</li>
+      <li>심사용 계정 답변이 오면 읽기 권한으로 초대하고 접근 확인</li>
+      <li>02 【기입 필요】 채우기: 고도 SDK·API, 오래 안 연 사용자를 부르는 장치</li>
+      <li>시연 영상 YouTube 일부 공개 업로드 → 02-7 링크 기입</li>
+      <li>숏폼 게시 → 02-8 링크 기입 (안 하면 "없음")</li>
+      <li>03 개인정보 동의 확인, 04 동의 체크·서명·서명일자 (대표자·팀원 각자)</li>
+      <li>서명본 PDF 내보내기 (<code>zobo_부릉탐험대_접수양식.pdf</code>)</li>
+      <li>최종 점검(<a href="#check">아래</a>) 후 11/12(목) 이메일 발송</li>
+      <li>제출 상태 태그: <code>git tag submission-1st &amp;&amp; git push origin submission-1st</code></li>
+    </ul>
+  </section>
+
+  <section id="email">
+    <h2>제출 이메일</h2>
+    <p>대표자 메일 계정에서 보냅니다. <code>{ }</code>만 채우고, 숏폼을 안 하면 「숏폼」 두 줄을 지웁니다. 마감 전 같은 주소로 마지막에 보낸 메일이 최종본으로 심사됩니다.</p>
+    <h3>1. 처음 제출</h3>
+    <div class="card">
+      <p><b>보내는 사람</b> <code>bora.cho.work@gmail.com</code></p>
+      <p><b>받는 사람</b> <code>appdevchallenge@hyundai-partners.com</code></p>
+      <p><b>참조(CC)</b> <code>guseh1604@gmail.com</code></p>
+      <p><b>제목</b> <code>[차량용 앱 개발 공모전] zobo_조보라</code></p>
+      <p><b>첨부</b> <code>zobo_부릉탐험대_접수양식.pdf</code>(서명한 01~04 전체), <code>zobo_부릉탐험대_접수양식.docx</code>(Word 원본)</p>
+<pre style="white-space:pre-wrap;background:var(--surface-2);padding:12px;border-radius:10px;font-size:14px">안녕하세요.
+현대자동차그룹 차량용 앱 개발 공모전에 참가하는 팀 zobo입니다.
+작성·서명한 접수양식과 제출자료를 아래와 같이 보내 드립니다.
+
+■ 참가 정보
+- 팀명: zobo
+- 앱명: 부릉탐험대
+- 참가 부문: 일반(스타트업 포함)
+- 참가 단위: 팀(2명)
+
+■ 첨부 파일
+1. zobo_부릉탐험대_접수양식.pdf — 01 참가신청서, 02 앱 소개/심사 자료, 03 개인정보 동의, 04 서명
+2. zobo_부릉탐험대_접수양식.docx — 같은 내용의 Word 원본
+
+■ 참고자료 (선택 · 가산점)
+- GitHub 저장소: https://github.com/TEAM-zobo/fogdrive
+  · 소스 코드, release APK(apk/zobo_Burung_release.apk), README(실행 방법·테스트 환경)
+  · 비공개 저장소이며, 공지되는 대로 심사용 계정을 읽기 권한 협업자로 초대하겠습니다.
+- 시연 영상: {시연 영상 링크}
+
+■ 숏폼 (선택)
+- {숏폼 링크}
+
+팀원 전원을 참조에 넣었고, 팀원 각자 접수양식 04에 동의·서명했습니다.
+확인 부탁드립니다. 감사합니다.
+
+팀 zobo 대표 조보라 드림</pre>
+      <p class="sub">심사용 계정을 이미 초대했다면 "공지되는 대로 … 초대하겠습니다."를 "공지된 심사용 계정을 읽기 권한 협업자로 초대해 두었습니다."로 바꿉니다.</p>
+    </div>
+    <h3>2. 수정 제출 (마감 전, 고칠 것이 생겼을 때)</h3>
+    <div class="card">
+      <p>처음 보낸 <b>같은 주소에서</b>, 바뀐 것만이 아니라 <b>전체 자료와 서명한 동의서를 모두 다시 첨부</b>하고 팀원 전원을 참조(CC)에 넣어야 유효 접수입니다.</p>
+      <p><b>제목</b> <code>[수정제출] [차량용 앱 개발 공모전] zobo_조보라</code></p>
+<pre style="white-space:pre-wrap;background:var(--surface-2);padding:12px;border-radius:10px;font-size:14px">안녕하세요. 팀 zobo입니다.
+{처음 제출한 날짜, 예: 11월 12일}에 제출한 자료를 수정하여 다시 보내 드립니다.
+이번 메일의 자료를 최종본으로 심사해 주시기 바랍니다.
+
+■ 수정 내용
+- {수정한 내용}
+
+■ 첨부 파일 (전체 다시 첨부)
+1. zobo_부릉탐험대_접수양식.pdf — 01~04 전체, 서명 포함
+2. zobo_부릉탐험대_접수양식.docx — Word 원본
+
+■ 참고자료
+- GitHub 저장소: https://github.com/TEAM-zobo/fogdrive
+- 시연 영상: {시연 영상 링크}
+
+■ 숏폼 (선택)
+- {숏폼 링크}
+
+확인 부탁드립니다. 감사합니다.
+
+팀 zobo 대표 조보라 드림</pre>
+    </div>
+    <h3>보내기 전 확인</h3>
+    <ul class="check">
+      <li>제목의 팀명·대표자명이 접수양식 01과 같다</li>
+      <li>첨부한 접수양식 01·03·04가 모두 기입·서명되어 있다(팀원 전원)</li>
+      <li>접수양식 02와 첨부·링크에 성명·연락처·이메일·소속·계정 ID가 드러나지 않는다(01에만)</li>
+      <li>링크를 로그인하지 않은 브라우저에서 열어 봤다(영상 공개 범위)</li>
+      <li>첨부 파일이 열린다(PDF·DOCX 각각), 보낸 메일함에서 다시 확인했다</li>
+    </ul>
+    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/submission">지원·제출 방법</a> · <a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항(수정 제출)</a></p>
+  </section>
+
+  <section id="schedule">
+    <h2>일정</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>제출물</th><th>구분</th><th>내용</th><th>우리 계획</th></tr></thead>
+        <thead><tr><th>날짜</th><th>일정</th><th>비고</th><th>상태</th></tr></thead>
         <tbody>
-          <tr><td>접수양식(기획서) DOCX</td><td><span class="tag req">필수</span></td><td>01 참가신청서 · 02 앱 소개/심사 자료 · 03 개인정보 동의 · 04 서명</td><td>02 작성(<a href="submission/application-form.docx">application-form.docx</a>, 【기입 필요】 6곳 남음), 01·03·04는 직접 기입·서명</td></tr>
-          <tr><td>시연 영상</td><td><span class="tag opt">선택 · 가산점</span></td><td>목업·프로토타입·화면 녹화 모두 인정</td><td>에뮬레이터 시연 모드 녹화 2–3분 (<a href="submission/demo-video.md">콘티</a>)</td></tr>
-          <tr><td>GitHub 저장소</td><td><span class="tag opt">선택 · 가산점</span></td><td>소스 코드 + <code>apk/</code> 폴더의 release APK + README</td><td><code>fogdrive</code> 비공개 저장소 (준비 완료, <a href="submission/github.md">요건 점검</a>)</td></tr>
-          <tr><td>숏폼 링크</td><td><span class="tag opt">선택 · 가산점 없음</span></td><td>30초–1분 세로 영상, 접수양식 8번에 링크 기재</td><td>여유 있으면 진행 (별도 특별상 50만 원, <a href="submission/shortform.md">콘티</a>)</td></tr>
+          <tr><td class="date">2026.10.21(수)</td><td>공고·접수 시작</td><td>숏폼 챌린지 참여 시작</td><td><span class="tag done">완료</span></td></tr>
+          <tr><td class="date">2026.10.28(수)</td><td>온라인 설명회</td><td>참석 대신 공지·FAQ·SDK 문서로 확인</td><td><span class="tag done">완료</span></td></tr>
+          <tr><td class="date">~11.02(월)</td><td>앱 부릉탐험대 확정·main 병합, 접수양식 Word 수정본, 시연 영상·숏폼 제작, APK·README·Release</td><td>위 「남은 일」의 완료 항목</td><td><span class="tag done">완료</span></td></tr>
+          <tr><td class="date">11.03–11.09</td><td>【기입 필요】 채우기, 영상 업로드·숏폼 게시, 심사용 계정 초대(공지 시)</td><td>필요하면 APK 다시 빌드(<code>apk/</code>와 Release 함께)</td><td><span class="tag todo">예정</span></td></tr>
+          <tr><td class="date">11.10(화)</td><td>최종 점검</td><td><a href="#check">최종 점검</a> 목록</td><td><span class="tag todo">예정</span></td></tr>
+          <tr><td class="date">11.11(수)</td><td>03·04 동의·서명(2명), PDF 내보내기</td><td>서명본</td><td><span class="tag key">직접</span></td></tr>
+          <tr class="milestone"><td class="date">11.12(목)</td><td><b>이메일 제출 (목표일)</b></td><td>11/13–15는 수정 제출용 여유</td><td><span class="tag key">직접</span></td></tr>
+          <tr class="milestone"><td class="date">2026.11.15(일)</td><td><b>접수 마감 23:59</b></td><td>마감 후 제출은 인정 안 됨</td><td></td></tr>
+          <tr><td class="date">2026.11.23(월)</td><td>1차 서류심사 결과 발표</td><td>2차 진출 20팀, 공지사항으로 안내</td><td></td></tr>
+          <tr class="milestone"><td class="date">2026.12.03–04</td><td><b>2차 최종 PT 심사</b></td><td>현대자동차 강남대로사옥 1층 UX스튜디오 서울(강남구 강남대로 350). 실제 동작하는 앱 시연 필수</td><td></td></tr>
+          <tr><td class="date">2026.12.18(금)</td><td>최종 선정 결과 발표</td><td>10팀 선정</td><td></td></tr>
+          <tr><td class="date">2026.12.19–2027.01</td><td>수상팀 전시 준비</td><td>추가 개발 기간 아님. 전시 영상·구동용 APK</td><td></td></tr>
+          <tr><td class="date">2027.02</td><td>현대자동차그룹 행사 전시·시상식</td><td>최종 순위 발표, 현장 시연·참석 의무</td><td></td></tr>
         </tbody>
       </table>
     </div>
-    <p>제출할 파일과 문서는 모두 저장소 <a href="submission/README.md"><code>docs/submission/</code></a>에 모았습니다. 복사해서 바로 보낼 수 있는 이메일은 <a href="submission/email.md"><code>email.md</code></a>에 있습니다.</p>
-    <h3>이메일 제출</h3>
-    <div class="card">
-      <p><b>받는 사람</b> <code>appdevchallenge@hyundai-partners.com</code></p>
-      <p><b>메일 제목</b> <code>[차량용 앱 개발 공모전] zobo_대표자명</code></p>
-      <p><b>수정 제출 제목</b> <code>[수정제출] [차량용 앱 개발 공모전] zobo_대표자명</code> — 처음 보낸 주소에서, 전체 자료와 서명한 동의서를 모두 다시 첨부</p>
-      <p><b>팀 참가라면</b> 팀원 전원을 참조(CC)에 넣고, 팀원 각자 동의·서명·날짜를 작성해야 합니다. 참조만으로는 동의를 대신하지 않습니다.</p>
-      <p class="sub">마감 전 마지막으로 보낸 자료가 최종본으로 심사됩니다.</p>
-    </div>
-    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/submission">지원·제출 방법</a> · <a href="https://appdevchallenge.auto-hmg.io/guide/rules">참가 규정</a> · <a href="https://appdevchallenge.auto-hmg.io/guide/shortform">숏폼 챌린지</a></p>
+    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/schedule">일정·설명회</a> · <a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항</a></p>
   </section>
 
   <section id="form">
-    <h2>접수양식 작성 가이드</h2>
-    <p>양식 원본은 저장소의 <code>docs/submission/original/contest-application-consent.docx</code>, 02를 채운 파일은 <a href="submission/application-form.docx"><code>docs/submission/application-form.docx</code></a>에 있습니다(02 원고: <a href="submission/02-app-introduction.md"><code>02-app-introduction.md</code></a>, <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">원본 다운로드</a>). 양식이 곧 기획서이며, 소개 자료 분량 제한은 없습니다.</p>
+    <h2>접수양식</h2>
+    <p>제출 파일은 <a href="submission/application-form.docx"><code>docs/submission/application-form.docx</code></a> 하나이고, 11/02부터 Word에서 직접 고칩니다. 02 원고 <a href="submission/02-app-introduction.md"><code>02-app-introduction.md</code></a>는 docx와 같은 내용으로 맞춰 두었으니 고칠 때 둘을 함께 고칩니다. <code>tools/submission/build_form.py</code>는 원고로 양식을 새로 만들면서 Word 서식과 01 참가 정보를 덮어쓰므로 쓰지 않습니다. 공식 원본은 <code>docs/submission/original/</code>(SHA-1 <code>73fad63f</code>)에 있습니다.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>양식 영역</th><th>채울 내용</th><th>누가</th></tr></thead>
+        <thead><tr><th>양식 영역</th><th>내용</th><th>상태</th></tr></thead>
         <tbody>
-          <tr><td>01-A 참가 기본정보</td><td>참가 단위 <b>팀</b> · 부문 <b>일반(스타트업 포함)</b> · 팀명 <b>zobo</b> · 앱명 <b>부릉탐험대</b> · 대표자 성명/역할/소속/이메일/휴대폰 · 참가 인원 2명 — 제출본(<code>private/</code>, git 제외)에 자동 기입. 작성일만 직접</td><td><span class="tag done">자동</span></td></tr>
-          <tr><td>01-B 참가 구성원</td><td>전원의 성명·소속·휴대폰·이메일·역할 — 제출본에 자동 기입</td><td><span class="tag done">자동</span></td></tr>
-          <tr><td>02 앱 소개 1–6</td><td>한 줄 소개 · 기획 배경 · 주요 기능/차량 특화 · 사용 시나리오 · 개발 계획(SDK/API) · 기대효과(타깃, MAU, 리텐션, 확대 계획) — <a href="https://claude.ai/artifact/EnXkpcooNfxscWEe6k4F24">기획서 초안</a>에 아래 변경점을 반영해 작성(<a href="submission/02-app-introduction.md">원고</a>), 【기입 필요】 4곳 남음</td><td>기입 대기</td></tr>
-          <tr><td>02-7 참고자료</td><td>앱 화면 11장, GitHub 저장소 링크·APK 경로 기입 완료. 시연 영상 링크만 남음</td><td>영상 링크 대기</td></tr>
-          <tr><td>02-8 숏폼 링크</td><td>게시한 세로 영상 링크(선택)</td><td>선택</td></tr>
-          <tr><td>03 개인정보 동의 · 04 서명</td><td>04 성명은 제출본에 자동 기입. 동의 체크, 본인 서명, 서명일자는 팀원 각자</td><td><span class="tag key">직접</span></td></tr>
+          <tr><td>01-A 참가 기본정보</td><td>팀 · 일반(스타트업 포함) · zobo · 부릉탐험대 · 대표자 성명/역할/이메일/휴대폰 · 2명 · 작성일</td><td><span class="tag done">완료</span></td></tr>
+          <tr><td>01-B 참가 구성원</td><td>2명의 성명·휴대폰·이메일·역할 (소속은 선택)</td><td><span class="tag done">완료</span></td></tr>
+          <tr><td>02-1~6 앱 소개</td><td>한 줄 소개 · 기획 배경 · 주요 기능/차량 특화 · 시나리오(40대 아빠 A씨) · 개발 계획 · 기대효과</td><td><span class="tag key">【기입 필요】 2곳</span> 고도 SDK·API, 오래 안 연 사용자를 부르는 장치</td></tr>
+          <tr><td>02-7 참고자료</td><td>저장소 주소, APK 경로·Release 링크, 실행 방법, 앱 화면 10장</td><td><span class="tag key">시연 영상 링크 남음</span></td></tr>
+          <tr><td>02-8 숏폼 링크</td><td>게시한 세로 영상 링크(선택)</td><td><span class="tag key">링크 남음</span></td></tr>
+          <tr><td>03 개인정보 동의 · 04 서명</td><td>동의 체크, 본인 서명, 서명일자 — 대표자·팀원 각자</td><td><span class="tag key">직접</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="callout danger"><b>실명·계정 노출 금지</b> 02 소개 자료와 공유 링크, 첨부자료에는 성명·연락처·이메일·소속은 물론 계정정보와 개발자 실명도 드러나면 안 됩니다. 연락정보는 01 참가신청서에만 적습니다. 저장소 README와 커밋 작성자 이름은 팀명 <code>zobo</code>입니다(커밋 이메일은 개발자 GitHub 계정의 noreply 주소라 GitHub 화면에서는 그 계정이 연결되어 보입니다. 공모전 규정에 커밋 관련 조건은 없습니다). 저장소는 팀 조직 <code>TEAM-zobo</code>로 옮겨 주소에 개인 계정 ID가 보이지 않습니다.</div>
-    <h3>기획서 초안 대비 반영할 변경점</h3>
-    <ul>
-      <li><b>FusedLocation SDK</b>: 초안은 "준비 중(로드맵)"으로 적었지만 공개 Maven에 1.1.3이 있고 에뮬레이터에서 <code>isSupported()</code>가 참입니다. 앱은 이미 FusedLocation을 우선 사용하고, 미지원 차량에서는 Android GPS로 대체합니다. 다만 Playground 프로젝트 화면에는 아직 "준비 중"으로 표시되므로 표현은 "지원 차량에서 사용, 미지원 시 대체"로 씁니다.</li>
-      <li><b>기어(P단)</b>: Vehicle SDK에는 기어 도메인이 없어 AAOS 표준 <code>CarPropertyManager(GEAR_SELECTION)</code>를 씁니다. 초안과 동일합니다.</li>
-      <li><b>격자 크기</b>: 50m → 약 30m(웹 메르카토르 20레벨 타일). 주행 중에는 도로 양쪽 약 45m만 걷혀 넓은 지역이 한 번에 해금되지 않습니다. 정복률은 행정구역(시·도 → 시·군·구 → 읍·면·동) 경계 기준으로 구현했습니다(admdongkor, 통계청 원자료).</li>
-      <li><b>MAU·리텐션 수치</b>는 공개 자료(판매량, Pleos 탑재 목표, 리텐션 벤치마크)를 바탕으로 한 가정입니다. 산식과 출처는 <a href="#business">사업성 근거</a>에 있고, 탑재 차량 수는 공개 자료가 없어 탑재 차종(그랜저·아반떼) 판매 실적으로 보완했습니다.</li>
-    </ul>
-    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">접수양식 DOCX</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/FusedLocation/intro">FusedLocation SDK 소개</a> · <a href="https://document.pleos.ai/docs/pleos-only/create-my-project">SDK 사용 신청(상태 표시)</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro">Vehicle SDK 도메인 목록</a></p>
+    <div class="callout danger"><b>실명·계정 노출 금지</b> 02 소개 자료, README, 공유 링크, 첨부자료에는 성명·연락처·이메일·소속·계정정보·개발자 실명을 쓰지 않습니다. 연락정보는 01 참가신청서와 이 문서의 제출 이메일에만 둡니다(비공개 저장소). 저장소는 팀 조직 <code>TEAM-zobo</code>에 있어 주소에 개인 계정 ID가 보이지 않습니다.</div>
+    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">접수양식 DOCX</a> · <a href="https://appdevchallenge.auto-hmg.io/faq">FAQ(팀 접수)</a></p>
   </section>
 
   <section id="github">
     <h2>GitHub 저장소 제출 요건</h2>
     <ul class="check">
-      <li class="done">소스 코드 업로드 (비공개 저장소 <code>TEAM-zobo/fogdrive</code>, 팀 조직으로 이전)</li>
-      <li class="done">release APK를 <code>apk/</code> 폴더에 업로드 · 파일명 <code>zobo_FogDrive_release.apk</code> (규칙: 팀명_앱이름_release.apk)</li>
-      <li class="done">README에 앱 이름·한 줄 소개, 실행 방법, 테스트 환경·필요 설정, APK 위치 기재</li>
-      <li>비공개 저장소이므로 <b>공지될 심사용 GitHub 계정을 Collaborator로 초대</b> (계정 미공지 상태 — 공지사항 확인)</li>
-      <li>초대 후 마감 전 심사용 계정에서 정상 접근되는지 확인</li>
-      <li>심사용 계정은 <b>읽기(Read) 권한</b>으로 초대 (무료 조직 비공개 저장소는 브랜치 보호 불가)</li>
-      <li>APK가 GitHub 용량을 넘으면 Releases에 올리고 Release 페이지 주소 제출 (R8·리소스 축소 적용 후 약 36MB로 100MB 제한 이내)</li>
+      <li class="done">소스 코드 업로드: 비공개 저장소 <code>TEAM-zobo/fogdrive</code>, <code>main</code> = 부릉탐험대</li>
+      <li class="done">release APK를 <code>apk/</code> 폴더에: <code>apk/zobo_Burung_release.apk</code>(약 38MB, 100MB 제한 이내, release 키 서명). 규칙 <code>팀명_앱이름_release.apk</code>, 앱 이름은 Windows 경로 문제를 피해 영문 <code>Burung</code></li>
+      <li class="done">GitHub Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.0">v0.1.0</a>에도 같은 APK (SHA-256 <code>309e93b6…</code>)</li>
+      <li class="done">README: 앱 이름·한 줄 소개, 실행 방법, 테스트 환경·필요한 설정, APK 위치·Release 링크</li>
+      <li class="done">새로 설치해 실행 확인(QA 에뮬레이터, 11/2)</li>
+      <li>심사용 GitHub 계정을 <b>읽기(Read) 권한</b> Collaborator로 초대 — 계정 미공지(11/2 공지·FAQ·사이트 재확인), 운영사무국에 문의함(11/2)</li>
+      <li>초대 후 마감 전 심사용 계정에서 저장소·APK가 보이는지 확인</li>
     </ul>
+    <div class="card" style="margin-top:12px">
+      <p><b>초대 명령</b> <code>gh api -X PUT repos/TEAM-zobo/fogdrive/collaborators/&lt;심사용 계정&gt; -f permission=pull</code></p>
+      <p><b>확인</b> <code>gh api repos/TEAM-zobo/fogdrive/invitations --jq '.[] | "\(.invitee.login) \(.permissions)"'</code> 결과가 <code>read</code></p>
+      <p><b>APK 다시 빌드할 때</b> <code>./gradlew :app:assembleRelease</code> → <code>apk/zobo_Burung_release.apk</code>에 복사 → Release v0.1.0 파일도 같은 것으로 교체 → 설치·실행 확인</p>
+      <p class="sub">무료 조직의 비공개 저장소는 브랜치 보호가 없어서 Write로 초대하면 <code>main</code>에 바로 푸시할 수 있습니다. 반드시 Read로 초대합니다.</p>
+    </div>
     <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/submission#github">GitHub 저장소 제출 안내</a> · <a href="https://appdevchallenge.auto-hmg.io/faq">FAQ(비공개 저장소)</a></p>
+  </section>
+
+  <section id="video">
+    <h2>영상·숏폼 제출</h2>
+    <p>만드는 방법은 <a href="VIDEO.md">VIDEO.md</a>, 장면은 <a href="submission/demo-video.md">demo-video.md</a>·<a href="submission/shortform.md">shortform.md</a>에 있습니다. 여기서는 제출에 필요한 것만 관리합니다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>시연 영상</th><th>숏폼</th></tr></thead>
+        <tbody>
+          <tr><td>완성본</td><td>1분 14초, 1920×1080 (Release <code>burung-demo-raw-v1</code>)</td><td>40.6초, 1080×1920, -16.9 LUFS (Release <code>burung-media-v1</code>)</td></tr>
+          <tr><td>올릴 곳</td><td>YouTube <b>일부 공개</b>(링크가 있는 사람만), 팀 zobo 채널</td><td>Instagram 릴스 또는 YouTube Shorts, 팀 계정</td></tr>
+          <tr><td>조건</td><td>목업·프로토타입·화면 녹화 인정, 2–3분 권장</td><td>30초–1분 세로, 필수 해시태그 <code>#HMG차량용앱개발공모전</code> 포함 총 2~3개(제안 <code>#PleosAppMarket</code> <code>#HMG앱공모전</code>)</td></tr>
+          <tr><td>설명란</td><td colspan="2">Music "Think About You" Square a Saw (Jamendo), CC BY 3.0 · 지도 © OpenStreetMap contributors, OpenFreeMap</td></tr>
+          <tr><td>링크 기입</td><td>접수양식 02-7, 제출 이메일</td><td>접수양식 02-8, 제출 이메일</td></tr>
+          <tr><td>상태</td><td><span class="tag key">업로드 남음</span></td><td><span class="tag key">게시 남음</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="check">
+      <li>처음부터 끝까지 재생해 소리·자막·화면 확인(음량은 측정값으로만 확인했으므로 사람이 직접 들어 봄)</li>
+      <li>화면·자막·파일 이름·채널 이름에 성명·이메일·계정 ID가 없다. 숏폼 키즈모드 장면의 탐험대 이름이 실제 가족 이름이 아닌지 확인</li>
+      <li>로그인하지 않은 브라우저에서 재생됨</li>
+    </ul>
+    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/shortform">숏폼 챌린지</a> · <a href="https://appdevchallenge.auto-hmg.io/faq">FAQ(숏폼)</a></p>
+  </section>
+
+  <section id="check">
+    <h2>최종 점검 (11/10)</h2>
+    <ul class="check">
+      <li>접수양식 02, 첨부, 링크 어디에도 성명·연락처·이메일·소속·계정 ID·개발자 실명이 없다(01에만)</li>
+      <li>02의 【기입 필요】가 모두 채워졌고 노란 형광이 남아 있지 않다</li>
+      <li>01·03·04 기입·서명 완료(팀원 전원)</li>
+      <li>GitHub: 심사용 계정 읽기 권한 초대·접근 확인, <code>apk/zobo_Burung_release.apk</code>가 최신이고 설치·실행됨</li>
+      <li>시연 영상: 로그인하지 않은 브라우저에서 재생됨</li>
+      <li>README의 실행 방법대로 처음부터 셋팅해 앱이 뜬다(<a href="SETUP.md">SETUP.md</a>)</li>
+      <li class="done">지도 출처 표기(© OpenStreetMap · OpenFreeMap)가 앱 화면에 보인다</li>
+      <li>이메일은 대표자 주소에서, 정해진 제목, 팀원 참조(CC)</li>
+      <li>보낸 메일함에서 첨부가 열린다</li>
+    </ul>
   </section>
 
   <section id="judging">
     <h2>심사 기준과 우리의 대응</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>평가 항목</th><th>보는 것</th><th>안개지도의 답</th></tr></thead>
+        <thead><tr><th>평가 항목</th><th>보는 것</th><th>부릉탐험대의 답</th></tr></thead>
         <tbody>
-          <tr><td>차량특화성</td><td>모바일 대비 차량만의 가치, 주행·정차 맥락과 결합</td><td>시동과 함께 끊김 없는 기록, P단+도어로 "머문 곳" 구분, 주행 중엔 간결한 주행 모드(지도·위치·숫자만), 게임 요소는 정차 중에만</td></tr>
-          <tr><td>창의성</td><td>독창성, 운전자·동승자 Pain Point 정의</td><td>이동 기록을 정복 게임으로(읍·면·동 단위 지역 도감), 와이퍼·전조등·좌석·충전 상황 스탬프</td></tr>
-          <tr><td>기술 활용성</td><td>Pleos SDK·API를 핵심 기능에 적절히 활용</td><td>Vehicle(도어·좌석·와이퍼·전조등·주행거리·EV) · NaviHelper(최근 목적지·즐겨찾기·목적지·경유지) · FusedLocation</td></tr>
-          <tr><td>사업성</td><td>타깃, 예상 MAU, Retention, 확대 계획</td><td>가족·드라이브 애호가·출퇴근 3개 세그먼트, 오늘·주·월·시즌 챌린지, 스탬프 29종, 주행 요약·음성 안내·동승자 미션으로 재방문 유도, 지자체·관광 제휴 — 근거와 MAU 산식은 <a href="#business">사업성 근거</a></td></tr>
-          <tr><td>[가산점] 개발 산출물</td><td>시연 영상, GitHub(소스+APK)</td><td>둘 다 제출 예정</td></tr>
+          <tr><td>차량특화성</td><td>모바일 대비 차량만의 가치, 주행·정차 맥락과 결합</td><td>시동과 함께 끊김 없는 기록, P단+도어로 하차 지점, 좌석 신호로 함께 탐험, 내비의 집·회사·즐겨찾기로 베이스캠프와 주행 이름, 주행 중엔 간결한 주행 모드, 성과는 도착 후에만</td></tr>
+          <tr><td>창의성</td><td>독창성, 운전자·동승자 Pain Point 정의</td><td>"운전이 남기는 것이 없다"를 탐험 지도·도감·스탬프·칭호로, 키즈모드로 동승한 아이도 탐험대원</td></tr>
+          <tr><td>기술 활용성</td><td>Pleos SDK·API를 핵심 기능에 적절히 활용</td><td>Vehicle 2.3.2(도어·좌석·와이퍼·전조등·배터리·주행 모드·주행 가능 거리) · NaviHelper 3.0.5(즐겨찾기·목적지·경유지·경로 요청) · FusedLocation 1.1.3 · TextToSpeech 3.3.1 · AAOS 기어·주행 규제</td></tr>
+          <tr><td>사업성</td><td>타깃, 예상 MAU, Retention, 확대 계획</td><td>출퇴근·가족·드라이브 애호가, 레벨·이번 주 추천·스탬프 11개·칭호 5개로 재방문, 현대차 계정 연동·글로벌·랭킹·관광지 추천으로 확장</td></tr>
+          <tr><td>[가산점] 개발 산출물</td><td>시연 영상, GitHub(소스+APK)</td><td>둘 다 제출(저장소 완료, 영상 업로드 남음)</td></tr>
         </tbody>
       </table>
     </div>
     <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/judging-awards">심사·시상</a> (세부 배점 비공개)</p>
-  </section>
-
-  <section id="business">
-    <h2>사업성 근거 (2026-10-25 조사)</h2>
-    <p>접수양식 02-6 기대효과(타깃, MAU, 리텐션, 확대 계획)에 옮겨 쓸 근거입니다. <b>MAU 표의 값은 공개 자료를 바탕으로 한 가정</b>이며, 출처가 있는 사실과 구분해 적습니다.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>근거</th><th>값</th><th>출처</th></tr></thead>
-        <tbody>
-          <tr><td>Pleos Connect 탑재 계획</td><td>첫 적용 '더 뉴 그랜저'(2026년 5월), 이후 부분변경·신차로 확대, 2030년까지 전 세계 약 2,000만 대 목표 (기존 ccNC 차량은 미적용)</td><td><a href="https://news.mtn.co.kr/news-detail/2026043016372162316">MTN 2026-04-30</a> · <a href="https://www.heraldk.com/article/2026042918170356636">헤럴드경제 2026-04-29</a></td></tr>
-          <tr><td>탑재 차종 판매(2026)</td><td>더 뉴 그랜저 6월 10,062 · 8월 5,931 · 9월 8,898대, 디 올 뉴 아반떼(8/5 계약 시작, 전 트림 기본 탑재) 9월 7,305대 → 공식 집계만 약 3.2만 대, 월 약 1.6만 대 증가. 이 속도면 2027년 말 약 30만 대(MAU 보수 시나리오의 V)</td><td><a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-june-2026-sales">6월</a> · <a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-august-2026-sales">8월</a> · <a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-september-2026-sales">9월 실적</a> · <a href="https://www.starnewskorea.com/business-life/2026/08/05/2026080509094993230">아반떼 계약</a></td></tr>
-          <tr><td>국내 신차 판매(2025)</td><td>현대차 71.3만 대(제네시스 포함) + 기아 54.6만 대 ≈ 125.9만 대</td><td><a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-2025-earnings-announcement">현대차 2025 실적</a> · <a href="https://v.daum.net/v/zwT3FbHlzh">판매 순위 기사</a></td></tr>
-          <tr><td>커넥티드카 가입자</td><td>글로벌 1,000만 명 돌파(2023년 6월, 현대차·기아·제네시스)</td><td><a href="https://www.smarttoday.co.kr/ko-kr/articles/31442">스마트투데이</a></td></tr>
-          <tr><td>국내여행과 자동차</td><td>2025년 국내여행 경험률 97.0%, 총 3억 900만 회, 이동수단 자동차 84.5%</td><td><a href="https://www.segye.com/newsView/20260630504163">2025 국민여행조사 보도</a></td></tr>
-          <tr><td>하루 주행거리</td><td>자동차 1대당 일평균 37.8km, 비사업용 30.8km (2025)</td><td><a href="https://www.fnnews.com/news/202606291005221113">한국교통안전공단 통계 보도</a></td></tr>
-          <tr><td>앱 리텐션 벤치마크</td><td>전체 앱 D1 26% / D7 13% / D30 7%, 여행 앱 D30 3–4%</td><td><a href="https://www.adjust.com/blog/what-makes-a-good-retention-rate/">Adjust</a> · <a href="https://phiture.com/mobilegrowthstack/managing-retention-rate-benchmarks-and-expectations/">Phiture</a></td></tr>
-          <tr><td>게이미피케이션 효과</td><td>Duolingo 7일 스트릭 도달 사용자 완주 가능성 3.6배 / Pokémon GO 이용자 하루 1,473보 증가(동료 심사 논문)</td><td><a href="https://blog.duolingo.com/how-duolingo-streak-builds-habit">Duolingo</a> · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5174727">JMIR 2016</a></td></tr>
-          <tr><td>지자체 스탬프 투어 선례</td><td>인천e지 다운로드 28.6만·회원 9.2만, 2024년 스탬프투어 협업 36건 / 한국관광 100선 스탬프 이벤트</td><td><a href="https://www.heraldk.com/article/2025080323004395560">헤럴드경제(인천e지)</a> · <a href="https://www.heraldk.com/article/2025110218201335843">한국관광 100선</a></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <h3 style="margin-top:20px">MAU 추정 (가정)</h3>
-    <p><b>MAU = 국내 Pleos 탑재 누적 차량(V) × 앱 설치율(I) × 월간 활성률(A)</b>. V는 연 126만 대 판매 중 Pleos 탑재 비중이 늘어나는 것으로 보고 2027년 말 누적치를 가정했습니다. A는 일반 앱 D30(3–7%)보다 높게 잡았는데, 차량 앱은 시동 때마다 기록이 자동으로 돌고(설치 후 별도 실행 불필요) 비사업용 차량이 하루 평균 30.8km를 달리기 때문입니다.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>시나리오</th><th>V (2027년 말)</th><th>I</th><th>A</th><th>MAU</th></tr></thead>
-        <tbody>
-          <tr><td>보수</td><td>30만 대</td><td>2%</td><td>30%</td><td>약 1,800</td></tr>
-          <tr><td>기본</td><td>50만 대</td><td>5%</td><td>40%</td><td>약 1만</td></tr>
-          <tr><td>낙관</td><td>80만 대</td><td>10%</td><td>50%</td><td>약 4만</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>장기 상한은 2030년 글로벌 2,000만 대 목표에 해외 지도 데이터를 붙여 따로 산정합니다.</p>
-    <h3 style="margin-top:20px">리텐션 장치와 추적 지표</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>지표</th><th>앱의 장치</th><th>비교 기준</th></tr></thead>
-        <tbody>
-          <tr><td>주간 주행 리텐션(W1/W4/W12): 기록이 1건 이상인 주의 비율</td><td>자동 기록(시동만 걸면 됨), 오늘·이번 주·이번 달·시즌 챌린지</td><td>Adjust D7 13% / D30 7%</td></tr>
-          <tr><td>월 신규 개척 읍·면·동 수, 도감 진행률</td><td>지역 도감, 안 가본 동네 추천, 탐험 우회 경로, 동네 이야기</td><td>정체되면 추천·이야기 카드 노출 강화</td></tr>
-          <tr><td>챌린지 완료율, 연속 달성 주차</td><td>기간별 챌린지, 스탬프 29종, 레벨 곡선</td><td>Duolingo 7일 스트릭 효과</td></tr>
-          <tr><td>주행 요약 조회율, 음성 안내 유지율</td><td>하차 후 주행 요약 카드, 음성 안내(새 동네·개척률 단계·요약)</td><td>주행 1회당 가치 체감</td></tr>
-          <tr><td>동승자 미션 참여율, 공유 카드 생성 수</td><td>동승자 미션, 내 안개지도 카드</td><td>가족 세그먼트·바이럴, 지자체 스탬프 투어 제휴 성과</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="src">신뢰도 메모: 국내 커넥티드 가입자 수는 2020년(200만 명) 이후 공식 수치가 없어 인용하지 않습니다. 기아 2025 판매 수치는 순위 기사 기준이며 기아 보도자료 원문은 확인하지 못했습니다.</p>
-  </section>
-
-  <section id="plan">
-    <h2>일자별 계획표</h2>
-    <p>목표는 <b>11/12(목) 제출</b>, 11/13–15는 수정 제출용 여유입니다. 1차 이후 일정은 합격 시 진행합니다.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>날짜</th><th>할 일</th><th>산출물</th><th>상태</th></tr></thead>
-        <tbody>
-          <tr><td class="date">10/24(토)</td><td>공모전·개발 문서 분석, 프로젝트 생성, Pleos 에뮬레이터 구축, MVP 구현(자동 기록·안개·하차 지점·스탬프·내비 연동·우회 제안·시연 모드)</td><td>저장소, 디버그/릴리스 APK, 이 문서</td><td><span class="tag done">완료</span></td></tr>
-          <tr class="today"><td class="date">10/24–25</td><td>행정구역 경계 적용(지역 도감·두 단계 안개), 내비 연동 확장(도착·경유지 스탬프, 회전 안내, 동네 추천), 주행 경로 보기, 반복 주행, 기간별 챌린지·스탬프 24종·레벨 곡선, 백업·동기화, 시연 코스 17개, 주행 지도 흔들림 수정, 튜토리얼·음성 안내·주행 요약·동승자 미션·창문/선루프/주행 모드/주행 가능 거리 연동·동네 이야기·공유 카드, 사업성 근거 초안, 단위 테스트 71개·QA TC 21개 (계획보다 앞당겨 완료)</td><td>"○○구 정복률" 화면, 지역 도감, 시연 코스</td><td><span class="tag done">완료</span></td></tr>
-          <tr><td class="date">10/26(월)</td><td>Virtual Console로 기어·도어·와이퍼·전조등·좌석 실신호 검증, 에뮬레이터 위치 이동 테스트</td><td>검증 기록</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">10/27(화)</td><td>주행 중 화면 차단 동작·큰 터치 영역 점검</td><td>점검 기록</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">10/28(수)</td><td>온라인 설명회(오후) — 참석·질문하지 않기로 함. 궁금한 점은 공지·FAQ·SDK 문서로 10/25에 확인(<a href="#decide">확인한 것</a>)</td><td>—</td><td><span class="tag done">대체 완료</span></td></tr>
-          <tr><td class="date">10/29(목)</td><td>기획서 수정(FusedLocation, 격자, 지역 정복률, TTS SDK 상태) — 10/25 접수양식 02에 반영</td><td>기획서 v2</td><td><span class="tag done">앞당겨 완료</span></td></tr>
-          <tr><td class="date">10/30(금)</td><td>우회 경로 고도화, TTS "새 동네 진입" 음성 검토, 첫 실행 온보딩 — 10/25에 음성 안내·튜토리얼·주행 가능 거리 반영 완료, 실차 음성 톤 점검만 남음</td><td>앱 v0.2</td><td><span class="tag done">앞당겨 완료</span></td></tr>
-          <tr><td class="date">10/31–11/1</td><td>시연 영상 촬영·편집(2–3분) — 10/25에 콘티·촬영 방법(<a href="submission/demo-video.md">demo-video.md</a>)과 화면 이미지 10장 준비</td><td>시연 영상</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">11/2(월)</td><td>사업성 근거 보완(MAU 산식·리텐션 비교 지표) — 10/25 탑재 차종 판매 실적으로 보완</td><td>기대효과 절 v2</td><td><span class="tag done">완료</span></td></tr>
-          <tr><td class="date">11/3–11/5</td><td>접수양식 02(1–8) 작성, 숏폼 영상(선택) — 10/25에 02 초안을 양식에 채움(<a href="submission/application-form.docx">application-form.docx</a>), 설명회 답변으로 보완</td><td>양식 초안</td><td><span class="tag done">초안</span></td></tr>
-          <tr><td class="date">11/6–11/9</td><td>안정화, 릴리스 APK 갱신, README 최종, 심사용 계정 초대(공지 시)</td><td>앱 v1.0</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">11/10(화)</td><td>최종 점검(체크리스트·링크·실명 노출 여부)</td><td>점검 결과</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">11/11(수)</td><td>01·03·04 기입과 서명</td><td>서명본</td><td><span class="tag key">직접</span></td></tr>
-          <tr class="milestone"><td class="date">11/12(목)</td><td><b>이메일 제출 (목표일)</b></td><td>제출 메일</td><td><span class="tag key">직접</span></td></tr>
-          <tr><td class="date">11/13–11/15</td><td>여유 기간, 필요 시 [수정제출]</td><td>—</td><td><span class="tag todo">예비</span></td></tr>
-          <tr><td class="date">11/23(월)</td><td>1차 결과 확인</td><td>—</td><td><span class="tag todo">예정</span></td></tr>
-          <tr><td class="date">11/24–12/2</td><td>(합격 시) 실동작 앱 고도화, 발표 자료, 시연 리허설</td><td>PT 자료</td><td><span class="tag todo">예정</span></td></tr>
-          <tr class="milestone"><td class="date">12/3–12/4</td><td><b>2차 PT 발표·시연</b></td><td>—</td><td><span class="tag key">직접</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section id="status">
-    <h2>개발 현황 (2026-10-25)</h2>
-    <p>Pleos Connect Emulator v2.1.0에서 Vehicle SDK, AAOS 기어, NaviHelper, FusedLocation이 모두 연결되는 것을 확인했습니다. 단위 테스트 71개 통과. 화면은 2026-10-25 시연 모드(성수 주말 나들이)로 다시 찍었습니다.</p>
-    <div class="shots">
-      <figure><img src="images/01-detour.jpg" alt="출발 전(P단): 탐험 우회 경로 제안"><figcaption>출발 전(P단): 탐험 우회 경로 제안</figcaption></figure>
-      <figure><img src="images/02-driving.jpg" alt="주행 모드: 회전 안내·제한속도, 도로 양쪽만 걷힘"><figcaption>주행 모드: 회전 안내·제한속도, 도로 양쪽만 걷힘</figcaption></figure>
-      <figure><img src="images/03-trip-summary.jpg" alt="도착: 이번 주행 요약, 처음 가 본 동네"><figcaption>도착: 이번 주행 요약, 처음 가 본 동네</figcaption></figure>
-      <figure><img src="images/04-map.jpg" alt="정차 중 지도: 2단계 안개, 안 가본 동네 추천"><figcaption>정차 중 지도: 2단계 안개, 안 가본 동네 추천</figcaption></figure>
-      <figure><img src="images/05-record.jpg" alt="기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율, 이번 주/이번 달 리포트, 개척 타임랩스"><figcaption>기록: 밝힌 면적·주행 거리·하차 지점·새 길 비율, 이번 주/이번 달 리포트, 개척 타임랩스</figcaption></figure>
-      <figure><img src="images/06-dex.jpg" alt="지역 도감: 시·도별 달성률"><figcaption>지역 도감: 시·도별 달성률</figcaption></figure>
-      <figure><img src="images/07-stamps.jpg" alt="스탬프 29종"><figcaption>스탬프 29종</figcaption></figure>
-      <figure><img src="images/08-settings.jpg" alt="설정: SDK 연결 상태, 시연 모드"><figcaption>설정: SDK 연결 상태, 시연 모드</figcaption></figure>
-      <figure><img src="images/09-share-card.jpg" alt="내 안개지도 카드"><figcaption>내 안개지도 카드</figcaption></figure>
-      <figure><img src="images/10-tutorial.jpg" alt="첫 실행 튜토리얼"><figcaption>첫 실행 튜토리얼</figcaption></figure>
-      <figure><img src="images/11-dex-dong.jpg" alt="도감 동 카드: 개척 단계 배지"><figcaption>도감 동 카드: 개척 단계 배지</figcaption></figure>
-      <figure><img src="images/12-settings-privacy.jpg" alt="설정: 운전자 프로필별 기록, 동기화"><figcaption>설정: 운전자 프로필별 기록, 동기화</figcaption></figure>
-    </div>
-    <div class="table-wrap" style="margin-top:12px">
-      <table>
-        <thead><tr><th>기능</th><th>사용 API</th><th>상태</th></tr></thead>
-        <tbody>
-          <tr><td>자동 안개 걷기(약 30m 격자, 도로 양쪽 약 45m)</td><td>FusedLocation → 미지원 시 Android GPS</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>하차 지점(P단 + 도어 열림)</td><td>AAOS GEAR_SELECTION, Vehicle Door</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>첫 실행 지도 채우기</td><td>NaviHelper 최근 목적지·즐겨찾기</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>탐험 우회 경로 → 경유지 추가</td><td>NaviHelper getDestinationInfo · addWaypoint</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>스탬프 24종(빗속·야간·가족·만석·충전·저배터리, 시간대, 장거리·개척왕, 새 시·군·구·시·도 등) — 아래 5종 추가로 29종</td><td>Vehicle Wiper · Light · Seat · EvBattery, 행정구역</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>목적지·경유지 도착 해금 + 목적지 정복·안개 원정 스탬프, 회전 안내·제한속도</td><td>NaviHelper 경로 안내 상태</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>안 가본 동네 추천 → 내비 안내</td><td>NaviHelper requestRoute</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>개척 지표(밝힌 면적 km²·새 길 비율), 레벨((L-1)^2.5×40 XP), 오늘·주·월·시즌 챌린지</td><td>앱 내부 계산 (Odometer 연결됨)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>주행 경로 보기, 같은 길 반복 횟수(자주 다닌 길 6단계 색)</td><td>Room DB v4 (마이그레이션으로 기존 기록 유지)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>주행 모드</td><td>distraction-optimized 액티비티 + CarUxRestrictions: 주행 중 지도·현재 위치·짧은 숫자만, 탭·우회 제안·기록·도감은 정차 중에만. 차는 화면 중앙 고정, 미리 그린 지도를 밀어서 이동(보간). 주행 중 CPU 3.6%(40km/h)·6.2%(100km/h)·정지 0.2%, PSS 약 160MB (Pleos 기준: 지도 앱 15%, RAM 400MB)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>행정구역 정복률·지역 도감(시·도→시·군·구→읍·면·동), 두 단계 안개, 하차 지역 표시</td><td>admdongkor 행정구역 경계 (CC BY 4.0, 통계청)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>백업 내보내기·불러오기, 클라우드 동기화</td><td>Pleos Sync SDK 미공개 → 기기 내 보낼 함 대체 구현</td><td><span class="tag todo">SDK 대기</span></td></tr>
-          <tr><td>시연 모드: 코스 17개(서울·수도권·부산·강릉), 20~200km/h, 왕복, 회전 안내·도착 대체 생성</td><td>OSRM 실제 도로 경로</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>음성 안내(새 동네·개척률 단계·주행 요약)</td><td>Pleos TextToSpeech SDK 3.3.1 온디바이스 합성, 내비 안내 오디오로 재생 (10/25 교체, 에뮬레이터에서 재생 확인)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>첫 실행 튜토리얼(5장, 설정에서 다시 보기)</td><td>앱 내부</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>주행 요약 카드(면적·거리·새 길·처음 가 본 동네·스탬프·미션)</td><td>앱 내부 계산</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>동승자 미션(주행 화면엔 진행 한 줄, 성공 시 스탬프)</td><td>Vehicle Seat</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>스탬프 5종 추가: 창문·선루프·에코·스포츠·동승자 미션 (총 29종), 주행 가능 거리로 우회 경로 거르기</td><td>Vehicle Window · DrivingMode · Odometer RangeRemaining</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>동네 이야기(처음 가 본 동의 명소 한 줄)</td><td>위키백과 API (동 중심 좌표만 전송, 기기에 저장)</td><td><span class="tag done">구현</span></td></tr>
-          <tr><td>내 안개지도 공유 카드(PNG)</td><td>FileProvider 공유 인텐트</td><td><span class="tag done">구현</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="src">근거: <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle-permission">Vehicle 권한</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/declaring-permissions">NaviHelper 권한</a> · <a href="https://document.pleos.ai/docs/pleos-only/vehicle-app-planning-guide/api-compatibility-availability">API 호환성 및 가용성</a> · <a href="https://github.com/Pleos-Playground/pleos-sample-fusedlocation-app">FusedLocation 샘플</a></p>
-  </section>
-
-  <section id="qa">
-    <h2>QA·테스트 환경</h2>
-    <p>Pleos Connect Emulator에서 실제 SDK 경로로 기능을 자동 검증합니다. 차량 신호는 Virtual Console API, 위치는 <code>adb emu geo fix</code>로 주입하고, 화면은 UIAutomator로 판독합니다.</p>
-    <div class="grid">
-      <div class="card kpi"><div class="label">기능별 TC</div><div class="value accent">18개</div><div class="note"><a href="test-cases.html">테스트 케이스 목록</a> · 모두 자동화</div></div>
-      <div class="card kpi"><div class="label">단위 테스트</div><div class="value">71개</div><div class="note"><code>./gradlew :app:testDebugUnitTest</code></div></div>
-      <div class="card kpi"><div class="label">웹 대시보드</div><div class="value" style="font-size:18px">팀 내부 주소</div><div class="note">실시간 화면·차량 조작·TC 실행 (로그인 필요)</div></div>
-    </div>
-    <p class="src">사용법: 저장소 <code>qa/README.md</code> · 근거: <a href="https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator">Virtual Console 셋업</a></p>
-  </section>
-
-  <section id="decide">
-    <h2>확인·결정이 필요한 것</h2>
-    <div class="callout warn"><b>1. 심사용 GitHub 계정</b> 비공개 저장소는 공지될 심사용 계정을 Collaborator로 초대해야 합니다. 아직 공지되지 않았으니 공지사항을 확인하세요. 무료 조직은 브랜치 보호가 없으므로 <b>읽기(Read) 권한</b>으로 초대합니다.</div>
-    <div class="callout warn"><b>2. 참가 단위</b> 팀 2명(대표자 1명 + 팀원 1명)으로 정했습니다. 두 사람 모두 접수양식 04에 각자 동의·서명·날짜를 쓰고, 대표자가 팀원을 이메일 참조(CC)에 넣어 보냅니다.</div>
-    <h3>설명회 대신 직접 확인한 것 (2026-10-25)</h3>
-    <ul>
-      <li><b>SDK 사용</b>: 공모전 FAQ의 제공 SDK는 Vehicle·NaviHelper·TextToSpeech·SpeechToText·FusedLocation입니다. Pleos Maven에 TextToSpeech 3.3.1(10/13)이 올라와 있어, 음성 안내를 Android TextToSpeech에서 Pleos TextToSpeech SDK로 바꿨습니다(10/25). FusedLocation 1.1.3은 이미 사용 중입니다. (<a href="https://appdevchallenge.auto-hmg.io/faq">FAQ</a> · <a href="https://document.pleos.ai/api-reference/connect-sdk-pleos/TextToSpeech/make-the-first-api-call">TextToSpeech SDK 문서</a>)</li>
-      <li><b>위치 시뮬레이션</b>: 공식 권장 방법은 따로 없습니다. Virtual Console과 <code>adb emu geo fix</code>로 QA 자동 테스트를 돌리고 있고, 시연은 앱의 시연 모드로 합니다.</li>
-      <li><b>외부 지도 타일</b>: FAQ·유의사항에 네트워크 사용 제한이 없습니다. OpenStreetMap 출처 표기만 유지합니다.</li>
-      <li><b>MAU 근거</b>: 탑재 차량 누적 대수는 공개되지 않았습니다. 대신 탑재 차종 판매로 추정합니다. 2026년 9월 국내 판매 그랜저 8,898대·아반떼 7,305대(<a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-september-2026-sales">현대차 9월 실적</a>), 아반떼는 8/5 계약 시작부터 전 트림 기본 탑재(<a href="https://www.starnewskorea.com/business-life/2026/08/05/2026080509094993230">기사</a>).</li>
-      <li><b>좌석 탑승 값 반대 현상</b>: 에뮬레이터 2.1.0 Virtual Console 문제로 보고, QA 도구가 보정합니다(<code>VConsole.seat()</code>). 앱 동작과는 관계없습니다.</li>
-    </ul>
   </section>
 
   <section id="rules">
@@ -357,56 +339,59 @@
     <ul>
       <li>출품작은 순수 창작물이어야 하며, 표절·기 수상작은 심사에서 제외됩니다. 서류 내용이 사실과 다르면 선정이 취소될 수 있습니다.</li>
       <li>마감 이후 제출과 파일 오류·파손은 지원자 책임입니다.</li>
+      <li>수정 제출은 전체 자료와 서명한 동의서를 모두 다시 첨부하고 팀원 전원을 참조해야 유효합니다.</li>
+      <li>"저장소 주소와 APK 경로를 제출 페이지에 입력"이라는 안내가 있지만 별도 페이지는 없습니다. 접수양식 02-7과 이메일 본문에 적습니다.</li>
       <li>현대자동차그룹 임직원은 참가는 가능하지만 최종 수상(시상·상금)에서는 제외됩니다.</li>
       <li>지식재산권은 응모자에게 있으나, 수상작은 주최측이 통상실시권과 결과 발표일로부터 4개월 우선협상권을 가질 수 있습니다.</li>
       <li>상금은 대표자에게 일괄 지급되며 제세공과금은 원천징수됩니다.</li>
       <li>2차 진출팀은 실제 동작하는 앱(에뮬레이터 또는 기기)을 시연해야 하고, 최종 10팀은 전시용 APK 제출과 2027년 2월 행사 참석 의무가 있습니다.</li>
       <li>지도 데이터는 OpenStreetMap 기반(OpenFreeMap 타일)이라 앱에 출처 표기를 유지해야 합니다.</li>
     </ul>
-    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항 안내</a> · <a href="https://www.openstreetmap.org/copyright">OpenStreetMap 저작권</a> · <a href="https://openfreemap.org/">OpenFreeMap</a></p>
+    <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항 안내</a> · <a href="https://appdevchallenge.auto-hmg.io/guide/submission">지원·제출 방법</a> · <a href="https://www.openstreetmap.org/copyright">OpenStreetMap 저작권</a></p>
   </section>
 
-  <section id="sources">
-    <h2>근거 링크 (2026-10-24 전부 열어 내용 확인)</h2>
+  <section id="business">
+    <h2>사업성 근거 (참고, 2026-10-25 조사)</h2>
+    <p>접수양식 02-6을 보강할 때 쓸 수 있는 공개 자료입니다.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>문서</th><th>확인한 내용</th></tr></thead>
+        <thead><tr><th>근거</th><th>값</th><th>출처</th></tr></thead>
         <tbody>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/">공모전 메인</a></td><td>총상금 5,100만원, 접수 10.21–11.15</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/overview">공모전 개요</a></td><td>참가 대상, 팀 최대 5인, 부문</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/schedule">일정·설명회</a></td><td>전체 일정, PT 장소</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/submission">지원·제출 방법</a></td><td>이메일 주소, 제목 형식, 수정 제출</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/submission#github">GitHub 저장소 제출 안내</a></td><td>apk/ 폴더, 파일명 규칙, README 항목, 비공개 저장소</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/development">개발 환경</a></td><td>API 28+, Gradle 8+, Java/Kotlin</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/judging-awards">심사·시상</a></td><td>심사 4항목 + 가산점, 상금</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/rules">참가 규정</a></td><td>제출·수정·마감 규정</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/shortform">숏폼 챌린지</a></td><td>필수 해시태그 #HMG차량용앱개발공모전</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/help">도움말·문의</a></td><td>문의 이메일</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/faq">FAQ</a></td><td>비공개 저장소, 팀 접수, 개발 환경</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/notice">공지사항</a></td><td>공지 3건</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000001">참가자 모집 공고</a></td><td>제출물, 심사 항목, 일정</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000005">온라인 설명회 안내</a></td><td>10/28(수) 오후, 다시보기</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항</a></td><td>2차 20팀, 시연 필수, 지재권, 임직원 수상 제외</td></tr>
-          <tr><td><a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">접수양식 DOCX</a></td><td>양식 구조, 23:59 마감 표기</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator">Pleos Connect Emulator 설치</a></td><td>시스템 이미지 URL, AVD 설정</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator">Virtual Console 셋업</a></td><td>adb forward 8088, 차량 상태 시뮬레이션</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/getting-started">앱 개발 시작하기</a></td><td>Maven 저장소, 첫 API 호출</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/create-my-project">프로젝트 생성 및 SDK 사용 신청</a></td><td>Vehicle State·NaviHelper 신청 없이 사용</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro">Vehicle SDK 소개</a></td><td>도메인 목록(기어 도메인 없음)</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle-permission">Vehicle SDK 권한</a></td><td>도메인별 퍼미션</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/declaring-permissions">NaviHelper 권한</a></td><td>NAVI_ROUTE, NAVI_ROUTE_SEARCH</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/FusedLocation/intro">FusedLocation SDK 소개</a></td><td>isSupported(), 권한</td></tr>
-          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/vehicle-app-planning-guide/api-compatibility-availability">API 호환성 및 가용성</a></td><td>NaviHelper는 내비 탑재 차량만 전체 호환</td></tr>
-          <tr><td><a href="https://github.com/Pleos-Playground/pleos-sample-vehicle-app">Vehicle 샘플 앱</a> · <a href="https://github.com/Pleos-Playground/pleos-sample-navi-app">Navi 샘플 앱</a> · <a href="https://github.com/Pleos-Playground/pleos-sample-fusedlocation-app">FusedLocation 샘플 앱</a></td><td>SDK 버전, 연동 방식</td></tr>
-          <tr><td><a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">OpenStreetMap 저작권</a></td><td>지도 타일, 출처 표기</td></tr>
-          <tr><td><a href="https://apps.apple.com/app/id505367096">Fog of World (App Store)</a></td><td>폰 기반 선행 서비스</td></tr>
-          <tr><td><a href="https://claude.ai/artifact/EnXkpcooNfxscWEe6k4F24">안개지도 기획서 초안</a></td><td>접수양식 02 원고 (로그인 필요)</td></tr>
+          <tr><td>Pleos Connect 탑재 계획</td><td>첫 적용 '더 뉴 그랜저'(2026년 5월), 2030년까지 전 세계 약 2,000만 대 목표</td><td><a href="https://news.mtn.co.kr/news-detail/2026043016372162316">MTN 2026-04-30</a></td></tr>
+          <tr><td>탑재 차종 판매(2026)</td><td>더 뉴 그랜저 9월 8,898대, 디 올 뉴 아반떼(전 트림 기본 탑재) 9월 7,305대 → 월 약 1.6만 대</td><td><a href="https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-september-2026-sales">현대차 9월 실적</a></td></tr>
+          <tr><td>국내여행과 자동차</td><td>2025년 국내여행 경험률 97.0%, 이동수단 자동차 84.5%</td><td><a href="https://www.segye.com/newsView/20260630504163">2025 국민여행조사 보도</a></td></tr>
+          <tr><td>하루 주행거리</td><td>자동차 1대당 일평균 37.8km, 비사업용 30.8km (2025)</td><td><a href="https://www.fnnews.com/news/202606291005221113">한국교통안전공단 통계 보도</a></td></tr>
+          <tr><td>앱 리텐션 벤치마크</td><td>전체 앱 D30 7%, 여행 앱 D30 3–4%</td><td><a href="https://www.adjust.com/blog/what-makes-a-good-retention-rate/">Adjust</a></td></tr>
+          <tr><td>게이미피케이션 효과</td><td>Duolingo 7일 스트릭 도달 사용자 완주 가능성 3.6배 / Pokémon GO 이용자 하루 1,473보 증가</td><td><a href="https://blog.duolingo.com/how-duolingo-streak-builds-habit">Duolingo</a> · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5174727">JMIR 2016</a></td></tr>
+          <tr><td>지자체 스탬프 투어 선례</td><td>인천e지 2024년 스탬프투어 협업 36건 / 한국관광 100선 스탬프 이벤트</td><td><a href="https://www.heraldk.com/article/2025080323004395560">헤럴드경제</a></td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <footer>팀 zobo · 이 문서는 저장소 <code>docs/index.html</code>에서 관리합니다. 일정은 공지사항 변경에 따라 달라질 수 있습니다.</footer>
+  <section id="sources">
+    <h2>근거 링크</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>문서</th><th>확인한 내용</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/notice">공지사항</a></td><td>공지 3건(모집 공고·설명회·유의사항), 11/2 재확인: 새 공지 없음, 심사용 계정 미공지</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/submission">지원·제출 방법</a></td><td>이메일 주소, 제목 형식, 수정 제출, GitHub·README 요건</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/schedule">일정·설명회</a></td><td>전체 일정, PT 장소</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/judging-awards">심사·시상</a></td><td>심사 4항목 + 가산점</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/guide/shortform">숏폼 챌린지</a></td><td>30초–1분 세로, 필수 해시태그</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/faq">FAQ</a></td><td>비공개 저장소, 팀 접수, 숏폼, 결과 발표</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/notice/c0a1a000-2026-4923-8000-000000000006">참가 및 출품 유의사항</a></td><td>수정 제출, 2차 20팀 시연, 지재권, 임직원 수상 제외</td></tr>
+          <tr><td><a href="https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx">접수양식 DOCX</a></td><td>양식 구조, 23:59 마감 표기</td></tr>
+          <tr><td><a href="https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator">Pleos Connect Emulator 설치</a> · <a href="https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator">Virtual Console</a></td><td>테스트 환경</td></tr>
+          <tr><td><a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro">Vehicle SDK</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/declaring-permissions">NaviHelper</a> · <a href="https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/FusedLocation/intro">FusedLocation</a> · <a href="https://document.pleos.ai/api-reference/connect-sdk-pleos/TextToSpeech/make-the-first-api-call">TextToSpeech</a></td><td>사용 SDK</td></tr>
+          <tr><td><a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">OpenStreetMap 저작권</a></td><td>지도 타일, 출처 표기</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>팀 zobo · 제출 준비는 이 문서(<code>docs/index.html</code>) 하나에서 관리합니다. 일정은 공지사항 변경에 따라 달라질 수 있습니다.</footer>
 </main>
 <script>
   (function () {
@@ -420,6 +405,11 @@
       root.setAttribute("data-theme", next);
       try { localStorage.setItem("fogdrive-theme", next); } catch (e) {}
     });
+    var el = document.getElementById("dday");
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var days = function (y, m, d) { return Math.round((new Date(y, m - 1, d) - now) / 86400000); };
+    var goal = days(2026, 11, 12), end = days(2026, 11, 15);
+    if (end >= 0) el.textContent = "마감까지 " + end + "일 · 목표 11/12(목)" + (goal > 0 ? "까지 " + goal + "일" : goal === 0 ? " 오늘" : " 지남");
   })();
 </script>
 </body>

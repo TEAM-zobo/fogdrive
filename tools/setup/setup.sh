@@ -358,8 +358,8 @@ cmd_video() {
     [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ] || die "PATH의 node가 아직 $(node -v)입니다(nvm 등). Node.js 22 이상을 먼저 쓰도록 바꾸세요."
   fi
   ok "Node.js $(node -v)"
-  # The CLI version the promo project pins (tools/demo/promo/package.json), and its agent skills.
-  (cd "$ROOT/tools/demo/promo" && npx -y hyperframes@0.8.196 --version >/dev/null && npx -y hyperframes@0.8.196 skills update >/dev/null)
+  # The HyperFrames CLI version the video projects pin (tools/demo/burung-demo, burung-short), and its agent skills.
+  (cd "$ROOT/tools/demo/burung-demo" && npx -y hyperframes@0.8.196 --version >/dev/null && npx -y hyperframes@0.8.196 skills update >/dev/null)
   ok "HyperFrames 0.8.196 + Claude Code 스킬(hyperframes, hyperframes-cli, hyperframes-registry, media-use)"
 }
 
