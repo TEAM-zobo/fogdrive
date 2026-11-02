@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Builds the demo record of the persona: a driver in their 30s living in 위례 (송파꿈에그린 위례24단지) who drives to
-현대자동차 본사 (서초구 양재) on weekdays, to 코스트코 양재점 on Saturday mornings, out of town at
-weekends, and once a quarter to 강릉. Four weeks are on record; 강릉 is left for the live demo.
+"""Builds the demo record of the persona (docs/submission/persona.md): A씨, a father in his early 40s living in
+위례 (송파꿈에그린 위례24단지). On weekdays he takes his child (rear seat) to kindergarten in 거여2동 and drives on
+to 현대자동차 본사 (서초구 양재); on Saturdays the family goes out nearby; once a quarter there is a family trip to
+강원도. The record holds his last 19 working days (about four weeks), so the commute on the demo day is the 20th
+(「프로 출근러」); 올림픽공원 and the 강원도 trip (강릉) are left for the live demo.
 
     python3 tools/demo/persona/fetch_routes.py          # once: road paths -> routes.json
-    python3 tools/demo/persona/make_persona_backup.py [--today 2026-11-01]
+    python3 tools/demo/persona/make_persona_backup.py [--today 2026-11-02] [--commutes 19]
         -> tools/demo/out/persona-backup.json  (설정 → 데이터 동기화 → 불러오기)
 
 Why these numbers (see docs/submission/persona.md): a car in Korea runs ~38 km a day
-(한국교통안전공단, 2024: 38.7 km); 집 ↔ 회사 is ~12 km each way; a week here is ~270 km.
+(한국교통안전공단, 2024: 38.7 km); 집 → 유치원 → 회사 is 16 km and 회사 → 집 12 km.
 
 Stamps follow the app's rules (explore/Expedition.kt, record/RecordingService.kt): 동 and 시·도 are
 counted from the region atlas, a milestone is stamped at the end of the trip that reaches it.
@@ -33,19 +35,12 @@ DRIVE_RADIUS = 1      # TripRecorder.DRIVE_RADIUS
 LANDING_RADIUS = 3    # TripRecorder.LANDING_RADIUS
 TRACK_STEP_M = 20.0
 SOURCE_DRIVE, SOURCE_LANDING = 0, 1
-WEEKS = 4
-# Weekday holidays in the period: no commute (추석 9/24·9/25, 개천절 대체 10/5, 한글날 10/9).
+COMMUTE_DAYS = 19   # working days on record: the demo day's commute is the 20th (Titles.COMMUTE_NEED)
+# Weekday holidays: no kindergarten, no work (추석 9/24·9/25, 개천절 대체 10/5, 한글날 10/9).
 HOLIDAYS = {date(2026, 9, 24), date(2026, 9, 25), date(2026, 10, 5), date(2026, 10, 9)}
-# 추석 holidays, spent at the parents' (no outings those days).
-CHUSEOK = {date(2026, 9, 24), date(2026, 9, 25), date(2026, 9, 26)}
-# Saturday afternoons: nearby; Sundays: farther. Both with the spouse aboard (함께 탐험).
-SATURDAY = ["namhansan", "everland", "starfield", "suwon"]
-SUNDAY = ["dumulmeori", "hwadam", "mulgarden", "songdo"]
-LABELS = {
-    "hq": "현대자동차 본사", "costco": "코스트코 양재점", "suwon": "수원 화성행궁", "dumulmeori": "양평 두물머리",
-    "everland": "용인 에버랜드", "songdo": "인천 송도 센트럴파크", "hwadam": "광주 화담숲", "namhansan": "남한산성", "parents": "부모님 댁 (고양 일산)", "starfield": "하남 스타필드", "mulgarden": "남양주 물의정원",
-}
-
+# Saturday family outings nearby, in turn (wife in front, child behind). 올림픽공원 is kept for the demo.
+SATURDAY = ["namhansan", "everland", "suwon", "starfield", "hwadam"]
+WORK_ROUTES = {"kinder", "kinder-hq", "hq"}
 
 # ---- region atlas (format of tools/regions/build_regions.py) ----
 
@@ -159,56 +154,38 @@ def length_m(pts):
     return sum(dist_m(a, b) for a, b in zip(pts, pts[1:]))
 
 
-# ---- the four weeks ----
+# ---- the weeks on record ----
 
-def plan(today, commute_only=False, commutes=None):
-    """(start datetime, place, outbound, passenger) per one-way trip, oldest first.
-    [commute_only]: weekday commutes only (the demo video's dad, whose first weekend outing is filmed);
-    [commutes]: keep only the last that many commute days."""
-    first = today - timedelta(days=today.weekday() + 7 * (WEEKS - 1))   # Monday of the first of the four weeks
-    trips = []
-    sat_i = sun_i = 0
-    d = first
+def plan(today, commutes=COMMUTE_DAYS):
+    """(start datetime, route, outbound, passenger) per one-way trip, oldest first: the last [commutes] working
+    days before [today] and the Saturdays among them."""
+    days, d = [], today - timedelta(days=1)
+    while len(days) < commutes:
+        if d.weekday() < 5 and d not in HOLIDAYS:
+            days.append(d)
+        d -= timedelta(days=1)
+    trips, sat_i, d = [], 0, min(days)
     while d < today:
-        wd = d.weekday()
         at = lambda h, m: datetime(d.year, d.month, d.day, h, m, tzinfo=KST)
-        jitter = (d.toordinal() * 7) % 11
-        if commute_only and (wd >= 5 or d in HOLIDAYS):
-            pass
-        elif d in CHUSEOK:
-            # 추석: to the parents' in 일산 on the first day, back on the last (with the spouse).
-            if d == min(CHUSEOK):
-                trips.append((at(9, 30), "parents", True, True))
-            if d == max(CHUSEOK):
-                trips.append((at(15, 0), "parents", False, True))
-        elif wd < 5 and d not in HOLIDAYS:
-            trips += [(at(7, 50 + jitter % 9), "hq", True, False), (at(18, 35 + jitter), "hq", False, False)]
-        elif wd == 5:
-            trips += [(at(10, 20 + jitter), "costco", True, True), (at(12, 5 + jitter), "costco", False, True)]
+        jitter = (d.toordinal() * 7) % 9
+        if d.weekday() < 5 and d not in HOLIDAYS:
+            trips += [(at(8, 5 + jitter), "kinder", True, True),          # child in the rear seat
+                      (at(8, 25 + jitter), "kinder-hq", True, False),
+                      (at(18, 35 + jitter), "hq", False, False)]
+        elif d.weekday() == 5:
             p = SATURDAY[sat_i % len(SATURDAY)]
             sat_i += 1
-            trips += [(at(14, 30), p, True, True), (at(18, 10), p, False, True)]
-        elif wd == 6:
-            p = SUNDAY[sun_i % len(SUNDAY)]
-            sun_i += 1
-            trips += [(at(9, 40), p, True, True), (at(17, 20), p, False, True)]
+            trips += [(at(10, 30), p, True, True), (at(16, 40), p, False, True)]
         d += timedelta(days=1)
-    if commutes is not None:
-        days = sorted({t[0].date() for t in trips if t[1] == "hq"})
-        drop = set(days[:max(0, len(days) - commutes)])
-        trips = [t for t in trips if t[0].date() not in drop]
     return trips
 
 
 def main():
-    global WEEKS
     ap = argparse.ArgumentParser()
-    ap.add_argument("--today", help="demo day (the 강릉 trip), YYYY-MM-DD; default: today")
-    ap.add_argument("--weeks", type=int, default=WEEKS, help="weeks on record (default 4; the promo short uses 6 so titles are already earned)")
-    ap.add_argument("--commute-only", action="store_true", help="weekday commutes only, no passengers (demo video: the dad's first weekend outing is filmed)")
-    ap.add_argument("--commutes", type=int, help="keep only the last N commute days (demo video: 19, so the filmed commute earns 프로 출근러)")
+    ap.add_argument("--today", help="demo day (a weekday: its commute is the 20th), YYYY-MM-DD; default: today")
+    ap.add_argument("--commutes", type=int, default=COMMUTE_DAYS,
+                    help="working days on record (default 19: the demo day's commute earns 프로 출근러; 20 or more: already earned)")
     a = ap.parse_args()
-    WEEKS = a.weeks
     today = date.fromisoformat(a.today) if a.today else datetime.now(KST).date()
     data = json.load(open(ROUTES, encoding="utf-8"))
     home = tuple(data["places"]["home"])
@@ -229,10 +206,10 @@ def main():
         have.add(code)
         stamps.append([len(stamps) + 1, code, at, tid, where[0], where[1]])
 
-    for tid, (start, place, outbound, passenger) in enumerate(plan(today, a.commute_only, a.commutes), start=1):
+    for tid, (start, place, outbound, passenger) in enumerate(plan(today, a.commutes), start=1):
         route = routes[place] if outbound else list(reversed(routes[place]))
         meters = length_m(route)
-        speed = 45 if place == "hq" else 55          # km/h, door to door
+        speed = 40 if place in WORK_ROUTES else 55    # km/h, door to door
         start_ms = int(start.timestamp() * 1000)
         end_ms = start_ms + int(meters / 1000 / speed * 3_600_000)
         driven = swath(route, DRIVE_RADIUS)
@@ -327,7 +304,7 @@ def main():
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
 
-    days = today.weekday() + 7 * (WEEKS - 1)
+    days = (today - datetime.fromtimestamp(trips[0][1] / 1000, KST).date()).days
     print(f"{os.path.relpath(OUT, ROOT)}: {datetime.fromtimestamp(trips[0][1] / 1000, KST):%m/%d} ~ "
           f"{datetime.fromtimestamp(trips[-1][2] / 1000, KST):%m/%d}, 주행 {len(trips)}건 {km:,.0f} km "
           f"(하루 평균 {km / days:.1f} km), 하차 {len(landings)}곳, 칸 {len(cells):,}")
