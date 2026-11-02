@@ -161,8 +161,10 @@ def length_m(pts):
 
 # ---- the four weeks ----
 
-def plan(today):
-    """(start datetime, place, outbound, passenger) per one-way trip, oldest first."""
+def plan(today, commute_only=False, commutes=None):
+    """(start datetime, place, outbound, passenger) per one-way trip, oldest first.
+    [commute_only]: weekday commutes only (the demo video's dad, whose first weekend outing is filmed);
+    [commutes]: keep only the last that many commute days."""
     first = today - timedelta(days=today.weekday() + 7 * (WEEKS - 1))   # Monday of the first of the four weeks
     trips = []
     sat_i = sun_i = 0
@@ -171,7 +173,9 @@ def plan(today):
         wd = d.weekday()
         at = lambda h, m: datetime(d.year, d.month, d.day, h, m, tzinfo=KST)
         jitter = (d.toordinal() * 7) % 11
-        if d in CHUSEOK:
+        if commute_only and (wd >= 5 or d in HOLIDAYS):
+            pass
+        elif d in CHUSEOK:
             # 추석: to the parents' in 일산 on the first day, back on the last (with the spouse).
             if d == min(CHUSEOK):
                 trips.append((at(9, 30), "parents", True, True))
@@ -189,6 +193,10 @@ def plan(today):
             sun_i += 1
             trips += [(at(9, 40), p, True, True), (at(17, 20), p, False, True)]
         d += timedelta(days=1)
+    if commutes is not None:
+        days = sorted({t[0].date() for t in trips if t[1] == "hq"})
+        drop = set(days[:max(0, len(days) - commutes)])
+        trips = [t for t in trips if t[0].date() not in drop]
     return trips
 
 
@@ -197,6 +205,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--today", help="demo day (the 강릉 trip), YYYY-MM-DD; default: today")
     ap.add_argument("--weeks", type=int, default=WEEKS, help="weeks on record (default 4; the promo short uses 6 so titles are already earned)")
+    ap.add_argument("--commute-only", action="store_true", help="weekday commutes only, no passengers (demo video: the dad's first weekend outing is filmed)")
+    ap.add_argument("--commutes", type=int, help="keep only the last N commute days (demo video: 19, so the filmed commute earns 프로 출근러)")
     a = ap.parse_args()
     WEEKS = a.weeks
     today = date.fromisoformat(a.today) if a.today else datetime.now(KST).date()
@@ -219,7 +229,7 @@ def main():
         have.add(code)
         stamps.append([len(stamps) + 1, code, at, tid, where[0], where[1]])
 
-    for tid, (start, place, outbound, passenger) in enumerate(plan(today), start=1):
+    for tid, (start, place, outbound, passenger) in enumerate(plan(today, a.commute_only, a.commutes), start=1):
         route = routes[place] if outbound else list(reversed(routes[place]))
         meters = length_m(route)
         speed = 45 if place == "hq" else 55          # km/h, door to door

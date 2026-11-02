@@ -2,11 +2,13 @@
 """Fetches the persona's road paths from the public OSRM server (© OpenStreetMap contributors)
 and keeps them, simplified, in routes.json next to this file. Run again only to change a place.
 
-    python3 tools/demo/persona/fetch_routes.py
+    python3 tools/demo/persona/fetch_routes.py                    # every route
+    python3 tools/demo/persona/fetch_routes.py kinder olympic     # only these (the rest kept as is)
 """
 import json
 import math
 import os
+import sys
 import time
 import urllib.request
 
@@ -29,8 +31,14 @@ PLACES = {
     "mulgarden": (37.59350, 127.31100),
     "parents": (37.65800, 126.77200),
     "gangneung": (37.80420, 128.90622),
+    # Demo video (40대 아빠 A씨): a kindergarten in 거여2동 on the way to work, and 올림픽공원 (평화의문) on Saturday.
+    "kinder": (37.48800, 127.14600),
+    "olympic": (37.52030, 127.11570),
 }
-ROUTES = ["hq", "costco", "suwon", "dumulmeori", "everland", "songdo", "hwadam", "namhansan", "starfield", "mulgarden", "parents", "gangneung"]
+# Routes that do not leave from home: name -> (from, to).
+LEGS = {"kinder-hq": ("kinder", "hq")}
+ROUTES = ["hq", "costco", "suwon", "dumulmeori", "everland", "songdo", "hwadam", "namhansan", "starfield", "mulgarden", "parents", "gangneung",
+          "kinder", "kinder-hq", "olympic"]
 TOLERANCE_M = 12.0
 
 
@@ -73,12 +81,19 @@ def route(a, b):
 
 
 def main():
+    only = sys.argv[1:]
     out = {"places": PLACES, "routes": {}}
+    if only:
+        with open(OUT, encoding="utf-8") as f:
+            out["routes"] = json.load(f)["routes"]
     for name in ROUTES:
-        pts, meters = route(PLACES["home"], PLACES[name])
+        if only and name not in only:
+            continue
+        a, b = (PLACES[k] for k in LEGS.get(name, ("home", name)))
+        pts, meters = route(a, b)
         s = simplify(pts, TOLERANCE_M)
         out["routes"][name] = s
-        print(f"{name}: {meters / 1000:.1f} km, {len(pts)} → {len(s)} points, straight {dist(PLACES['home'], PLACES[name]) / 1000:.1f} km")
+        print(f"{name}: {meters / 1000:.1f} km, {len(pts)} → {len(s)} points, straight {dist(a, b) / 1000:.1f} km")
         time.sleep(1.5)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False)

@@ -15,6 +15,13 @@ KT = os.path.join(ROOT, "app", "src", "main", "java", "com", "zobo", "burung", "
 COURSES = [
     ("commute", "hq", "출근길", "위례 집 → 헌릉로 → 양재 현대자동차 본사(회사). 평일 아침마다 달리는 길이에요.",
      ("현대자동차 본사", "서울 서초구 헌릉로 12"), {"speedLimit": 60}),
+    # Demo video (40대 아빠 A씨): 아이를 유치원에 내려 주고 출근, 토요일엔 가족과 올림픽공원.
+    ("kinder", "kinder", "등원길: 집 → 유치원", "위례 → 거여2동 유치원. 아이(뒷좌석)와 함께 가는 평일 아침이에요.",
+     ("유치원", "서울 송파구 거여2동"), {"speedLimit": 50, "rearPassenger": True}),
+    ("kinder-hq", "kinder-hq", "출근길: 유치원 → 회사", "거여2동 유치원 → 헌릉로 → 양재 현대자동차 본사(회사). 아이를 내려 주고 출근해요.",
+     ("현대자동차 본사", "서울 서초구 헌릉로 12"), {"speedLimit": 60}),
+    ("olympic", "olympic", "토요일 올림픽공원 나들이", "위례 → 송파대로 → 올림픽공원 평화의문. 가족과 함께 가는 주말 나들이예요.",
+     ("올림픽공원 평화의문", "서울 송파구 올림픽로 424"), {"speedLimit": 60, "frontPassenger": True, "rearPassenger": True}),
     ("costco", "costco", "토요일 코스트코 장보기", "위례 → 양재 코스트코. 토요일 아침, 배우자와 함께 장 보러 가요.",
      ("코스트코 양재점", "서울 서초구 양재대로 159"), {"speedLimit": 60, "frontPassenger": True}),
     ("namhansan", "namhansan", "남한산성 드라이브", "위례 → 남한산성. 토요일 오후 가까운 산성길로 가요.",
@@ -69,7 +76,7 @@ object DemoCourses {
         out.append("        )\n    }\n\n")
     out.append("    val all: List<DemoCourse> = listOf(\n")
     for cid, key, title, summary, (dname, daddr), opt in COURSES:
-        dest = data["places"][key]
+        dest = data["places"].get(key) or data["routes"][key][-1]  # a leg not from home ends at its last point
         name = "".join(p.capitalize() for p in cid.split("-")) + "Route"
         out.append("        DemoCourse(\n")
         out.append(f'            id = "{cid}",\n            title = "{title}",\n            summary = "{summary}",\n')

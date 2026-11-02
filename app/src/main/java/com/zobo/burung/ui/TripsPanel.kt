@@ -83,6 +83,7 @@ fun TripsPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier: Modifier
     val reports by viewModel.reports.collectAsState()
     val shown by viewModel.shownTrip.collectAsState()
     val summary by viewModel.summary.collectAsState()
+    val tripActive = viewModel.live.collectAsState().value.tripActive
     val days = remember(trips) { trips.groupBy { dayKey(it.startedAt) }.toList() }
     val dayFmt = remember { SimpleDateFormat("M월 d일 (E)", Locale.KOREA) }
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.KOREA) }
@@ -128,6 +129,8 @@ fun TripsPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier: Modifier
                         open = open,
                         noRoute = open && shown?.isTrack == false,
                         onClick = { if (open) viewModel.shownTrip.value = null else viewModel.showTrip(trip, leftInset = PANEL_SHARE) },
+                        // A trip left open (the app was stopped mid-drive) can go too, once no trip is under way.
+                        deletable = trip.endedAt != null || !tripActive,
                         onDelete = { viewModel.deleteTrip(trip) },
                     )
                 }
@@ -193,6 +196,7 @@ private fun TripRow(
     open: Boolean,
     noRoute: Boolean,
     onClick: () -> Unit,
+    deletable: Boolean,
     onDelete: () -> Unit,
 ) {
     val ratio = if (trip.distanceMeters > 0) trip.newDistanceMeters / trip.distanceMeters else 0.0
@@ -226,7 +230,7 @@ private fun TripRow(
                 Text("경로 기록 기능 전의 주행이라 이때 새로 탐험한 곳만 점으로 보여 줘요.", style = MaterialTheme.typography.bodyMedium, color = FogColors.TextSub)
             }
             // A finished trip can be deleted on its own (asked once more first).
-            if (trip.endedAt != null) {
+            if (deletable) {
                 var confirm by remember(trip.id) { mutableStateOf(false) }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     if (!confirm) {

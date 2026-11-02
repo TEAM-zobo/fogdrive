@@ -600,8 +600,8 @@ class MainViewModel : ViewModel() {
 
     /** Deletes one finished trip (the trip being recorded can't be). */
     fun deleteTrip(trip: TripEntity) {
-        if (trip.endedAt == null) return
         // Reloading the record ends the trip being recorded (as on reset): not while one is under way.
+        // With none under way, a trip still without an end (the app was stopped mid-drive) can go too.
         if (live.value.tripActive) {
             FogRuntime.live.update { it.copy(lastEvent = "주행이 끝난 뒤에 지울 수 있어요", lastEventId = System.nanoTime()) }
             return

@@ -171,6 +171,85 @@ object DemoCourses {
         )
     }
 
+    private object KinderRoute {
+        val points: List<Pair<Double, Double>> = listOf(
+            37.47552 to 127.14003,
+            37.47534 to 127.14003,
+            37.47539 to 127.14093,
+            37.47431 to 127.14086,
+            37.47444 to 127.13731,
+            37.47759 to 127.13748,
+            37.47840 to 127.13770,
+            37.48139 to 127.13965,
+            37.48902 to 127.14291,
+            37.48812 to 127.14569,
+        )
+    }
+
+    private object KinderHqRoute {
+        val points: List<Pair<Double, Double>> = listOf(
+            37.48812 to 127.14569,
+            37.48936 to 127.14623,
+            37.49020 to 127.14332,
+            37.49304 to 127.14448,
+            37.49611 to 127.13837,
+            37.50024 to 127.13079,
+            37.50199 to 127.12817,
+            37.50071 to 127.12696,
+            37.49931 to 127.12617,
+            37.50255 to 127.12188,
+            37.50029 to 127.11880,
+            37.49826 to 127.11511,
+            37.49685 to 127.11201,
+            37.49275 to 127.09866,
+            37.49218 to 127.09429,
+            37.49145 to 127.09057,
+            37.48826 to 127.07988,
+            37.48730 to 127.07760,
+            37.48622 to 127.07553,
+            37.48234 to 127.06997,
+            37.47871 to 127.06384,
+            37.47482 to 127.05637,
+            37.47281 to 127.05304,
+            37.46172 to 127.03715,
+            37.46147 to 127.03744,
+            37.46211 to 127.03859,
+            37.46184 to 127.04028,
+            37.46063 to 127.04170,
+            37.45982 to 127.04246,
+            37.45954 to 127.04251,
+            37.45920 to 127.04350,
+            37.45939 to 127.04398,
+            37.45958 to 127.04409,
+            37.46172 to 127.04180,
+            37.46361 to 127.04171,
+        )
+    }
+
+    private object OlympicRoute {
+        val points: List<Pair<Double, Double>> = listOf(
+            37.47552 to 127.14003,
+            37.47534 to 127.14003,
+            37.47539 to 127.14093,
+            37.47431 to 127.14086,
+            37.47448 to 127.13598,
+            37.47594 to 127.12718,
+            37.47752 to 127.12692,
+            37.48857 to 127.12135,
+            37.49166 to 127.11952,
+            37.49649 to 127.11540,
+            37.50877 to 127.10409,
+            37.51272 to 127.10075,
+            37.51342 to 127.10100,
+            37.51749 to 127.11274,
+            37.52001 to 127.11424,
+            37.51955 to 127.11552,
+            37.51970 to 127.11603,
+            37.51997 to 127.11621,
+            37.52018 to 127.11598,
+        )
+    }
+
     private object CostcoRoute {
         val points: List<Pair<Double, Double>> = listOf(
             37.47552 to 127.14003,
@@ -1387,6 +1466,33 @@ object DemoCourses {
             destination = Place("현대자동차 본사", 37.46360, 127.04230, "서울 서초구 헌릉로 12"),
             route = CommuteRoute.points,
             speedLimit = 60,
+        ),
+        DemoCourse(
+            id = "kinder",
+            title = "등원길: 집 → 유치원",
+            summary = "위례 → 거여2동 유치원. 아이(뒷좌석)와 함께 가는 평일 아침이에요.",
+            destination = Place("유치원", 37.48800, 127.14600, "서울 송파구 거여2동"),
+            route = KinderRoute.points,
+            speedLimit = 50,
+            rearPassenger = true,
+        ),
+        DemoCourse(
+            id = "kinder-hq",
+            title = "출근길: 유치원 → 회사",
+            summary = "거여2동 유치원 → 헌릉로 → 양재 현대자동차 본사(회사). 아이를 내려 주고 출근해요.",
+            destination = Place("현대자동차 본사", 37.46361, 127.04171, "서울 서초구 헌릉로 12"),
+            route = KinderHqRoute.points,
+            speedLimit = 60,
+        ),
+        DemoCourse(
+            id = "olympic",
+            title = "토요일 올림픽공원 나들이",
+            summary = "위례 → 송파대로 → 올림픽공원 평화의문. 가족과 함께 가는 주말 나들이예요.",
+            destination = Place("올림픽공원 평화의문", 37.52030, 127.11570, "서울 송파구 올림픽로 424"),
+            route = OlympicRoute.points,
+            speedLimit = 60,
+            frontPassenger = true,
+            rearPassenger = true,
         ),
         DemoCourse(
             id = "costco",
