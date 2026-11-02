@@ -1,0 +1,55 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#111111; }
+.cam { position:absolute; left:0; top:0; width:2560px; height:1440px; transform-origin:0 0; }
+.cam video { position:absolute; left:0; top:0; width:2560px; height:1440px; }
+.cap { position:absolute; }
+.cap.bottom-left { left:96px; bottom:96px; }
+.cap.top-left { left:96px; top:96px; }
+.cap.top-right { right:96px; top:96px; }
+.cap-card { display:flex; gap:28px; align-items:center; background:rgba(255,255,255,0.97); border-radius:28px;
+  padding:34px 44px 36px; box-shadow:0 24px 64px rgba(17,17,17,0.22), 0 2px 6px rgba(17,17,17,0.08); max-width:1100px; }
+.cap-icon { color:#0081F8; width:84px; height:84px; border-radius:42px; background:#E8F2FE; display:flex;
+  align-items:center; justify-content:center; flex:none; }
+.cap h2 { font-size:56px; font-weight:800; letter-spacing:-0.035em; line-height:1.15; }
+.cap p { margin-top:12px; font-size:30px; font-weight:600; color:#4A5260; letter-spacing:-0.02em; }
+.legend { display:flex; gap:18px; margin-top:22px; }
+.lg { display:flex; align-items:center; gap:10px; font-size:26px; font-weight:700; color:#4A5260; }
+.lg i { display:block; width:44px; height:14px; border-radius:7px; }
+.title { position:absolute; }
+.tw { display:inline-block; transform-origin:50% 60%; }
+.title.top-left { left:120px; top:120px; }
+.title .tl { font-size:96px; font-weight:800; letter-spacing:-0.045em; line-height:1.12; }
+.title.on-dark { color:#FFFFFF; text-shadow:0 2px 6px rgba(0,0,0,0.35), 0 8px 40px rgba(0,0,0,0.55); }
+.stat { position:absolute; inset:0; }
+.stat-flood { position:absolute; inset:0; background:#0081F8; display:flex; align-items:center; justify-content:center; }
+.stat-in { text-align:center; color:#FFFFFF; }
+.stat-label { font-size:52px; font-weight:700; letter-spacing:-0.03em; opacity:0.9; }
+.stat-value { font-size:300px; font-weight:800; letter-spacing:-0.06em; line-height:1.0; font-variant-numeric:tabular-nums; margin:10px 0 18px; }
+.stat-value small { font-size:120px; margin-left:18px; letter-spacing:-0.03em; }
+.stat-sub { font-size:40px; font-weight:600; opacity:0.85; }
+#end-bg{position:absolute;inset:0;background:#F6F8FC;}
+.lock{position:absolute;left:0;right:0;top:360px;display:flex;align-items:center;justify-content:center;gap:44px;}
+.icon{width:200px;height:200px;border-radius:46px;box-shadow:0 30px 70px rgba(10,20,40,0.28);}
+.name{font-size:140px;font-weight:800;letter-spacing:-0.055em;line-height:1;}
+.en{font-size:44px;font-weight:700;color:#0081F8;margin-top:10px;letter-spacing:-0.01em;}
+.cta{position:absolute;left:0;right:0;top:680px;text-align:center;font-size:40px;font-weight:600;color:#4A5260;}
+.credit{position:absolute;left:0;right:0;bottom:70px;text-align:center;font-size:20px;color:#8A93A0;}</style>
+  <div id="root" data-composition-id="end" data-width="1920" data-height="1080" data-start="0" data-duration="6"><div id="end-bg" class="bg"></div>
+<div id="end-lock" class="lock">
+  <img id="end-icon" class="icon" src="assets/icon.svg" alt="안개지도">
+  <div class="names"><div id="end-name" class="name">안개지도</div><div id="end-en" class="en">FogDrive</div></div>
+</div>
+<div id="end-cta" class="cta">달린 만큼, 세상이 밝아집니다 · Pleos Connect · 팀 zobo</div>
+<div id="end-credit" class="credit">Music: “Fretless” Kevin MacLeod (incompetech.com) · CC BY 4.0　|　지도 © OpenStreetMap contributors · OpenFreeMap　|　Pleos Connect Emulator v2.1.0 화면 · 누적 기록은 시연용 예시</div></div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#end-bg",{opacity:0},{opacity:1,duration:0.6,ease:"sine.inOut"},0);
+tl.fromTo("#end-icon",{scale:0.5,opacity:0},{scale:1,opacity:1,duration:0.8,ease:"back.out(1.5)"},0.4);
+tl.fromTo("#end-name",{clipPath:"inset(0 100% 0 0)"},{clipPath:"inset(0 0% 0 0)",duration:0.6,ease:"power3.out"},0.6);
+tl.fromTo("#end-en",{opacity:0,y:10},{opacity:1,y:0,duration:0.4,ease:"expo.out"},1.0);
+tl.fromTo("#end-cta",{opacity:0},{opacity:1,duration:0.5},1.4);
+tl.fromTo("#end-credit",{opacity:0},{opacity:1,duration:0.5},1.8);
+    window.__timelines["end"] = tl;
+  </script>
+</template>

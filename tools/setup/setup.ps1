@@ -431,7 +431,7 @@ function Cmd-Video {
   $node = Get-Command node -ErrorAction SilentlyContinue
   if (-not $node -or [int]((& node -p "process.versions.node.split('.')[0]")) -lt 22) { winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements }
   Write-Host "  새로 설치했다면 PowerShell을 다시 열어 PATH를 반영한 뒤 한 번 더 실행하세요."
-  Push-Location "$Root\tools\demo\burung-demo"
+  Push-Location "$Root\tools\demo\promo"
   try { & npx -y hyperframes@0.8.196 skills update | Out-Null; $code = $LASTEXITCODE } catch { $code = 1 } finally { Pop-Location }
   if ($code -ne 0) { Die "HyperFrames 설치 실패: Node.js 22+와 npx가 PATH에 있는지 확인하세요." }
   Ok "HyperFrames 0.8.196 + Claude Code 스킬"

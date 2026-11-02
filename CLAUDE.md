@@ -24,12 +24,13 @@ Pleos Connect(Android Automotive OS, API 34 에뮬레이터) 앱. Kotlin + Compo
 - `local.properties`, `keystore.properties`, `qa/.qa_password`는 git에 넣지 않습니다.
 - 앱 화면은 P단에서만 보입니다. 차량 신호는 Virtual Console(`adb forward tcp:8088 tcp:8088`, `qa/fogqa/vconsole.py`)로 바꿉니다.
 
-## 시연 영상·숏폼
+## 시연·홍보 영상
 
-"영상 만들어줘", "시연 영상 수정해줘" 같은 요청은 `docs/VIDEO.md`를 따릅니다. HyperFrames 스킬(`/hyperframes`)이 없으면 먼저 `tools/setup/setup.sh video`로 설치하고 Claude Code를 다시 열라고 안내합니다.
+"영상 만들어줘", "홍보 영상 수정해줘" 같은 요청은 `docs/VIDEO.md`를 따릅니다. HyperFrames 스킬(`/hyperframes`)이 없으면 먼저 `tools/setup/setup.sh video`로 설치하고 Claude Code를 다시 열라고 안내합니다.
 
-- 시연 영상은 `tools/demo/burung-demo`, 숏폼은 `tools/demo/burung-short`입니다. 카피·장면·카메라·음악 수정은 해당 영상의 `build.py`만 고치고 `python3 build.py` → `npx hyperframes@0.8.196 check` → `snapshot`으로 프레임을 직접 본 뒤 `render`합니다. `index.html`과 `compositions/`는 생성물이라 직접 고치지 않습니다. 숏폼 글자는 화면 위 168–1330 px 안에 둡니다.
-- 소재(`assets/`)와 녹화본은 git에 없습니다. 다시 렌더링할 때는 녹화하지 말고 GitHub Release `burung-media-v1`(소재 zip)·`burung-demo-raw-v1`(녹화본)에서 받습니다(`gh` 로그인 필요, 방법은 `docs/VIDEO.md`).
+- 제출 앱은 부릉탐험대입니다. 부릉탐험대 영상을 먼저 고치고(숏폼은 `docs/submission/shortform.md` 가이드대로 만드는 캐릭터 숏폼 `tools/demo/burung-toon`, 앱 화면만 쓴 이전 버전은 `tools/demo/burung-short`), `promo`·`shortform`은 예전 앱 안개지도 영상이라 사용자가 콕 집어 말할 때만 고칩니다. `burung-short/assets`는 git에도 `demo-assets-v1` Release에도 없어서 그 소재가 있는 컴퓨터에서만 렌더할 수 있습니다.
+- 카피·장면·카메라·음악 수정은 해당 영상의 `build.py`만 고치고 `python3 build.py` → `npx hyperframes@0.8.196 check` → `snapshot`으로 프레임을 직접 본 뒤 `render`합니다. `index.html`과 `compositions/`는 생성물이라 직접 고치지 않습니다. 세로 숏폼은 `tools/demo/burung-short/build.py`(부릉탐험대, 제출용)로 같은 방법으로 만들고, 글자는 화면 위 168–1330 px 안에 둡니다. `promo`·`shortform`은 예전 앱 안개지도 영상입니다.
+- 녹화본(`tools/demo/out/raw`)은 git에 없습니다. 영상만 다시 렌더링할 때는 녹화하지 말고 `prepare_assets.sh`로 GitHub Release `demo-assets-v1` 소재를 받습니다(`gh` 로그인 필요, 끝에 `assets.sha256` 일치 확인).
 - 녹화는 `boot --record`로 띄운 QA 에뮬레이터에서만 하고, 그동안 다른 에뮬레이터는 끕니다(같은 GPU를 써서 끊김).
 - 소리는 들을 수 없으니 `ffmpeg -af ebur128`로 측정해 보고(-16~-18 LUFS), 들어 보지 않았다고 말합니다.
 

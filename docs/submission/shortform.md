@@ -111,8 +111,8 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 
 ## 올리기 전 확인
 
-- [ ] 렌더한 뒤 처음부터 끝까지 재생해 소리·자막·화면이 맞는지 본다(음량은 `ffmpeg -af ebur128`로 -16~-18 LUFS인지 재고, 직접 들어 본다)
-- [ ] 휴대폰에서 업로드 화면으로 미리 보고, 자막이 플랫폼 버튼·설명에 가리지 않는지 본다
-- [ ] 게시글 본문에 해시태그 3개(`#HMG차량용앱개발공모전 #PleosAppMarket #HMG앱공모전`)와 음악 출처를 적는다: Music: "Fretless" Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License
-- [ ] 화면·파일 이름·계정 이름에 성명·이메일·개인 계정 ID가 없다. 키즈모드 장면의 탐험대 이름('도현 탐험대')이 실제 가족 이름이면 다른 이름으로 바꾼다
-- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)의 【기입 필요: 숏폼 링크】와 `application-form.docx`, [제출 이메일](../index.html#email)에 넣는다
+- [ ] 처음부터 끝까지 재생해 소리·자막·화면이 맞는지 본다(음량 -16~-18 LUFS, 직접 들어 봄)
+- [ ] 휴대폰 업로드 화면에서 미리 보고 자막이 플랫폼 버튼·설명에 가리지 않는지 본다
+- [ ] 팀 zobo 계정으로 Instagram 릴스 또는 YouTube Shorts에 게시한다
+- [ ] 게시글 본문에 해시태그 **총 2~3개**(필수 `#HMG차량용앱개발공모전` 포함, 제안: `#HMG차량용앱개발공모전 #PleosAppMarket #HMG앱공모전`)와 음악 출처를 적는다. 근거: [숏폼 챌린지](https://appdevchallenge.auto-hmg.io/guide/shortform), [FAQ](https://appdevchallenge.auto-hmg.io/faq)
+- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)와 [`application-form.docx`](application-form.docx) 8번의 【기입 필요: 숏폼 링크】, [`email.md`](email.md), `private/email.txt`에 넣는다(docx는 Word에서 직접 고침)
