@@ -15,19 +15,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 RAW = os.path.join(ROOT, "tools", "demo", "out", "raw-burung")
 OUT = os.path.join(HERE, "assets", "clips")
-RELEASE = "burung-demo-raw-v1"
+RELEASE = "burung-demo-raw-v2"   # the 2026-11-02 recording (record.py part1 + part2)
 FF = shutil.which("ffmpeg") or r"D:\Tools\ffmpeg\ffmpeg-9.0.2-full_build\bin\ffmpeg.exe"
 CROP = "crop=1705:1210:855:90"
 APP_GAIN_DB = 21   # the emulator records the app's voice quietly (peaks about -27 dBFS)
 
-# name: (recording, [(from s, to s, speed)]); speed 1 keeps the sound.
+# name: (recording, [(from s, to s, speed)]); speed 1 keeps the sound. Times are seconds into
+# tools/demo/out/raw-burung/<recording>.webm (record.py). build.py maps its raw times through these.
 CLIPS = {
-    "kids": ("p1_kids", [(0.5, 6.0, 1)]),
-    "kinder": ("p1_kinder", [(1.0, 25.0, 6), (26.5, 35.8, 1)]),
-    "office": ("p1_office", [(1.0, 43.0, 10), (44.5, 51.5, 1)]),
-    "plan": ("p2_plan", [(0.3, 8.0, 1)]),
-    "olympic": ("p2_olympic", [(1.0, 19.6, 6), (19.6, 22.0, 1), (22.0, 43.5, 8), (44.5, 52.2, 1)]),
-    "exp": ("p1_exp", [(1.5, 10.5, 1.3)]),
+    "boot": ("s_boot", [(3.0, 9.0, 1)]),
+    "map": ("s_map", [(0.5, 8.0, 1.2)]),
+    "howto": ("s_demo_howto", [(0.5, 11.5, 1.4)]),
+    "kids": ("s_kids", [(0.5, 6.5, 1)]),
+    "kinder": ("s_kinder", [(1.0, 27.0, 6), (27.0, 35.0, 1)]),
+    "office": ("s_office", [(0.3, 2.8, 0.6), (2.8, 43.0, 10), (43.0, 50.5, 1)]),
+    "trips": ("s_trips", [(0.5, 11.5, 1.4)]),
+    "dex": ("s_dex", [(1.5, 14.0, 1.5)]),
+    "exp": ("s_exp", [(0.5, 13.5, 1.6)]),
+    "suggest": ("s_suggest", [(1.0, 13.5, 1.5)]),
+    "olympic": ("s_olympic", [(0.5, 14.5, 7), (14.5, 18.5, 1), (18.5, 45.5, 8), (45.5, 53.5, 1)]),
+    "gangneung": ("s_gangneung", [(1.0, 357.0, 45), (357.0, 363.0, 3), (363.0, 373.0, 1)]),
+    "after": ("s_after", [(0.5, 13.5, 1.25)]),
+    "settings": ("s_settings", [(0.5, 17.5, 1.8)]),
 }
 
 

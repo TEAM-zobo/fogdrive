@@ -20,29 +20,34 @@
 .voice .lbl { font-size:20px; font-weight:700; opacity:0.85; }
 .voice .txt { font-size:33px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1.3; word-break:keep-all; }
 </style>
-  <div id="root" data-composition-id="office" data-width="1920" data-height="1080" data-start="0" data-duration="11.5">
+  <div id="root" data-composition-id="office" data-width="1920" data-height="1080" data-start="0" data-duration="15.99">
     <div id="office-in" style="position:absolute;inset:0;">
       <div class="dots"></div>
       <div class="frame" data-layout-allow-overflow>
-        <video id="office-vid" class="vid clip" data-start="0" data-duration="11.5" src="assets/clips/office.mp4" muted playsinline></video>
+        <video id="office-vid" class="vid clip" data-start="0" data-duration="15.99" src="assets/clips/office.mp4" muted playsinline></video>
       </div>
-      <div class="side"><div id="office-b0" class="beat"><span class="chip">출근</span><div class="title">아이를 내려 주고 회사로</div><div class="body">유치원에서 회사까지 13.6 km. 매일 달리는 출근길도 그대로 탐험 기록이 됩니다.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">FusedLocation 위치</span><span class="tag">NaviHelper 경로 안내</span></div></div><div id="office-b1" class="beat"><span class="chip">회사 도착</span><div class="title">새 칭호 「프로 출근러」</div><div class="body">내비에 저장된 '회사'에 평일 20번 도착하면 칭호를 받아요. 지난 4주 19번 + 오늘 1번.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">NaviHelper 즐겨찾기(회사)</span></div></div></div>
-      <div id="office-v0" class="voice"><div class="lbl">앱 음성 안내 (키즈모드)</div><div class="txt">“도착! 오늘은 새 동네를 11곳이나 찾았어요. 최고예요!”</div></div>
+      <div class="side"><span class="chapter">③ A씨의 일주일 · 평일 아침</span><div id="office-b0" class="beat"><span class="chip">출근 전</span><div class="title">1분 더 쓰는 탐험 경로</div><div class="body">내비에 목적지가 있으면 출발 전에 탐험 우회 경로를 제안해요. '경유지 추가'를 누르면 내비 경로에 경유지로 들어가요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">NaviHelper 목적지·경유지</span><span class="tag">Vehicle 주행 가능 거리</span></div></div><div id="office-b1" class="beat"><span class="chip">출근</span><div class="title">아이를 내려 주고 회사로</div><div class="body">유치원에서 회사까지 13.6 km. 매일 달리는 출근길도 그대로 탐험 기록이 돼요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">FusedLocation 위치</span></div></div><div id="office-b2" class="beat"><span class="chip">회사 도착</span><div class="title">새 칭호 「프로 출근러」</div><div class="body">내비에 저장된 '회사'에 평일 20번 도착하면 받는 칭호예요. 지난 4주 19번 + 오늘 1번.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">NaviHelper 즐겨찾기(회사)</span></div></div></div>
+      <div id="office-v0" class="voice"><div class="lbl">앱 음성 안내 (키즈모드)</div><div class="txt">“도착! 오늘도 멋진 모험이었어요.”</div></div>
     </div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
     tl.from("#office-in",{opacity:0,duration:0.3,ease:"none"},0);
     tl.from("#office-b0 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},0.15);
-    tl.to("#office-b0",{opacity:0,y:-18,duration:0.25,ease:"power2.in"},6.5);
+    tl.to("#office-b0",{opacity:0,y:-18,duration:0.25,ease:"power2.in"},4.19);
     tl.set("#office-b1",{opacity:0},0);
-    tl.to("#office-b1",{opacity:1,duration:0.01},6.75);
-    tl.from("#office-b1 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},6.75);
+    tl.to("#office-b1",{opacity:1,duration:0.01},4.44);
+    tl.from("#office-b1 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},4.44);
+    tl.to("#office-b1",{opacity:0,y:-18,duration:0.25,ease:"power2.in"},8.69);
+    tl.set("#office-b2",{opacity:0},0);
+    tl.to("#office-b2",{opacity:1,duration:0.01},8.94);
+    tl.from("#office-b2 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},8.94);
     tl.set("#office-v0",{opacity:0},0);
-    tl.fromTo("#office-v0",{opacity:0,y:24,scale:0.92},{opacity:1,y:0,scale:1,duration:0.3,ease:"back.out(2)"},7.3);
-    tl.to("#office-v0",{opacity:0,y:-10,duration:0.25},11.299999999999999);
-    tl.set("#office-vid",{x:0,y:0,scale:0.7038123167155426},0);
-    tl.to("#office-vid",{x:-76.0,y:-721.0,scale:1.3,duration:0.9,ease:"power3.inOut"},6.9);
+    tl.fromTo("#office-v0",{opacity:0,y:24,scale:0.92},{opacity:1,y:0,scale:1,duration:0.3,ease:"back.out(2)"},11.95);
+    tl.to("#office-v0",{opacity:0,y:-10,duration:0.25},14.049999999999999);
+    tl.set("#office-vid",{x:-50.0,y:-660.5,scale:1.25},0);
+    tl.to("#office-vid",{x:0,y:0,scale:0.7038123167155426,duration:0.7,ease:"power3.inOut"},2.83);
+    tl.to("#office-vid",{x:-76.0,y:-721.0,scale:1.3,duration:0.9,ease:"power3.inOut"},11.19);
     window.__timelines["office"] = tl;
   </script>
 </template>

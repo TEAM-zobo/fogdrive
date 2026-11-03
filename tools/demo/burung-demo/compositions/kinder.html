@@ -20,32 +20,29 @@
 .voice .lbl { font-size:20px; font-weight:700; opacity:0.85; }
 .voice .txt { font-size:33px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1.3; word-break:keep-all; }
 </style>
-  <div id="root" data-composition-id="kinder" data-width="1920" data-height="1080" data-start="0" data-duration="13.600000000000001">
+  <div id="root" data-composition-id="kinder" data-width="1920" data-height="1080" data-start="0" data-duration="12.63">
     <div id="kinder-in" style="position:absolute;inset:0;">
       <div class="dots"></div>
       <div class="frame" data-layout-allow-overflow>
-        <video id="kinder-vid" class="vid clip" data-start="0" data-duration="13.600000000000001" src="assets/clips/kinder.mp4" muted playsinline></video>
+        <video id="kinder-vid" class="vid clip" data-start="0" data-duration="12.63" src="assets/clips/kinder.mp4" muted playsinline></video>
       </div>
-      <div class="side"><div id="kinder-b0" class="beat"><span class="chip">주행</span><div class="title">시동만 걸면 자동 기록</div><div class="body">앱을 열지 않아도 달린 길이 지도에 열립니다. 아이와 유치원까지 2.5 km, 처음 지나는 길은 밝게 남아요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">FusedLocation 위치</span><span class="tag">Vehicle 기어(D)·좌석</span></div></div><div id="kinder-b1" class="beat"><span class="chip">유치원 도착</span><div class="title">P단 + 문 열림 = 하차 깃발</div><div class="body">아이를 내려 준 곳에 깃발이 꽂히고, 뒷좌석에 아이가 탔으니 '함께 탐험' 스탬프를 받아요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">Vehicle 기어(P)·도어·좌석</span></div></div></div>
-      <div id="kinder-v0" class="voice"><div class="lbl">앱 음성 안내 (키즈모드)</div><div class="txt">“짜잔! 처음 와 보는 거여2동이에요!”</div></div><div id="kinder-v1" class="voice"><div class="lbl">앱 음성 안내 (키즈모드)</div><div class="txt">“도착! 오늘은 새 동네를 1곳이나 찾았어요. 최고예요!”</div></div>
+      <div class="side"><span class="chapter">③ A씨의 일주일 · 평일 아침</span><div id="kinder-b0" class="beat"><span class="chip">등원</span><div class="title">앱을 열지 않아도 달린 길이 지도에</div><div class="body">집에서 유치원까지 2.5 km. 지나간 길만 밝게 열리고 노란 개척로로 남아요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">FusedLocation 위치</span><span class="tag">Vehicle 기어(D)·좌석</span></div></div><div id="kinder-b1" class="beat"><span class="chip">유치원 도착</span><div class="title">P단 + 문 열림 = 하차</div><div class="body">아이를 내려 준 곳에 깃발이 꽂혀요. 뒷좌석에 아이가 타서 '오늘은 함께 탐험했어요!'가 떠요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">Vehicle 기어(P)·도어·좌석</span></div></div></div>
+      <div id="kinder-v0" class="voice"><div class="lbl">앱 음성 안내 (키즈모드)</div><div class="txt">“도착! 오늘도 멋진 모험이었어요.”</div></div>
     </div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
     tl.from("#kinder-in",{opacity:0,duration:0.3,ease:"none"},0);
     tl.from("#kinder-b0 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},0.15);
-    tl.to("#kinder-b0",{opacity:0,y:-18,duration:0.25,ease:"power2.in"},7.2);
+    tl.to("#kinder-b0",{opacity:0,y:-18,duration:0.25,ease:"power2.in"},5.33);
     tl.set("#kinder-b1",{opacity:0},0);
-    tl.to("#kinder-b1",{opacity:1,duration:0.01},7.45);
-    tl.from("#kinder-b1 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},7.45);
+    tl.to("#kinder-b1",{opacity:1,duration:0.01},5.58);
+    tl.from("#kinder-b1 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},5.58);
     tl.set("#kinder-v0",{opacity:0},0);
-    tl.fromTo("#kinder-v0",{opacity:0,y:24,scale:0.92},{opacity:1,y:0,scale:1,duration:0.3,ease:"back.out(2)"},7.0);
-    tl.to("#kinder-v0",{opacity:0,y:-10,duration:0.25},9.1);
-    tl.set("#kinder-v1",{opacity:0},0);
-    tl.fromTo("#kinder-v1",{opacity:0,y:24,scale:0.92},{opacity:1,y:0,scale:1,duration:0.3,ease:"back.out(2)"},9.7);
-    tl.to("#kinder-v1",{opacity:0,y:-10,duration:0.25},13.499999999999998);
+    tl.fromTo("#kinder-v0",{opacity:0,y:24,scale:0.92},{opacity:1,y:0,scale:1,duration:0.3,ease:"back.out(2)"},7.69);
+    tl.to("#kinder-v0",{opacity:0,y:-10,duration:0.25},9.79);
     tl.set("#kinder-vid",{x:0,y:0,scale:0.7038123167155426},0);
-    tl.to("#kinder-vid",{x:-76.0,y:-721.0,scale:1.3,duration:0.9,ease:"power3.inOut"},7.6);
+    tl.to("#kinder-vid",{x:-76.0,y:-721.0,scale:1.3,duration:0.9,ease:"power3.inOut"},8.33);
     window.__timelines["kinder"] = tl;
   </script>
 </template>

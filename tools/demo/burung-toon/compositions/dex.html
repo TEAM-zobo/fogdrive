@@ -1,0 +1,93 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; }
+.bg { position:absolute; inset:0; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.07) 3px, transparent 3.5px); background-size:44px 44px; }
+.cap { position:absolute; left:50px; right:50px; top:190px; text-align:center; }
+.kick { display:inline-block; background:#15192A; color:#fff; border-radius:16px; padding:10px 24px; font-size:34px; font-weight:800; letter-spacing:-0.02em; }
+.line { font-size:78px; font-weight:800; letter-spacing:-0.05em; line-height:1.16; margin-top:18px; word-break:keep-all; }
+.line b { background:linear-gradient(transparent 58%, #FFD43B 58%); }
+.sub { font-size:44px; font-weight:700; letter-spacing:-0.04em; line-height:1.25; margin-top:14px; color:#3B4256; word-break:keep-all; }
+.disp { position:absolute; left:110px; top:500px; width:860px; height:620px; border-radius:42px; background:#1D2233;
+  border:7px solid #15192A; box-shadow:12px 14px 0 #15192A; overflow:hidden; }
+.scr { position:absolute; left:9px; top:9px; width:828px; height:588px; border-radius:30px; overflow:hidden; background:#E9EDF2; }
+.shot { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.sticker { position:absolute; left:0; right:0; text-align:center; }
+.sticker span { display:inline-block; background:#FF6B4A; color:#fff; border:6px solid #15192A; border-radius:26px; padding:16px 34px;
+  font-size:58px; font-weight:800; letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; }
+.sticker.y span { background:#FFD43B; color:#15192A; }
+.sticker.m span { background:#12B886; }
+.bubble { position:absolute; background:#fff; border:6px solid #15192A; border-radius:34px; padding:18px 30px; font-size:44px; font-weight:800;
+  letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; word-break:keep-all; }
+.chr { position:absolute; }
+</style>
+  <div id="root" data-composition-id="dex" data-width="1080" data-height="1920" data-start="0" data-duration="4.6">
+    <div id="dex-in" style="position:absolute;inset:0;">
+      <div class="bg" style="background:linear-gradient(180deg,#E3F8EE 0%,#F6F3EC 70%)"></div>
+      <div class="dots"></div><div id="dex-disp" class="disp"><div class="scr"><img id="dex-s0" class="shot" src="assets/shots/dex.jpg" alt=""></div></div><div id="dx-mom" class="chr" style="left:40px;top:1280px;width:330px;"><div id="dx-mom-r" style="transform:rotate(0deg)"><svg viewBox="0 0 400 470" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+  <path d="M70 320 C34 230 50 70 200 56 C350 70 366 230 330 320 C318 342 290 340 276 326 L124 326 C110 340 82 342 70 320 Z" fill="#6B3E26" stroke="#15192A" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M36 470 C36 372 104 340 200 340 C296 340 364 372 364 470 Z" fill="#FF8A65" stroke="#15192A" stroke-width="8"/>
+  <path d="M150 344 Q200 380 250 344" fill="none" stroke="#15192A" stroke-width="7"/>
+  <rect x="170" y="284" width="60" height="60" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/>
+  <ellipse cx="200" cy="200" rx="112" ry="124" fill="#F7CBA6" stroke="#15192A" stroke-width="8"/>
+  <path d="M88 236 C72 120 130 70 204 70 C280 70 330 120 312 236 C306 196 296 170 280 150
+           C246 144 206 128 184 100 C170 132 132 160 100 172 C94 190 90 212 88 236 Z" fill="#6B3E26"/>
+  <path d="M312 236 C306 196 296 170 280 150 C246 144 206 128 184 100 C170 132 132 160 100 172 C94 190 90 212 88 236" fill="none" stroke="#15192A" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M190 104 C220 132 256 142 290 146" fill="none" stroke="#8A5537" stroke-width="6" stroke-linecap="round"/>
+  <path d="M120 112 C140 88 168 78 196 76" fill="none" stroke="#8A5537" stroke-width="6" stroke-linecap="round"/>
+  <path d="M134 172 Q156 162 176 170" stroke="#15192A" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M224 170 Q244 162 266 172" stroke="#15192A" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <circle cx="92" cy="262" r="10" fill="#FFD43B" stroke="#15192A" stroke-width="5"/><circle cx="308" cy="262" r="10" fill="#FFD43B" stroke="#15192A" stroke-width="5"/>
+  <circle cx="126" cy="254" r="18" fill="#FF9E8A" opacity="0.6"/><circle cx="274" cy="254" r="18" fill="#FF9E8A" opacity="0.6"/>
+  <path d="M193 242 Q200 252 207 242" fill="none" stroke="#15192A" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  <g id="xm-normal" opacity="1"><ellipse cx="154" cy="205" rx="11" ry="15" fill="#15192A"/><ellipse cx="246" cy="205" rx="11" ry="15" fill="#15192A"/><path d="M172 269 Q200 295 228 269" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M144 199 L132 191" stroke="#15192A" stroke-width="6" stroke-linecap="round"/><path d="M256 199 L268 191" stroke="#15192A" stroke-width="6" stroke-linecap="round"/></g><g id="xm-sparkle" opacity="0"><circle cx="154" cy="205" r="25" fill="#15192A"/><circle cx="146" cy="196" r="9" fill="#fff"/><circle cx="163" cy="213" r="4.5" fill="#fff"/><circle cx="246" cy="205" r="25" fill="#15192A"/><circle cx="238" cy="196" r="9" fill="#fff"/><circle cx="255" cy="213" r="4.5" fill="#fff"/><path d="M164 265 Q200 315 236 265 Z" fill="#15192A"/><path d="M182 287 Q200 299 218 287" fill="#FF6B4A"/><path d="M132 199 L120 191" stroke="#15192A" stroke-width="6" stroke-linecap="round"/><path d="M268 199 L280 191" stroke="#15192A" stroke-width="6" stroke-linecap="round"/></g>
+  <clipPath id="xm-clip"><rect x="-300" y="-300" width="1000" height="766"/></clipPath><g clip-path="url(#xm-clip)"></g>
+</svg></div></div><div id="dx-kid" class="chr" style="left:380px;top:1340px;width:330px;"><div id="dx-kid-r" style="transform:rotate(0deg)"><svg viewBox="0 0 400 470" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+  
+  <path d="M74 470 C74 392 128 360 200 360 C272 360 326 392 326 470 Z" fill="#FFD43B" stroke="#15192A" stroke-width="8"/>
+  
+  <rect x="176" y="310" width="48" height="54" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/>
+  <circle cx="94" cy="228" r="22" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M100 219 Q88 228 100 237" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/><circle cx="306" cy="228" r="22" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M300 219 Q312 228 300 237" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <ellipse cx="200" cy="214" rx="112" ry="110" fill="#F7CBA6" stroke="#15192A" stroke-width="8"/>
+  <path d="M96 216 C78 120 136 86 200 84 C266 84 324 120 304 216 C300 180 294 160 284 146 Q268 172 252 140 Q232 170 210 138 Q190 168 170 140 Q150 168 132 146 C116 166 102 188 96 216 Z" fill="#3A2A20" stroke="#15192A" stroke-width="7" stroke-linejoin="round"/><path d="M200 86 C192 58 210 44 228 52 M206 86 C214 66 232 62 244 70" fill="none" stroke="#15192A" stroke-width="7" stroke-linecap="round"/><path d="M150 104 C134 118 124 132 118 150" fill="none" stroke="#5A4434" stroke-width="6" stroke-linecap="round"/>
+  <path d="M140 178 Q158 170 174 176" stroke="#15192A" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M226 176 Q242 170 260 178" stroke="#15192A" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <circle cx="128" cy="262" r="20" fill="#FF9E8A" opacity="0.65"/><circle cx="272" cy="262" r="20" fill="#FF9E8A" opacity="0.65"/>
+  <path d="M193 252 Q200 262 207 252" fill="none" stroke="#15192A" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  <g id="xc-normal" opacity="1"><ellipse cx="160" cy="215" rx="11" ry="15" fill="#15192A"/><ellipse cx="240" cy="215" rx="11" ry="15" fill="#15192A"/><path d="M172 279 Q200 305 228 279" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/></g><g id="xc-sparkle" opacity="0"><circle cx="160" cy="215" r="25" fill="#15192A"/><circle cx="152" cy="206" r="9" fill="#fff"/><circle cx="169" cy="223" r="4.5" fill="#fff"/><circle cx="240" cy="215" r="25" fill="#15192A"/><circle cx="232" cy="206" r="9" fill="#fff"/><circle cx="249" cy="223" r="4.5" fill="#fff"/><path d="M164 275 Q200 325 236 275 Z" fill="#15192A"/><path d="M182 297 Q200 309 218 297" fill="#FF6B4A"/></g>
+  <clipPath id="xc-clip"><rect x="-300" y="-300" width="1000" height="766"/></clipPath><g clip-path="url(#xc-clip)"></g>
+</svg></div></div><div id="dx-dad" class="chr" style="left:720px;top:1280px;width:330px;"><div id="dx-dad-r" style="transform:rotate(0deg)"><svg viewBox="0 0 400 470" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+  <path d="M30 470 C30 370 100 336 200 336 C300 336 370 370 370 470 Z" fill="#4D8EF7" stroke="#15192A" stroke-width="8"/>
+  <path d="M160 338 L200 392 L240 338 Z" fill="#fff" stroke="#15192A" stroke-width="7" stroke-linejoin="round"/>
+  <rect x="168" y="282" width="64" height="62" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/>
+  <path d="M172 318 Q200 330 228 318" fill="none" stroke="#15192A" stroke-width="5" opacity="0.25"/>
+  <circle cx="82" cy="210" r="24" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M88 201 Q76 210 88 219" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/><circle cx="318" cy="210" r="24" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M312 201 Q324 210 312 219" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <ellipse cx="200" cy="195" rx="122" ry="132" fill="#F7CBA6" stroke="#15192A" stroke-width="8"/>
+  <path d="M80 214 C62 120 108 50 196 44 C282 38 346 92 324 214 C318 186 314 160 300 140
+           C270 150 226 146 196 124 C176 146 132 156 100 160 C92 176 86 194 80 214 Z" fill="#2B2B3A" stroke="#15192A" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M196 124 C214 96 250 78 292 82" fill="none" stroke="#4A4A5E" stroke-width="7" stroke-linecap="round"/>
+  <path d="M150 74 C130 90 118 110 112 132" fill="none" stroke="#4A4A5E" stroke-width="6" stroke-linecap="round"/>
+  <path d="M130 168 Q154 156 178 164" stroke="#15192A" stroke-width="10" stroke-linecap="round" fill="none"/><path d="M222 164 Q246 156 270 168" stroke="#15192A" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <circle cx="122" cy="252" r="18" fill="#FF9E8A" opacity="0.5"/><circle cx="278" cy="252" r="18" fill="#FF9E8A" opacity="0.5"/>
+  <path d="M193 240 Q200 250 207 240" fill="none" stroke="#15192A" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  <g id="xd-normal" opacity="1"><ellipse cx="154" cy="205" rx="11" ry="15" fill="#15192A"/><ellipse cx="246" cy="205" rx="11" ry="15" fill="#15192A"/><path d="M172 269 Q200 295 228 269" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/></g><g id="xd-happy" opacity="0"><path d="M136 211 Q154 189 172 211" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M228 211 Q246 189 264 211" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M160 263 Q200 319 240 263 Z" fill="#15192A"/><path d="M180 287 Q200 301 220 287" fill="#FF6B4A"/></g>
+  <clipPath id="xd-clip"><rect x="-300" y="-300" width="1000" height="766"/></clipPath><g clip-path="url(#xd-clip)"></g>
+</svg></div></div><div id="dx-bub" class="bubble" style="left:470px;top:1010px">충청도는 안 가 봤어!</div><div id="dx-st" class="sticker y" style="top:1225px"><span style="transform:rotate(-3deg)">충청도로 고!</span></div><div id="dex-cap" class="cap"><span class="kick">지역 도감</span><div class="line">우리 가족 이번 여행<br>어디 갈까?</div></div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#dex-in",{opacity:0,duration:0.25,ease:"none"},0);
+    tl.from("#dex-cap > *",{y:40,opacity:0,duration:0.35,stagger:0.08,ease:"back.out(1.8)"},0.1);
+    tl.set("#dex-s0",{x:0,y:0,scale:0.48563049853372436},0);
+    tl.to("#dex-s0",{x:-323.5,y:-581.0,scale:1.25,duration:1.2,ease:"power3.inOut"},0.4);
+    tl.fromTo("#dex-disp",{scale:0.85,opacity:0},{scale:1,opacity:1,duration:0.3,ease:"power3.out"},0.0);
+    tl.from(["#dx-mom","#dx-kid","#dx-dad"],{y:330,duration:0.45,stagger:0.1,ease:"power3.out"},0.2);
+    tl.to(["#dx-mom-r","#dx-dad-r"],{rotation:6,duration:0.4,ease:"sine.inOut",yoyo:true,repeat:1},0.8);
+    tl.fromTo("#dx-bub",{scale:0.3,opacity:0},{scale:1,opacity:1,duration:0.35,ease:"back.out(2.4)"},1.2);
+    tl.to("#xc-normal",{opacity:0,duration:0.08},1.7);tl.to("#xc-sparkle",{opacity:1,duration:0.08},1.7);
+    tl.to("#xm-normal",{opacity:0,duration:0.08},3.0);tl.to("#xm-sparkle",{opacity:1,duration:0.08},3.0);
+    tl.to("#xd-normal",{opacity:0,duration:0.08},3.0);tl.to("#xd-happy",{opacity:1,duration:0.08},3.0);
+    tl.to("#dx-bub",{opacity:0,duration:0.2},3.1);
+    tl.fromTo("#dx-st",{scale:0.3,opacity:0},{scale:1,opacity:1,duration:0.35,ease:"back.out(2.4)"},3.0);
+    window.__timelines["dex"] = tl;
+  </script>
+</template>

@@ -1,0 +1,48 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; background:#F6F3EC; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.06) 2px, transparent 2.5px); background-size:34px 34px; }
+.frame { position:absolute; left:650px; top:96px; width:1200px; height:852px; overflow:hidden; border-radius:30px;
+  background:#E9EDF2; border:5px solid #15192A; box-shadow:10px 12px 0 #15192A; }
+.vid { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.side { position:absolute; left:64px; top:96px; width:540px; }
+.chapter { display:inline-block; background:#15192A; color:#fff; border-radius:14px; padding:10px 20px; font-size:26px; font-weight:700; letter-spacing:-0.02em; }
+.beat { position:absolute; left:0; top:78px; width:540px; }
+.chip { display:inline-block; background:#FFD43B; border:3px solid #15192A; border-radius:12px; padding:6px 16px; font-size:26px; font-weight:800; }
+.title { font-size:54px; font-weight:800; letter-spacing:-0.045em; line-height:1.18; margin-top:18px; word-break:keep-all; }
+.body { font-size:29px; font-weight:500; line-height:1.5; color:#5B6275; margin-top:18px; letter-spacing:-0.02em; word-break:keep-all; }
+.data { margin-top:22px; }
+.data .lbl { font-size:21px; font-weight:700; color:#0B7A5A; letter-spacing:0.02em; }
+.data .tag { display:inline-block; margin:8px 8px 0 0; padding:6px 14px; border-radius:10px; background:#fff; border:2px solid rgba(21,25,42,0.12);
+  font-size:22px; font-weight:600; color:#15192A; }
+.voice { position:absolute; left:64px; top:800px; width:540px; background:#12B886; color:#fff; border-radius:24px 24px 24px 6px; padding:20px 26px;
+  box-shadow:0 14px 30px rgba(18,184,134,0.35); }
+.voice .lbl { font-size:20px; font-weight:700; opacity:0.85; }
+.voice .txt { font-size:33px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1.3; word-break:keep-all; }
+</style>
+  <div id="root" data-composition-id="gangneung" data-width="1920" data-height="1080" data-start="0" data-duration="20.21">
+    <div id="gangneung-in" style="position:absolute;inset:0;">
+      <div class="dots"></div>
+      <div class="frame" data-layout-allow-overflow>
+        <video id="gangneung-vid" class="vid clip" data-start="0" data-duration="20.21" src="assets/clips/gangneung.mp4" muted playsinline></video>
+      </div>
+      <div class="side"><span class="chapter">③ A씨의 일주일 · 분기 1회 여행</span><div id="gangneung-b0" class="beat"><span class="chip">203 km</span><div class="title">강원도 가족 여행</div><div class="body">위례에서 강릉 경포대까지. 고속도로를 따라 처음 가 보는 읍·면·동이 줄줄이 열리고 레벨이 올라가요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">FusedLocation 위치</span><span class="tag">Vehicle 좌석(동승자)</span></div></div><div id="gangneung-b1" class="beat"><span class="chip">강릉 도착</span><div class="title">멀리 떠난 날, 「주말 원정대」</div><div class="body">Lv.14 → Lv.18, 처음 가 본 동네 25곳. 새 스탬프 '읍·면·동 100곳'·'시·도 3곳 탐험'·'멀리 떠난 날'.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">NaviHelper 집(50 km 판정)</span></div></div></div>
+      <div id="gangneung-v0" class="voice"><div class="lbl">앱 음성 안내 (키즈모드)</div><div class="txt">“도착! 오늘은 새 동네를 25곳이나 찾았어요. 최고예요! 우와, 탐험대가 18레벨이 되었어요!”</div></div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#gangneung-in",{opacity:0,duration:0.3,ease:"none"},0);
+    tl.from("#gangneung-b0 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},0.15);
+    tl.to("#gangneung-b0",{opacity:0,y:-18,duration:0.25,ease:"power2.in"},9.58);
+    tl.set("#gangneung-b1",{opacity:0},0);
+    tl.to("#gangneung-b1",{opacity:1,duration:0.01},9.83);
+    tl.from("#gangneung-b1 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},9.83);
+    tl.set("#gangneung-v0",{opacity:0},0);
+    tl.fromTo("#gangneung-v0",{opacity:0,y:24,scale:0.92},{opacity:1,y:0,scale:1,duration:0.3,ease:"back.out(2)"},12.01);
+    tl.to("#gangneung-v0",{opacity:0,y:-10,duration:0.25},19.209999999999997);
+    tl.set("#gangneung-vid",{x:0,y:0,scale:0.7038123167155426},0);
+    tl.to("#gangneung-vid",{x:-76.0,y:-721.0,scale:1.3,duration:0.9,ease:"power3.inOut"},10.91);
+    window.__timelines["gangneung"] = tl;
+  </script>
+</template>

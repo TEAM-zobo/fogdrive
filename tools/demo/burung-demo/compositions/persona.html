@@ -20,25 +20,28 @@
 .voice .lbl { font-size:20px; font-weight:700; opacity:0.85; }
 .voice .txt { font-size:33px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1.3; word-break:keep-all; }
 
-#in { position:absolute; left:160px; top:170px; width:1600px; }
+#in { position:absolute; left:150px; top:120px; width:1620px; }
 #k { font-size:30px; font-weight:800; color:#0B7A5A; }
-#t { font-size:76px; font-weight:800; letter-spacing:-0.05em; margin-top:10px; }
-.row { display:flex; align-items:center; margin-top:28px; background:#fff; border-radius:24px; padding:26px 34px; box-shadow:0 10px 26px rgba(21,25,42,0.08); }
-.row .k { width:120px; font-size:32px; font-weight:800; color:#0B7A5A; }
-.row .v { font-size:40px; font-weight:700; letter-spacing:-0.03em; }
-#note { margin-top:34px; font-size:26px; color:#5B6275; font-weight:600; }
+#t { font-size:72px; font-weight:800; letter-spacing:-0.05em; margin-top:8px; }
+#s { font-size:30px; font-weight:600; color:#5B6275; margin-top:10px; letter-spacing:-0.02em; }
+.row { display:flex; align-items:center; margin-top:24px; background:#fff; border-radius:24px; padding:24px 34px; box-shadow:0 10px 26px rgba(21,25,42,0.08); }
+.row .k { width:170px; font-size:32px; font-weight:800; color:#0B7A5A; }
+.row .v { width:560px; font-size:36px; font-weight:700; letter-spacing:-0.03em; }
+.row .a { flex:1; font-size:28px; font-weight:600; color:#5B6275; letter-spacing:-0.02em; word-break:keep-all; }
+#note { margin-top:30px; font-size:25px; color:#5B6275; font-weight:600; }
 </style>
-  <div id="root" data-composition-id="persona" data-width="1920" data-height="1080" data-start="0" data-duration="4.6">
+  <div id="root" data-composition-id="persona" data-width="1920" data-height="1080" data-start="0" data-duration="7.5">
     <div id="pin" style="position:absolute;inset:0;"><div class="dots"></div>
-    <div id="in"><div id="k">시연 시나리오</div><div id="t">40대 아빠 A씨의 일주일</div><div class="row"><div class="k">평일</div><div class="v">아이를 유치원에 내려 주고 출근 (왕복 약 30 km)</div></div><div class="row"><div class="k">주말</div><div class="v">가족과 가까운 공원·근교로 나들이</div></div><div class="row"><div class="k">바람</div><div class="v">아이와 함께하는 차 안 시간을 기록으로 남기고 싶다</div></div>
-      <div id="note">시연 데이터: 내비에 집·회사 저장, 지난 4주 출근 19번 기록 (시연용 예시)</div></div></div>
+    <div id="in"><div id="k">③ 사용 시나리오</div><div id="t">40대 아빠 A씨의 일주일</div>
+      <div id="s">위례에 살고 양재로 출근, 유치원생 아이 한 명 · 탐험대 이름 '도현 탐험대'</div><div class="row"><div class="k">평일</div><div class="v">아이를 유치원에 내려 주고 출근</div><div class="a">키즈모드로 등원 · 하차 깃발 · 20번째 출근에 「프로 출근러」</div></div><div class="row"><div class="k">토요일</div><div class="v">가족과 가까운 곳으로 나들이</div><div class="a">추천으로 안 가 본 곳 고르기 · 새 동네 음성 · 함께 탐험</div></div><div class="row"><div class="k">분기 1회</div><div class="v">강원도 1박 2일 가족 여행</div><div class="a">'멀리 떠난 날'로 「주말 원정대」 · 도감에 강원도 색칠</div></div>
+      <div id="note">지난 4주 기록(주행 67건 · 768 km · 출근 19번)은 시연용 가상 데이터, 오늘부터는 에뮬레이터에서 직접 달린 화면입니다.</div></div></div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
     tl.from("#pin",{opacity:0,duration:0.3,ease:"none"},0);
-    tl.from(["#k","#t"],{y:30,opacity:0,duration:0.45,stagger:0.1,ease:"power3.out"},0.15);
-    tl.from(".row",{x:-60,opacity:0,duration:0.45,stagger:0.18,ease:"power3.out"},0.5);
-    tl.from("#note",{opacity:0,duration:0.4},1.3);
+    tl.from(["#k","#t","#s"],{y:30,opacity:0,duration:0.45,stagger:0.1,ease:"power3.out"},0.15);
+    tl.from(".row",{x:-60,opacity:0,duration:0.45,stagger:0.22,ease:"power3.out"},0.6);
+    tl.from("#note",{opacity:0,duration:0.4},1.6);
     window.__timelines["persona"] = tl;
   </script>
 </template>

@@ -1,0 +1,51 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; }
+.bg { position:absolute; inset:0; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.07) 3px, transparent 3.5px); background-size:44px 44px; }
+.cap { position:absolute; left:50px; right:50px; top:190px; text-align:center; }
+.kick { display:inline-block; background:#15192A; color:#fff; border-radius:16px; padding:10px 24px; font-size:34px; font-weight:800; letter-spacing:-0.02em; }
+.line { font-size:78px; font-weight:800; letter-spacing:-0.05em; line-height:1.16; margin-top:18px; word-break:keep-all; }
+.line b { background:linear-gradient(transparent 58%, #FFD43B 58%); }
+.sub { font-size:44px; font-weight:700; letter-spacing:-0.04em; line-height:1.25; margin-top:14px; color:#3B4256; word-break:keep-all; }
+.disp { position:absolute; left:110px; top:500px; width:860px; height:620px; border-radius:42px; background:#1D2233;
+  border:7px solid #15192A; box-shadow:12px 14px 0 #15192A; overflow:hidden; }
+.scr { position:absolute; left:9px; top:9px; width:828px; height:588px; border-radius:30px; overflow:hidden; background:#E9EDF2; }
+.shot { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.sticker { position:absolute; left:0; right:0; text-align:center; }
+.sticker span { display:inline-block; background:#FF6B4A; color:#fff; border:6px solid #15192A; border-radius:26px; padding:16px 34px;
+  font-size:58px; font-weight:800; letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; }
+.sticker.y span { background:#FFD43B; color:#15192A; }
+.sticker.m span { background:#12B886; }
+.bubble { position:absolute; background:#fff; border:6px solid #15192A; border-radius:34px; padding:18px 30px; font-size:44px; font-weight:800;
+  letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; word-break:keep-all; }
+.chr { position:absolute; }
+</style>
+  <div id="root" data-composition-id="record" data-width="1080" data-height="1920" data-start="0" data-duration="5.0">
+    <div id="record-in" style="position:absolute;inset:0;">
+      <div class="bg" style="background:linear-gradient(180deg,#FFF1C9 0%,#F6F3EC 70%)"></div>
+      <div class="dots"></div><svg viewBox="0 0 1080 1920" style="position:absolute;inset:0;width:1080px;height:1920px"><path d="M-60 1560 C220 1480 360 1640 560 1560 C760 1480 880 1600 1140 1520" fill="none" stroke="#D9D4C7" stroke-width="64" stroke-linecap="round"/><path id="rc-trail" d="M-60 1560 C220 1480 360 1640 560 1560 C760 1480 880 1600 1140 1520" fill="none" stroke="#FFD43B" stroke-width="30" stroke-linecap="round" stroke-dasharray="1400" stroke-dashoffset="1400"/></svg><div id="record-disp" class="disp"><div class="scr"><video id="rc-vid" class="clip" data-start="0.2" data-duration="4.6" src="assets/shots/drive.mp4" muted playsinline style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover"></video></div></div><div id="rc-car" style="position:absolute;left:-300px;top:1400px;width:260px"><svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+  <path d="M196 70 L196 6" stroke="#15192A" stroke-width="7" stroke-linecap="round"/>
+  <path d="M196 8 L246 22 L196 38 Z" fill="#FFD43B" stroke="#15192A" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M30 150 C26 110 50 98 80 96 L104 60 C112 50 124 46 138 46 L214 46 C230 46 244 54 252 68 L270 98 C296 102 300 120 298 150 Z"
+        fill="#F0483E" stroke="#15192A" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M116 66 L138 62 L170 62 L170 96 L100 96 Z" fill="#BFE6FF" stroke="#15192A" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M184 62 L214 62 C224 62 232 68 238 78 L248 96 L184 96 Z" fill="#BFE6FF" stroke="#15192A" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="92" cy="156" r="32" fill="#2E3242" stroke="#15192A" stroke-width="7"/><circle cx="92" cy="156" r="12" fill="#C9CED8"/>
+  <circle cx="236" cy="156" r="32" fill="#2E3242" stroke="#15192A" stroke-width="7"/><circle cx="236" cy="156" r="12" fill="#C9CED8"/>
+  <rect x="276" y="112" width="18" height="12" rx="5" fill="#FFD43B" stroke="#15192A" stroke-width="4"/>
+</svg></div><div id="rc-st" class="sticker y" style="top:1120px"><span style="transform:rotate(-3deg)">앱을 안 열어도 자동으로!</span></div><div id="record-cap" class="cap"><span class="kick">달리기만 하면</span><div class="line">지나간 길이<br><b>탐험 지도</b>로 남아요</div></div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#record-in",{opacity:0,duration:0.25,ease:"none"},0);
+    tl.from("#record-cap > *",{y:40,opacity:0,duration:0.35,stagger:0.08,ease:"back.out(1.8)"},0.1);
+    tl.fromTo("#record-disp",{scale:0.5,opacity:0},{scale:1,opacity:1,duration:0.45,ease:"back.out(1.7)"},0.05);
+    tl.to("#rc-trail",{attr:{"stroke-dashoffset":0},duration:4.0,ease:"none"},0.5);
+    tl.to("#rc-car",{x:1460,duration:4.3,ease:"none"},0.3);
+    tl.to("#rc-car",{y:-24,duration:0.3,ease:"sine.inOut",yoyo:true,repeat:13},0.3);
+    tl.fromTo("#rc-st",{scale:0.3,opacity:0},{scale:1,opacity:1,duration:0.35,ease:"back.out(2.4)"},1.2);
+    window.__timelines["record"] = tl;
+  </script>
+</template>

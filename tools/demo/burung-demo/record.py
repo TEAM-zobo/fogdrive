@@ -121,7 +121,11 @@ def demo_panel(course, kmh):
 
 
 def start_xy():
-    return d.find("시연 시작").center
+    nodes = d.ui_nodes()   # one dump for both labels (each dump takes ~1 s)
+    n = d.find("시연 시작", nodes=nodes) or d.find("다시 달리기", nodes=nodes)   # after a finished run the button reads 다시 달리기
+    if n is None:
+        sys.exit("시연 시작/다시 달리기 버튼이 화면에 없음")
+    return n.center
 
 
 # ---- 장면 (persona.md 7장의 번호) ----
@@ -175,7 +179,7 @@ def s_trips():
     time.sleep(2)
     to_map()
     trips = d.find("최근 주행").center
-    record("s_trips", 13, [(1.0, lambda: tap(trips)), (4.0, lambda: tap_label("유치원 → 회사")),
+    record("s_trips", 13, [(1.0, lambda: tap(trips)), (4.0, lambda: tap_label("→ 회사")),
                            (10.5, lambda: adb("shell", "input", "keyevent", "BACK"))])
 
 

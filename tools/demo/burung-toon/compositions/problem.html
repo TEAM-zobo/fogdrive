@@ -1,0 +1,56 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; }
+.bg { position:absolute; inset:0; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.07) 3px, transparent 3.5px); background-size:44px 44px; }
+.cap { position:absolute; left:50px; right:50px; top:190px; text-align:center; }
+.kick { display:inline-block; background:#15192A; color:#fff; border-radius:16px; padding:10px 24px; font-size:34px; font-weight:800; letter-spacing:-0.02em; }
+.line { font-size:78px; font-weight:800; letter-spacing:-0.05em; line-height:1.16; margin-top:18px; word-break:keep-all; }
+.line b { background:linear-gradient(transparent 58%, #FFD43B 58%); }
+.sub { font-size:44px; font-weight:700; letter-spacing:-0.04em; line-height:1.25; margin-top:14px; color:#3B4256; word-break:keep-all; }
+.disp { position:absolute; left:110px; top:500px; width:860px; height:620px; border-radius:42px; background:#1D2233;
+  border:7px solid #15192A; box-shadow:12px 14px 0 #15192A; overflow:hidden; }
+.scr { position:absolute; left:9px; top:9px; width:828px; height:588px; border-radius:30px; overflow:hidden; background:#E9EDF2; }
+.shot { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.sticker { position:absolute; left:0; right:0; text-align:center; }
+.sticker span { display:inline-block; background:#FF6B4A; color:#fff; border:6px solid #15192A; border-radius:26px; padding:16px 34px;
+  font-size:58px; font-weight:800; letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; }
+.sticker.y span { background:#FFD43B; color:#15192A; }
+.sticker.m span { background:#12B886; }
+.bubble { position:absolute; background:#fff; border:6px solid #15192A; border-radius:34px; padding:18px 30px; font-size:44px; font-weight:800;
+  letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; word-break:keep-all; }
+.chr { position:absolute; }
+</style>
+  <div id="root" data-composition-id="problem" data-width="1080" data-height="1920" data-start="0" data-duration="4.2">
+    <div id="problem-in" style="position:absolute;inset:0;">
+      <div class="bg" style="background:#F6F3EC"></div>
+      <div class="dots"></div><div id="pb-navi" class="disp" style="background:#1D2233"><div class="scr" style="background:#2A3044;display:flex;align-items:center;justify-content:center;flex-direction:column;"><div style="font-size:64px;color:#fff;font-weight:800;letter-spacing:-0.04em"></div><svg viewBox="0 0 120 120" style="width:120px"><path d="M30 110 L30 12" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M30 14 L100 30 L30 50 Z" fill="#FF6B4A"/></svg><div style="font-size:58px;color:#fff;font-weight:800;letter-spacing:-0.04em;margin-top:16px">목적지에 도착했습니다</div><div style="font-size:34px;color:rgba(255,255,255,0.6);font-weight:600;margin-top:10px">경로 안내를 종료합니다</div></div></div><div id="pb-zero" style="position:absolute;left:0;right:0;top:640px;text-align:center;font-size:300px;font-weight:800;color:#FF6B4A;-webkit-text-stroke:10px #15192A;letter-spacing:-0.06em">0</div><div id="pb-sub" class="cap" style="top:1150px"><div class="sub" style="font-size:50px;color:#15192A">아이에겐 그냥 <b style="background:linear-gradient(transparent 58%, #FFD43B 58%)">기다리는 시간</b></div></div><div id="pb-kid" class="chr" style="left:640px;top:1290px;width:360px;"><div id="pb-kid-r" style="transform:rotate(0deg)"><svg viewBox="0 0 400 470" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+  
+  <path d="M74 470 C74 392 128 360 200 360 C272 360 326 392 326 470 Z" fill="#FFD43B" stroke="#15192A" stroke-width="8"/>
+  
+  <rect x="176" y="310" width="48" height="54" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/>
+  <circle cx="94" cy="228" r="22" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M100 219 Q88 228 100 237" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/><circle cx="306" cy="228" r="22" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M300 219 Q312 228 300 237" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <ellipse cx="200" cy="214" rx="112" ry="110" fill="#F7CBA6" stroke="#15192A" stroke-width="8"/>
+  <path d="M96 216 C78 120 136 86 200 84 C266 84 324 120 304 216 C300 180 294 160 284 146 Q268 172 252 140 Q232 170 210 138 Q190 168 170 140 Q150 168 132 146 C116 166 102 188 96 216 Z" fill="#3A2A20" stroke="#15192A" stroke-width="7" stroke-linejoin="round"/><path d="M200 86 C192 58 210 44 228 52 M206 86 C214 66 232 62 244 70" fill="none" stroke="#15192A" stroke-width="7" stroke-linecap="round"/><path d="M150 104 C134 118 124 132 118 150" fill="none" stroke="#5A4434" stroke-width="6" stroke-linecap="round"/>
+  <path d="M140 178 Q158 170 174 176" stroke="#15192A" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M226 176 Q242 170 260 178" stroke="#15192A" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <circle cx="128" cy="262" r="20" fill="#FF9E8A" opacity="0.65"/><circle cx="272" cy="262" r="20" fill="#FF9E8A" opacity="0.65"/>
+  <path d="M193 252 Q200 262 207 252" fill="none" stroke="#15192A" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  <g id="pk-normal" opacity="1"><ellipse cx="160" cy="215" rx="11" ry="15" fill="#15192A"/><ellipse cx="240" cy="215" rx="11" ry="15" fill="#15192A"/><path d="M172 279 Q200 305 228 279" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/></g><g id="pk-yawn" opacity="0"><path d="M144 215 Q160 227 176 215" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M224 215 Q240 227 256 215" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><ellipse cx="200" cy="291" rx="20" ry="28" fill="#15192A"/></g>
+  <clipPath id="pk-clip"><rect x="-300" y="-300" width="1000" height="766"/></clipPath><g clip-path="url(#pk-clip)"></g>
+</svg></div></div><div id="pb-zz" style="position:absolute;left:900px;top:1280px;font-size:70px;font-weight:800;color:#4D8EF7">z z Z</div><div id="problem-cap" class="cap"><span class="kick">지금까지는</span><div class="line">내비 끝나면<br>기록 <b>0</b></div></div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#problem-in",{opacity:0,duration:0.25,ease:"none"},0);
+    tl.from("#problem-cap > *",{y:40,opacity:0,duration:0.35,stagger:0.08,ease:"back.out(1.8)"},0.1);
+    tl.fromTo("#pb-navi",{scale:0.8,opacity:0},{scale:1,opacity:1,duration:0.35,ease:"power3.out"},0.15);
+    tl.to("#pb-navi",{opacity:0,scale:0.92,duration:0.35,ease:"power2.in"},1.5);
+    tl.fromTo("#pb-zero",{scale:2.2,opacity:0},{scale:1,opacity:1,duration:0.4,ease:"back.out(1.6)"},1.75);
+    tl.from("#pb-kid",{y:300,duration:0.45,ease:"power3.out"},2.2);
+    tl.to("#pk-normal",{opacity:0,duration:0.08},2.8);tl.to("#pk-yawn",{opacity:1,duration:0.08},2.8);
+    tl.from("#pb-sub > *",{y:30,opacity:0,duration:0.35,ease:"back.out(1.8)"},2.4);
+    tl.from("#pb-zz",{opacity:0,y:30,duration:0.4},3.0);
+    window.__timelines["problem"] = tl;
+  </script>
+</template>

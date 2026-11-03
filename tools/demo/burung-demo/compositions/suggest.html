@@ -20,23 +20,21 @@
 .voice .lbl { font-size:20px; font-weight:700; opacity:0.85; }
 .voice .txt { font-size:33px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1.3; word-break:keep-all; }
 </style>
-  <div id="root" data-composition-id="plan" data-width="1920" data-height="1080" data-start="0" data-duration="8.0">
-    <div id="plan-in" style="position:absolute;inset:0;">
+  <div id="root" data-composition-id="suggest" data-width="1920" data-height="1080" data-start="0" data-duration="8.63">
+    <div id="suggest-in" style="position:absolute;inset:0;">
       <div class="dots"></div>
       <div class="frame" data-layout-allow-overflow>
-        <video id="plan-vid" class="vid clip" data-start="0" data-duration="8.0" src="assets/clips/plan.mp4" muted playsinline></video>
+        <video id="suggest-vid" class="vid clip" data-start="0" data-duration="8.63" src="assets/clips/suggest.mp4" muted playsinline></video>
       </div>
-      <div class="side"><span class="chapter">② 토요일 · 가족 나들이</span><div id="plan-b0" class="beat"><span class="chip">출발 전</span><div class="title">이번 주말, 어디 갈까?</div><div class="body">지역 도감의 '다음 탐험 후보'와 이번 주 탐험 추천을 보고, 아직 안 가 본 곳으로 목적지를 정해요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">행정구역 도감(기기 안)</span><span class="tag">이번 주 탐험 추천</span></div></div></div>
+      <div class="side"><span class="chapter">③ A씨의 일주일 · 토요일</span><div id="suggest-b0" class="beat"><span class="chip">어디 갈까?</span><div class="title">추천을 누르면 바로 내비 안내</div><div class="body">'안 가본 동네 가보기'에서 내비 안내를 누르면 현대차 내비가 그 동네까지 경로를 찾아 안내를 시작해요.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">NaviHelper requestRoute</span></div></div></div>
       
     </div>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
-    tl.from("#plan-in",{opacity:0,duration:0.3,ease:"none"},0);
-    tl.from("#plan-b0 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},0.15);
-    tl.set("#plan-vid",{x:-419.8,y:-68.0,scale:0.95},0);
-    tl.to("#plan-vid",{x:-665.0,y:-190.0,scale:1.1,duration:3.8,ease:"power3.inOut"},0.3);
-    tl.set("#plan-vid",{x:0,y:0,scale:0.7038123167155426},4.8);
-    window.__timelines["plan"] = tl;
+    tl.from("#suggest-in",{opacity:0,duration:0.3,ease:"none"},0);
+    tl.from("#suggest-b0 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},0.15);
+    tl.set("#suggest-vid",{x:0,y:0,scale:0.7038123167155426},0);
+    window.__timelines["suggest"] = tl;
   </script>
 </template>

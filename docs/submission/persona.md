@@ -231,11 +231,12 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 ffmpeg -af ebur128=peak=true …                    # -16~-18 LUFS, 피크 -1 dBFS 아래인지 측정 (들어 보지 않았다면 그렇다고 적음)
 ```
 
+- 2026-11-02 macOS 녹화에서 확인한 것: `setup.sh boot --record`(시계 11:00 고정)로 띄우면 내비가 "서비스 연결 중"에서 멈춰 집·회사를 못 읽습니다(「프로 출근러」·주행 이름이 안 나옴). 실제 시간으로 띄우고(QA 에뮬레이터는 `emulator -avd Pleos_Connect_QA -port 5556 -no-snapshot -no-boot-anim -gpu host -no-window`, 소리 켜짐) `adb shell cmd alarm set-timezone Asia/Seoul`, 밤이면 `adb shell cmd uimode night no`로 낮 지도를 고정합니다. QA 에뮬레이터 내비에는 즐겨찾기가 없어서 집(위례24단지아파트)·회사(현대자동차 본사)를 내비 화면에서 등록했고, '유치원'은 등록하지 않아 주행 이름이 "집 → 거여2동 → 회사"로 나옵니다.
 - 녹화 장면 길이·탭 시각은 찍어 본 뒤 화면을 보고 `record.py`에서 맞춥니다. 각 장면은 앞 장면이 남긴 상태에서 이어집니다.
 - 같은 곳에 몇 분 안에 다시 도착하면 하차로 치지 않아 주행이 끝나지 않습니다. 장면을 다시 찍을 때는 앱을 재시작하고 지난 시도를 최근 주행에서 지우거나, 기록을 다시 넣고(prepare_demo) 처음부터 찍습니다.
 - 13번 '내비 안내'는 내비가 떠 있어야 합니다(`record.py`가 먼저 띄움). 우회 경유지('경유지 추가')는 실제 내비 경로에 들어가지만 시연 주행은 정해진 코스를 달립니다.
-- 소재: 글꼴·배경음악·아이콘은 Release `burung-media-v1`의 `burung-demo-assets.zip`, v1 녹화본은 `burung-demo-raw-v1`. 새로 찍은 녹화본도 Release에 올립니다(`.gitignore`로 저장소에는 넣지 않음).
-- 배경음악 "Think About You" — Square a Saw (Jamendo), CC BY 3.0. 끝 화면과 영상 설명란에 출처를 적습니다.
+- 소재: 지금 영상의 `assets/`(글꼴·배경음악·아이콘·장면 클립)는 Release `burung-media-v2`의 `burung-demo-assets.zip`(숏폼은 `burung-toon-assets.zip`)을 각 폴더에 풀면 됩니다. 장면 녹화본 14개는 `burung-demo-raw-v2`에 있고, `prepare_clips.py`가 없는 것만 받아 옵니다. 다시 찍은 녹화본도 Release에 올립니다(`.gitignore`로 저장소에는 넣지 않음). v1 소재·녹화본은 `burung-media-v1`, `burung-demo-raw-v1`.
+- 배경음악 "Easy Lemon" — Kevin MacLeod (incompetech.com), CC BY 4.0. 영상(2분 51초)보다 짧아 끝에 앞부분을 이어 붙인 `easy-lemon-loop.mp3`를 씁니다(`build.py` 맨 위). 끝 화면과 영상 설명란에 출처를 적습니다.
 
 ### 끝나면
 

@@ -1,0 +1,57 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; }
+.bg { position:absolute; inset:0; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.07) 3px, transparent 3.5px); background-size:44px 44px; }
+.cap { position:absolute; left:50px; right:50px; top:190px; text-align:center; }
+.kick { display:inline-block; background:#15192A; color:#fff; border-radius:16px; padding:10px 24px; font-size:34px; font-weight:800; letter-spacing:-0.02em; }
+.line { font-size:78px; font-weight:800; letter-spacing:-0.05em; line-height:1.16; margin-top:18px; word-break:keep-all; }
+.line b { background:linear-gradient(transparent 58%, #FFD43B 58%); }
+.sub { font-size:44px; font-weight:700; letter-spacing:-0.04em; line-height:1.25; margin-top:14px; color:#3B4256; word-break:keep-all; }
+.disp { position:absolute; left:110px; top:500px; width:860px; height:620px; border-radius:42px; background:#1D2233;
+  border:7px solid #15192A; box-shadow:12px 14px 0 #15192A; overflow:hidden; }
+.scr { position:absolute; left:9px; top:9px; width:828px; height:588px; border-radius:30px; overflow:hidden; background:#E9EDF2; }
+.shot { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.sticker { position:absolute; left:0; right:0; text-align:center; }
+.sticker span { display:inline-block; background:#FF6B4A; color:#fff; border:6px solid #15192A; border-radius:26px; padding:16px 34px;
+  font-size:58px; font-weight:800; letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; }
+.sticker.y span { background:#FFD43B; color:#15192A; }
+.sticker.m span { background:#12B886; }
+.bubble { position:absolute; background:#fff; border:6px solid #15192A; border-radius:34px; padding:18px 30px; font-size:44px; font-weight:800;
+  letter-spacing:-0.04em; box-shadow:8px 10px 0 #15192A; word-break:keep-all; }
+.chr { position:absolute; }
+</style>
+  <div id="root" data-composition-id="hook" data-width="1080" data-height="1920" data-start="0" data-duration="3.6">
+    <div id="hook-in" style="position:absolute;inset:0;">
+      <div class="bg" style="background:linear-gradient(180deg,#D9F1FF 0%,#F4FBFF 40%,#F6F3EC 100%)"></div>
+      <svg id="hook-road" viewBox="0 0 1080 900" style="position:absolute;left:0;top:560px;width:1080px;height:900px"><path d="M420 0 L660 0 L1080 900 L0 900 Z" fill="#8E96A8"/><g id="hook-dash"><rect x="528" y="-120" width="24" height="60" rx="8" fill="#fff"/><rect x="526" y="0" width="28" height="68" rx="8" fill="#fff"/><rect x="524" y="120" width="32" height="76" rx="8" fill="#fff"/><rect x="522" y="240" width="36" height="84" rx="8" fill="#fff"/><rect x="520" y="360" width="40" height="92" rx="8" fill="#fff"/><rect x="518" y="480" width="44" height="100" rx="8" fill="#fff"/><rect x="516" y="600" width="48" height="108" rx="8" fill="#fff"/><rect x="514" y="720" width="52" height="116" rx="8" fill="#fff"/><rect x="512" y="840" width="56" height="124" rx="8" fill="#fff"/><rect x="510" y="960" width="60" height="132" rx="8" fill="#fff"/></g></svg><div id="hook-dad" class="chr" style="left:290px;top:880px;width:500px;"><div id="hook-dad-r" style="transform:rotate(0deg)"><svg viewBox="0 0 400 470" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+  <path d="M30 470 C30 370 100 336 200 336 C300 336 370 370 370 470 Z" fill="#4D8EF7" stroke="#15192A" stroke-width="8"/>
+  <path d="M160 338 L200 392 L240 338 Z" fill="#fff" stroke="#15192A" stroke-width="7" stroke-linejoin="round"/>
+  <rect x="168" y="282" width="64" height="62" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/>
+  <path d="M172 318 Q200 330 228 318" fill="none" stroke="#15192A" stroke-width="5" opacity="0.25"/>
+  <circle cx="82" cy="210" r="24" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M88 201 Q76 210 88 219" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/><circle cx="318" cy="210" r="24" fill="#F7CBA6" stroke="#15192A" stroke-width="7"/><path d="M312 201 Q324 210 312 219" fill="none" stroke="#15192A" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <ellipse cx="200" cy="195" rx="122" ry="132" fill="#F7CBA6" stroke="#15192A" stroke-width="8"/>
+  <path d="M80 214 C62 120 108 50 196 44 C282 38 346 92 324 214 C318 186 314 160 300 140
+           C270 150 226 146 196 124 C176 146 132 156 100 160 C92 176 86 194 80 214 Z" fill="#2B2B3A" stroke="#15192A" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M196 124 C214 96 250 78 292 82" fill="none" stroke="#4A4A5E" stroke-width="7" stroke-linecap="round"/>
+  <path d="M150 74 C130 90 118 110 112 132" fill="none" stroke="#4A4A5E" stroke-width="6" stroke-linecap="round"/>
+  <path d="M130 168 Q154 156 178 164" stroke="#15192A" stroke-width="10" stroke-linecap="round" fill="none"/><path d="M222 164 Q246 156 270 168" stroke="#15192A" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <circle cx="122" cy="252" r="18" fill="#FF9E8A" opacity="0.5"/><circle cx="278" cy="252" r="18" fill="#FF9E8A" opacity="0.5"/>
+  <path d="M193 240 Q200 250 207 240" fill="none" stroke="#15192A" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  <g id="hd-blank" opacity="1"><path d="M138 205 L170 205" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M230 205 L262 205" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/><circle cx="154" cy="214" r="6" fill="#15192A"/><circle cx="246" cy="214" r="6" fill="#15192A"/><path d="M174 275 L226 271" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/></g><g id="hd-normal" opacity="0"><ellipse cx="154" cy="205" rx="11" ry="15" fill="#15192A"/><ellipse cx="246" cy="205" rx="11" ry="15" fill="#15192A"/><path d="M172 269 Q200 295 228 269" stroke="#15192A" stroke-width="9" stroke-linecap="round" fill="none"/></g>
+  <clipPath id="hd-clip"><rect x="-300" y="-300" width="1000" height="766"/></clipPath><g clip-path="url(#hd-clip)"></g>
+</svg></div></div><svg viewBox="0 0 600 300" style="position:absolute;left:240px;top:1290px;width:600px;"><path d="M30 290 A270 270 0 0 1 570 290" fill="none" stroke="#15192A" stroke-width="56" stroke-linecap="round"/><path d="M30 290 A270 270 0 0 1 570 290" fill="none" stroke="#3B4256" stroke-width="36" stroke-linecap="round"/></svg><div id="hook-cap" class="cap"><span class="kick">매일 운전하는 당신</span><div class="line">하루 평균 <b>30.8km</b><br>운전하는데…</div><div class="sub"><span style="font-size:76px;color:#FF6B4A;font-weight:800">남는 것은?</span></div></div><div id="hook-odo" class="bubble" style="left:640px;top:600px;font-size:64px;">0.0 km</div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#hook-cap > *",{y:40,opacity:0,duration:0.35,stagger:0.08,ease:"back.out(1.8)"},0.1);
+    tl.from("#hook-road",{opacity:0,duration:0.2},0);
+    tl.fromTo("#hook-dash",{y:0},{y:120,duration:0.4,ease:"none",repeat:8},0);
+    tl.from("#hook-dad",{y:300,duration:0.5,ease:"power3.out"},0.1);
+    tl.fromTo("#hook-odo",{scale:0.3,opacity:0},{scale:1,opacity:1,duration:0.35,ease:"back.out(2.4)"},0.5);
+    const o={v:0};tl.to(o,{v:30.8,duration:1.8,ease:"power2.out",onUpdate:()=>{document.querySelector("#hook-odo").textContent=o.v.toFixed(1)+" km";}},0.6);
+    tl.to("#hook-dad-r",{rotation:-3,duration:0.5,ease:"sine.inOut",yoyo:true,repeat:5},0.5);
+    window.__timelines["hook"] = tl;
+  </script>
+</template>

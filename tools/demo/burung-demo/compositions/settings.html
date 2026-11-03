@@ -1,0 +1,40 @@
+<template>
+  <style>@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Regular.woff2') format('woff2');font-weight:400;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-SemiBold.woff2') format('woff2');font-weight:600;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-Bold.woff2') format('woff2');font-weight:700;}@font-face{font-family:'Pretendard';src:url('assets/fonts/Pretendard-ExtraBold.woff2') format('woff2');font-weight:800;}
+#root { position:absolute; inset:0; overflow:hidden; font-family:'Pretendard',sans-serif; color:#15192A; background:#F6F3EC; }
+.dots { position:absolute; inset:0; background-image:radial-gradient(rgba(21,25,42,0.06) 2px, transparent 2.5px); background-size:34px 34px; }
+.frame { position:absolute; left:650px; top:96px; width:1200px; height:852px; overflow:hidden; border-radius:30px;
+  background:#E9EDF2; border:5px solid #15192A; box-shadow:10px 12px 0 #15192A; }
+.vid { position:absolute; left:0; top:0; width:1705px; height:1210px; transform-origin:0 0; }
+.side { position:absolute; left:64px; top:96px; width:540px; }
+.chapter { display:inline-block; background:#15192A; color:#fff; border-radius:14px; padding:10px 20px; font-size:26px; font-weight:700; letter-spacing:-0.02em; }
+.beat { position:absolute; left:0; top:78px; width:540px; }
+.chip { display:inline-block; background:#FFD43B; border:3px solid #15192A; border-radius:12px; padding:6px 16px; font-size:26px; font-weight:800; }
+.title { font-size:54px; font-weight:800; letter-spacing:-0.045em; line-height:1.18; margin-top:18px; word-break:keep-all; }
+.body { font-size:29px; font-weight:500; line-height:1.5; color:#5B6275; margin-top:18px; letter-spacing:-0.02em; word-break:keep-all; }
+.data { margin-top:22px; }
+.data .lbl { font-size:21px; font-weight:700; color:#0B7A5A; letter-spacing:0.02em; }
+.data .tag { display:inline-block; margin:8px 8px 0 0; padding:6px 14px; border-radius:10px; background:#fff; border:2px solid rgba(21,25,42,0.12);
+  font-size:22px; font-weight:600; color:#15192A; }
+.voice { position:absolute; left:64px; top:800px; width:540px; background:#12B886; color:#fff; border-radius:24px 24px 24px 6px; padding:20px 26px;
+  box-shadow:0 14px 30px rgba(18,184,134,0.35); }
+.voice .lbl { font-size:20px; font-weight:700; opacity:0.85; }
+.voice .txt { font-size:33px; font-weight:800; letter-spacing:-0.03em; margin-top:4px; line-height:1.3; word-break:keep-all; }
+</style>
+  <div id="root" data-composition-id="settings" data-width="1920" data-height="1080" data-start="0" data-duration="9.74">
+    <div id="settings-in" style="position:absolute;inset:0;">
+      <div class="dots"></div>
+      <div class="frame" data-layout-allow-overflow>
+        <video id="settings-vid" class="vid clip" data-start="0" data-duration="9.74" src="assets/clips/settings.mp4" muted playsinline></video>
+      </div>
+      <div class="side"><span class="chapter">② 기능 안내 · 설정</span><div id="settings-b0" class="beat"><span class="chip">설정</span><div class="title">연결 상태 · 안내 · 기록 관리</div><div class="body">탐험대 이름과 키즈모드, Pleos SDK 연결 상태, 시연 모드, 우회 제안·음성 안내 켜고 끄기, 기록 내보내기·불러오기와 전체 삭제.</div><div class="data"><div class="lbl">사용 데이터</div><span class="tag">Pleos SDK 연결 상태</span></div></div></div>
+      
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.from("#settings-in",{opacity:0,duration:0.3,ease:"none"},0);
+    tl.from("#settings-b0 > *",{y:26,opacity:0,duration:0.45,stagger:0.08,ease:"power3.out"},0.15);
+    tl.set("#settings-vid",{x:0,y:0,scale:0.7038123167155426},0);
+    window.__timelines["settings"] = tl;
+  </script>
+</template>
