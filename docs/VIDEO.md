@@ -96,7 +96,7 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 | --- | --- |
 | `build.py` | **편집은 여기서.** 장면 목록(`SCENES`): 쓰는 클립, 카메라(`cam`: 원본 좌표와 배율), 자막(`cap`), 제목(`title`), 숫자 카드(`stat`). 색·글꼴·전환(0.6초 크로스페이드)·음악 볼륨 곡선·효과음 목록(`SFX`)도 여기 있습니다 |
 | `prepare_assets.sh` | 녹화본의 어느 구간을 어떤 클립으로 자를지(숏폼에만 쓰는 `share` 포함). 우회 제안 카드 0.35배속, 음성 문장 한 줄(+22dB, 앞뒤 페이드) |
-| `vector2svg.py` | 앱 런처 아이콘(Android vector XML) → `assets/icon.svg` |
+| `vector2svg.py` | 예전 앱 런처 아이콘(Android vector XML) → `assets/icon.svg`. 지금 앱 아이콘은 비트맵(`docs/appicon`)이라 더 실행하지 않고, 커밋된 `icon.svg`를 그대로 씁니다 |
 | `SPEC.md`, `STORYLINES.md` | 장면별 기획, 대안 스토리라인 2개 |
 | `index.html`, `compositions/` | `build.py`가 만드는 결과(직접 고치지 않음) |
 

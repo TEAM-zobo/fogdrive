@@ -22,8 +22,8 @@ android {
         // Pleos Connect requires API 28+ (signing key rotation / lineage).
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Pleos Connect head units / Mac emulator are arm64; x86_64 covers Windows emulators.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }

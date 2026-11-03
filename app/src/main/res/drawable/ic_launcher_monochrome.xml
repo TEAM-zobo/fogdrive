@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon silhouette: the car with its flag, the window and wheel hubs cut out, and the road. -->
+<!-- Themed-icon silhouette of docs/appicon/burung-icon.svg: the trail behind the car, the car seen from
+     above with its windows cut out, and the explorer flag. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round" android:fillColor="#00000000"
-        android:pathData="M20,92Q54,78 90,88" />
-    <group android:translateX="27" android:translateY="49" android:rotation="-8" android:scaleX="0.9" android:scaleY="0.9">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5.4" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M28,86L46,66" />
+    <group android:translateX="52" android:translateY="60" android:rotation="45" android:scaleX="1.05" android:scaleY="1.05">
         <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
-            android:pathData="M6,26Q6,12 20,10L40,10Q50,10 54,22L58,26Q60,34 54,34L8,34Q4,34 6,26ZM16,13L38,13Q44,13 47,22L14,22Z" />
-        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
-            android:pathData="M11.5,35a6.5,6.5 0,1 0,13 0a6.5,6.5 0,1 0,-13 0zM15.5,35a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0z" />
-        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
-            android:pathData="M39.5,35a6.5,6.5 0,1 0,13 0a6.5,6.5 0,1 0,-13 0zM43.5,35a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0z" />
-        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.5" android:strokeLineCap="round" android:fillColor="#00000000"
-            android:pathData="M40,10L44,-12" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M44,-12L60,-6L42,-2Z" />
+            android:pathData="M-2,-13h4a6,6 0,0 1,6 6v14a6,6 0,0 1,-6 6h-4a6,6 0,0 1,-6 -6v-14a6,6 0,0 1,6 -6zM-4.4,-7.5h8.8a1.6,1.6 0,0 1,1.6 1.6v1.4a1.6,1.6 0,0 1,-1.6 1.6h-8.8a1.6,1.6 0,0 1,-1.6 -1.6v-1.4a1.6,1.6 0,0 1,1.6 -1.6zM-4.3,6h8.6a1.2,1.2 0,0 1,1.2 1.2v0.6a1.2,1.2 0,0 1,-1.2 1.2h-8.6a1.2,1.2 0,0 1,-1.2 -1.2v-0.6a1.2,1.2 0,0 1,1.2 -1.2z" />
+    </group>
+    <group android:translateX="64" android:translateY="38" android:scaleX="0.95" android:scaleY="0.95">
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M0,0V-17" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M1,-17L13.6,-12.5L1,-8Z" />
     </group>
 </vector>

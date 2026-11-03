@@ -9,8 +9,8 @@ Pleos Connect(Android Automotive OS) 앱 · 현대자동차그룹 차량용 앱 
 ## APK
 
 - 저장소: [`apk/zobo_Burung_release.apk`](apk/zobo_Burung_release.apk)
-- GitHub Release: [v0.1.0](https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.0)
-- 패키지 `com.zobo.burung` · 버전 0.1.0 · minSdk 28 · targetSdk 35 · ABI arm64-v8a, x86_64
+- GitHub Release: [v0.1.1](https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.1)
+- 패키지 `com.zobo.burung` · 버전 0.1.1 · minSdk 28 · targetSdk 35 · ABI arm64-v8a, x86_64
 
 ## 테스트 환경
 

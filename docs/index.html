@@ -105,7 +105,7 @@
         <thead><tr><th>제출물</th><th>구분</th><th>파일·위치</th><th>상태</th><th>남은 일</th></tr></thead>
         <tbody>
           <tr><td>접수양식(기획서)</td><td><span class="tag req">필수</span></td><td><a href="submission/application-form.docx"><code>submission/application-form.docx</code></a> (11/02 Word 수정본, 01 참가 정보 포함)</td><td><span class="tag key">진행</span></td><td>02 【기입 필요】 4곳, 03 확인, 04 동의·서명(2명), PDF 내보내기</td></tr>
-          <tr><td>GitHub 저장소 + APK</td><td><span class="tag opt">선택 · 가산점</span></td><td><a href="https://github.com/TEAM-zobo/fogdrive">TEAM-zobo/fogdrive</a> <code>main</code>, <code>apk/zobo_Burung_release.apk</code>, <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.0">Release v0.1.0</a></td><td><span class="tag done">완료</span></td><td>심사용 계정 읽기 권한 초대(공지 후)</td></tr>
+          <tr><td>GitHub 저장소 + APK</td><td><span class="tag opt">선택 · 가산점</span></td><td><a href="https://github.com/TEAM-zobo/fogdrive">TEAM-zobo/fogdrive</a> <code>main</code>, <code>apk/zobo_Burung_release.apk</code>, <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.1">Release v0.1.1</a></td><td><span class="tag done">완료</span></td><td>심사용 계정 읽기 권한 초대(공지 후)</td></tr>
           <tr><td>시연 영상</td><td><span class="tag opt">선택 · 가산점</span></td><td>1분 14초 완성본: Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/burung-demo-raw-v1"><code>burung-demo-raw-v1</code></a>의 <code>burung-demo.mp4</code></td><td><span class="tag key">제작 완료</span></td><td>YouTube 일부 공개 업로드, 링크를 02-7과 메일에 기입</td></tr>
           <tr><td>숏폼</td><td><span class="tag opt">선택 · 가산점 없음</span></td><td>40.6초 완성본: Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/burung-media-v1"><code>burung-media-v1</code></a>의 <code>burung-shortform.mp4</code></td><td><span class="tag key">제작 완료</span></td><td>팀 계정에 게시(해시태그 3개), 링크를 02-8에 기입. 안 하면 "없음"</td></tr>
           <tr><td>제출 이메일</td><td><span class="tag req">필수</span></td><td><a href="#email">아래 「제출 이메일」</a></td><td><span class="tag done">초안 완료</span></td><td>영상 링크 넣고 대표자 주소에서 발송</td></tr>
@@ -119,7 +119,7 @@
     <ul class="check">
       <li class="done">앱 이름 부릉탐험대로 확정, <code>main</code> 브랜치에 병합 (11/2)</li>
       <li class="done">README 심사자용 정리: 소개·APK 위치·테스트 환경·실행 방법·시연 방법 (11/2)</li>
-      <li class="done">release APK <code>apk/zobo_Burung_release.apk</code> 갱신, GitHub Release v0.1.0 등록 (11/2, 두 파일 SHA-256 동일)</li>
+      <li class="done">release APK <code>apk/zobo_Burung_release.apk</code> 갱신, GitHub Release v0.1.1 등록 (11/3 새 앱 아이콘, 두 파일 SHA-256 동일)</li>
       <li class="done">GitHub About(설명·토픽) 갱신 (11/2)</li>
       <li class="done">접수양식 01 참가 정보(대표자·구성원 2명) 기입 (11/2 Word 수정본)</li>
       <li class="done">접수양식 02-7 저장소 주소·APK 경로·Release 링크 기입 (11/2)</li>
@@ -263,7 +263,7 @@
     <ul class="check">
       <li class="done">소스 코드 업로드: 비공개 저장소 <code>TEAM-zobo/fogdrive</code>, <code>main</code> = 부릉탐험대</li>
       <li class="done">release APK를 <code>apk/</code> 폴더에: <code>apk/zobo_Burung_release.apk</code>(약 38MB, 100MB 제한 이내, release 키 서명). 규칙 <code>팀명_앱이름_release.apk</code>, 앱 이름은 Windows 경로 문제를 피해 영문 <code>Burung</code></li>
-      <li class="done">GitHub Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.0">v0.1.0</a>에도 같은 APK (SHA-256 <code>309e93b6…</code>)</li>
+      <li class="done">GitHub Release <a href="https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.1">v0.1.1</a>에도 같은 APK (SHA-256 <code>df05ca04…</code>)</li>
       <li class="done">README: 앱 이름·한 줄 소개, 실행 방법, 테스트 환경·필요한 설정, APK 위치·Release 링크</li>
       <li class="done">새로 설치해 실행 확인(QA 에뮬레이터, 11/2)</li>
       <li>심사용 GitHub 계정을 <b>읽기(Read) 권한</b> Collaborator로 초대 — 계정 미공지(11/2 공지·FAQ·사이트 재확인), 운영사무국에 문의함(11/2)</li>
@@ -272,7 +272,7 @@
     <div class="card" style="margin-top:12px">
       <p><b>초대 명령</b> <code>gh api -X PUT repos/TEAM-zobo/fogdrive/collaborators/&lt;심사용 계정&gt; -f permission=pull</code></p>
       <p><b>확인</b> <code>gh api repos/TEAM-zobo/fogdrive/invitations --jq '.[] | "\(.invitee.login) \(.permissions)"'</code> 결과가 <code>read</code></p>
-      <p><b>APK 다시 빌드할 때</b> <code>./gradlew :app:assembleRelease</code> → <code>apk/zobo_Burung_release.apk</code>에 복사 → Release v0.1.0 파일도 같은 것으로 교체 → 설치·실행 확인</p>
+      <p><b>APK 다시 빌드할 때</b> <code>./gradlew :app:assembleRelease</code> → <code>apk/zobo_Burung_release.apk</code>에 복사 → 버전을 올리고 새 Release에 같은 파일을 올린 뒤 이 페이지·README·02-7(docx와 원고)의 Release 링크를 바꿈 → 설치·실행 확인</p>
       <p class="sub">무료 조직의 비공개 저장소는 브랜치 보호가 없어서 Write로 초대하면 <code>main</code>에 바로 푸시할 수 있습니다. 반드시 Read로 초대합니다.</p>
     </div>
     <p class="src">근거: <a href="https://appdevchallenge.auto-hmg.io/guide/submission#github">GitHub 저장소 제출 안내</a> · <a href="https://appdevchallenge.auto-hmg.io/faq">FAQ(비공개 저장소)</a></p>

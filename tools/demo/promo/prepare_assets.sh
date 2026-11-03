@@ -80,9 +80,8 @@ SFX_LIB="$HOME/.claude/skills/media-use/audio/assets/sfx"
 for f in whoosh whoosh-short riser impact-bass-1 pop sparkle; do
   [ -f "$A/sfx/$f.mp3" ] || cp "$SFX_LIB/$f.mp3" "$A/sfx/$f.mp3"
 done
-# Via a temp file: a failed run must not leave the committed icon.svg empty.
-python3 vector2svg.py > "$A/icon.svg.tmp"
-mv "$A/icon.svg.tmp" "$A/icon.svg"
+# assets/icon.svg stays as committed: the old vector launcher icon these films show. The app's icon is
+# now a bitmap (docs/appicon), which vector2svg.py cannot read.
 # Same inputs as the committed films? Fresh recordings always differ (re-record → update assets.sha256 and the bundle).
 # Without the CRs Git for Windows (core.autocrlf) adds, or every file name ends in \r.
 if tr -d '\r' < assets.sha256 | sha256 -c --quiet; then
