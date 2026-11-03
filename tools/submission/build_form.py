@@ -5,12 +5,12 @@
 
 Reads   docs/submission/original/contest-application-consent.docx  (the official form, unchanged)
         docs/submission/02-app-introduction.md                     (sections "## 1." .. "## 8.")
-Writes  docs/submission/application-form.docx
+Writes  docs/submission/zobo_부릉탐험대_접수양식.docx
 
 Only non-personal fields are filled there: section 02 (1-8), the app name lines, the team name and
 the category.
 
-Running this overwrites application-form.docx, including anything typed into it in Word (the
+Running this overwrites zobo_부릉탐험대_접수양식.docx, including anything typed into it in Word (the
 2026-11-02 copy was edited in Word; 02-app-introduction.md carries the same text, but not its layout
 or the 01 entries). Images may be JPEG or PNG.
 
@@ -31,7 +31,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SUB = os.path.join(ROOT, "docs", "submission")
 TEMPLATE = os.path.join(SUB, "original", "contest-application-consent.docx")
 SOURCE = os.path.join(SUB, "02-app-introduction.md")
-OUT = os.path.join(SUB, "application-form.docx")
+OUT = os.path.join(SUB, "zobo_부릉탐험대_접수양식.docx")
 PRIVATE = os.path.join(SUB, "private")
 TEAM_JSON = os.path.join(PRIVATE, "team.json")
 PRIVATE_OUT = os.path.join(PRIVATE, "zobo_부릉탐험대_접수양식.docx")

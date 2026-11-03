@@ -12,7 +12,7 @@
 
 ```text
 docs/submission/shortform.md 가이드대로 부릉탐험대 캐릭터 숏폼을 만들어 줘.
-기획서는 docs/submission/02-app-introduction.md(= docs/submission/application-form.docx의 02 내용)를 참고하고,
+기획서는 docs/submission/02-app-introduction.md(= docs/submission/zobo_부릉탐험대_접수양식.docx의 02 내용)를 참고하고,
 앱 화면은 docs/images/burung/ 이미지를 써 줘. /hyperframes 스킬로 tools/demo/burung-toon/ 에 프로젝트를 만들고,
 장면마다 snapshot으로 프레임을 직접 확인한 뒤 render해 줘.
 ```
@@ -116,4 +116,4 @@ npx hyperframes@0.8.196 render --quality delivery --video-frame-format png -o re
 - [ ] 휴대폰 업로드 화면에서 미리 보고 자막이 플랫폼 버튼·설명에 가리지 않는지 본다
 - [ ] 팀 zobo 계정으로 Instagram 릴스 또는 YouTube Shorts에 게시한다
 - [ ] 게시글 본문에 해시태그 **총 2~3개**(필수 `#HMG차량용앱개발공모전` 포함, 제안: `#HMG차량용앱개발공모전 #PleosAppMarket #HMG앱공모전`)와 음악 출처를 적는다. 근거: [숏폼 챌린지](https://appdevchallenge.auto-hmg.io/guide/shortform), [FAQ](https://appdevchallenge.auto-hmg.io/faq)
-- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)와 [`application-form.docx`](application-form.docx) 8번의 【기입 필요: 숏폼 링크】, [`email.md`](email.md), `private/email.txt`에 넣는다(docx는 Word에서 직접 고침)
+- [ ] 링크를 [`02-app-introduction.md`](02-app-introduction.md)와 [`zobo_부릉탐험대_접수양식.docx`](zobo_부릉탐험대_접수양식.docx) 8번의 【기입 필요: 숏폼 링크】, [`email.md`](email.md), `private/email.txt`에 넣는다(docx는 Word에서 직접 고침)
