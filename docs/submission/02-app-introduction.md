@@ -252,7 +252,7 @@
 
 - **GitHub 저장소:** https://github.com/TEAM-zobo/fogdrive (`main` 브랜치, 비공개 저장소이며 공지된 심사용 계정을 읽기 권한 협업자로 초대합니다)
 - **Release APK:** 저장소 `apk/zobo_Burung_release.apk` (v0.1.1, minSdk 28, arm64-v8a·x86_64), GitHub Release https://github.com/TEAM-zobo/fogdrive/releases/tag/v0.1.1
-- **시연 영상:** 【기입 필요: 부릉탐험대 시연 영상 링크】
+- **시연 영상:** https://youtu.be/ZVWYjOL_IC4
 - **실행 방법:** 저장소 README.md, 테스트 환경 셋팅 docs/SETUP.md (Pleos Connect Emulator v2.1.0)
 - 앱 화면
 
@@ -324,4 +324,4 @@ P단 전환 후 문을 열면 도착 깃발이 꽂히고, 이번 주행 결과�
 
 ## 8. 숏폼 링크
 
-【기입 필요: 숏폼 링크 — 선택. 게시하지 않으면 "없음"】
+https://youtube.com/shorts/GjIGYnot6tg
